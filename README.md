@@ -562,6 +562,42 @@ Rutas usadas por el dominio:
 8. `npm run build` (o `npm run dev`)
 9. `php artisan serve`
 
+### 12.1 Acceso por red local con Laragon/Apache
+
+Para acceder al sistema desde otros equipos de la misma red local:
+
+- Apache debe escuchar en `*:80`.
+- El `VirtualHost` debe apuntar a `public/` y aceptar el hostname o IP del equipo.
+- El firewall de Windows debe permitir entrada TCP al puerto `80`.
+
+Ejemplo de `VirtualHost`:
+
+```apache
+<VirtualHost *:80>
+    ServerName NOMBRE-EQUIPO
+    ServerAlias sj_armory.test
+    ServerAlias *.sj_armory.test
+    ServerAlias 172.16.23.36
+
+    DocumentRoot "C:/laragon/www/SJ_Armory/public"
+
+    <Directory "C:/laragon/www/SJ_Armory/public">
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+```
+
+Notas:
+
+- Si se accede por IP, por ejemplo `http://172.16.23.36`, no hace falta un dominio.
+- Si se accede por un dominio local como `sj_armory.test`, cada equipo cliente debe resolver ese nombre via `hosts` o DNS interno.
+- Para abrir el puerto `80` solo a la red local en Windows:
+
+```cmd
+netsh advfirewall firewall add rule name="Laragon Apache HTTP 80 (LocalSubnet)" dir=in action=allow protocol=TCP localport=80 program="C:\laragon\bin\apache\httpd-2.4.54-win64-VS16\bin\httpd.exe" remoteip=LocalSubnet profile=any
+```
+
 ## 13. Variables de entorno relevantes
 
 Base:
@@ -579,6 +615,8 @@ Importante para entorno real:
 
 - Ajustar `APP_URL` al dominio/IP real.
 - Revisar `SESSION_DOMAIN`, `SESSION_SECURE_COOKIE` si se publica por HTTPS.
+- Si se necesita acceso flexible por IP, hostname o dominio, dejar `SESSION_DOMAIN` vacio para no fijar la cookie a un solo host.
+- Si se usa Sanctum con SPA o frontends externos, agregar todos los hosts validos en `SANCTUM_STATEFUL_DOMAINS`.
 
 ## 14. Seeders y datos iniciales
 
