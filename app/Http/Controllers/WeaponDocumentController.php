@@ -24,7 +24,7 @@ class WeaponDocumentController extends Controller
         ];
 
         $data = $request->validate([
-            'document' => ['required', 'file', 'max:10240'],
+            'document' => ['required', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:10240'],
             'valid_until' => ['nullable', 'date'],
             'observations' => ['required', 'string', 'in:En Armerillo,En Mantenimiento,Para Mantenimiento,Hurtada,Perdida,Dar de Baja'],
             'status' => ['required', 'string', 'in:' . implode(',', $statusOptions)],

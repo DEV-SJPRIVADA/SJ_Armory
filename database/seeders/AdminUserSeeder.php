@@ -7,6 +7,7 @@ use App\Models\ResponsibilityLevel;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use RuntimeException;
 
 class AdminUserSeeder extends Seeder
 {
@@ -14,12 +15,16 @@ class AdminUserSeeder extends Seeder
     {
         $positions = Position::pluck('id', 'name');
         $levels = ResponsibilityLevel::pluck('id', 'level');
+        $password = env('SEED_ADMIN_PASSWORD');
+
+        if (!is_string($password) || trim($password) === '') {
+            throw new RuntimeException('Define SEED_ADMIN_PASSWORD antes de ejecutar AdminUserSeeder.');
+        }
 
         $admins = [
             [
                 'name' => 'Wilder Rivera',
                 'email' => 'wilder.rivera@example.com',
-                'password' => 'WilderA9K3',
                 'role' => 'ADMIN',
                 'position' => 'Gerencia General',
                 'responsibility_level' => null,
@@ -29,7 +34,6 @@ class AdminUserSeeder extends Seeder
             [
                 'name' => 'Andres San Miguel',
                 'email' => 'andres.sanmiguel@example.com',
-                'password' => 'AndresM7P2',
                 'role' => 'ADMIN',
                 'position' => 'Gerencia General',
                 'responsibility_level' => null,
@@ -43,7 +47,7 @@ class AdminUserSeeder extends Seeder
                 ['email' => $admin['email']],
                 [
                     'name' => $admin['name'],
-                    'password' => Hash::make($admin['password']),
+                    'password' => Hash::make($password),
                     'role' => $admin['role'],
                     'position_id' => $positions[$admin['position']] ?? null,
                     'responsibility_level_id' => $levels[$admin['responsibility_level']] ?? null,

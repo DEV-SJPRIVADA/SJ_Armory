@@ -6,6 +6,7 @@ use App\Models\Weapon;
 use App\Models\WeaponDocument;
 use App\Services\WeaponDocumentService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class AlertsController extends Controller
 {
@@ -13,30 +14,86 @@ class AlertsController extends Controller
     {
         $this->authorizeAdmin();
 
-        $days = (int)$request->input('days', 120);
-        if (!in_array($days, [30, 60, 90, 120], true)) {
-            $days = 120;
-        }
+        $selectedMonth = trim((string) $request->input('month', ''));
+        $hasMonthFilter = preg_match('/^\d{4}-\d{2}$/', $selectedMonth) === 1;
 
         $today = now()->startOfDay();
-        $until = now()->addDays($days)->endOfDay();
+        $alertWindowEnd = $today->copy()->addDays(120)->endOfDay();
 
-        $expired = WeaponDocument::with(['weapon', 'file'])
+        $documentsQuery = WeaponDocument::with(['weapon.activeClientAssignment.client', 'file'])
             ->where('is_renewal', true)
-            ->whereNotNull('valid_until')
-            ->whereDate('valid_until', '<=', $today)
+            ->whereNotNull('valid_until');
+
+        if ($hasMonthFilter) {
+            $monthStart = Carbon::createFromFormat('Y-m', $selectedMonth)->startOfMonth();
+            $monthEnd = $monthStart->copy()->endOfMonth();
+            $documentsQuery->whereBetween('valid_until', [$monthStart, $monthEnd]);
+            $monthLabel = $monthStart->translatedFormat('F \d\e Y');
+        } else {
+            $selectedMonth = '';
+            $monthLabel = 'Todos los meses';
+        }
+
+        $documents = $documentsQuery
             ->orderBy('valid_until')
+            ->orderBy('weapon_id')
             ->get();
 
-        $expiring = WeaponDocument::with(['weapon', 'file'])
-            ->where('is_renewal', true)
-            ->whereNotNull('valid_until')
-            ->whereDate('valid_until', '>', $today)
-            ->whereBetween('valid_until', [$today, $until])
-            ->orderBy('valid_until')
-            ->get();
+        $expired = $documents
+            ->filter(fn (WeaponDocument $document) => $document->valid_until?->copy()->startOfDay()->lte($today))
+            ->values();
 
-        return view('alerts.documents', compact('expired', 'expiring', 'days'));
+        $expiring = $documents
+            ->filter(fn (WeaponDocument $document) => $document->valid_until?->copy()->startOfDay()->gt($today)
+                && $document->valid_until?->copy()->endOfDay()->lte($alertWindowEnd))
+            ->values();
+
+        $noAlerts = $documents
+            ->filter(fn (WeaponDocument $document) => $document->valid_until?->copy()->endOfDay()->gt($alertWindowEnd))
+            ->values();
+
+        $summaryCards = [
+            'expired' => [
+                'count' => $expired->pluck('weapon_id')->filter()->unique()->count(),
+                'label' => 'Documentos vencidos',
+                'subtitle' => $hasMonthFilter
+                    ? 'Armas vencidas en ' . $monthLabel
+                    : 'Armas vencidas registradas en el sistema',
+                'empty' => $hasMonthFilter
+                    ? 'No hay armas vencidas para este mes.'
+                    : 'No hay armas vencidas registradas.',
+            ],
+            'expiring' => [
+                'count' => $expiring->pluck('weapon_id')->filter()->unique()->count(),
+                'label' => 'Documentos por vencer',
+                'subtitle' => $hasMonthFilter
+                    ? 'Alertas activas dentro de 120 días en ' . $monthLabel
+                    : 'Alertas activas dentro de 120 días en el sistema',
+                'empty' => $hasMonthFilter
+                    ? 'No hay armas por vencer dentro de la ventana de 120 días para este mes.'
+                    : 'No hay armas por vencer dentro de la ventana de 120 días.',
+            ],
+            'no_alerts' => [
+                'count' => $noAlerts->pluck('weapon_id')->filter()->unique()->count(),
+                'label' => 'Armas sin alertas',
+                'subtitle' => $hasMonthFilter
+                    ? 'Armas del mes fuera de la ventana de alerta'
+                    : 'Armas del sistema fuera de la ventana de alerta',
+                'empty' => $hasMonthFilter
+                    ? 'No hay armas fuera de alerta para este mes.'
+                    : 'No hay armas fuera de alerta.',
+            ],
+        ];
+
+        return view('alerts.documents', compact(
+            'expired',
+            'expiring',
+            'noAlerts',
+            'selectedMonth',
+            'monthLabel',
+            'summaryCards',
+            'hasMonthFilter',
+        ));
     }
 
     public function downloadBatch(Request $request, WeaponDocumentService $documentService)
@@ -71,4 +128,3 @@ class AlertsController extends Controller
         }
     }
 }
-

@@ -10,6 +10,7 @@ use App\Models\WeaponImportBatch;
 use App\Models\WeaponImportRow;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -168,6 +169,173 @@ class WeaponImportService
         }
     }
 
+    public function startBatchExecution(WeaponImportBatch $batch, User $user): WeaponImportBatch
+    {
+        if ($batch->isExecuted()) {
+            throw ValidationException::withMessages([
+                'batch' => 'Este lote ya fue ejecutado.',
+            ]);
+        }
+
+        if ($batch->isFailed()) {
+            throw ValidationException::withMessages([
+                'batch' => 'Este lote fallo y no puede reanudarse.',
+            ]);
+        }
+
+        if ($batch->hasErrors()) {
+            throw ValidationException::withMessages([
+                'batch' => 'No se puede ejecutar mientras existan filas con error.',
+            ]);
+        }
+
+        if ($batch->isProcessing()) {
+            return $batch->fresh(['rows']);
+        }
+
+        $batch->loadMissing('rows');
+
+        return DB::transaction(function () use ($batch, $user) {
+            $batch->rows()
+                ->where('action', '!=', WeaponImportRow::ACTION_ERROR)
+                ->update([
+                    'execution_status' => WeaponImportRow::EXECUTION_PENDING,
+                    'processed_at' => null,
+                    'execution_error' => null,
+                    'after_payload' => null,
+                ]);
+
+            $batch->update([
+                'status' => 'processing',
+                'executed_by' => $user->id,
+                'executed_at' => null,
+                'started_at' => now(),
+                'finished_at' => null,
+                'processed_rows' => 0,
+                'successful_rows' => 0,
+                'failed_rows' => 0,
+                'last_error' => null,
+            ]);
+
+            return $batch->fresh([
+                'file',
+                'uploadedBy',
+                'executedBy',
+                'rows' => fn ($query) => $query->orderByRaw($this->actionOrderSql())->orderBy('row_number'),
+            ]);
+        });
+    }
+
+    public function processBatchChunk(WeaponImportBatch $batch, User $user, int $chunkSize = 25): WeaponImportBatch
+    {
+        $lock = Cache::lock('weapon-import-batch:' . $batch->id, 15);
+
+        if (!$lock->get()) {
+            return $batch->fresh([
+                'file',
+                'uploadedBy',
+                'executedBy',
+                'rows' => fn ($query) => $query->orderByRaw($this->actionOrderSql())->orderBy('row_number'),
+            ]);
+        }
+
+        try {
+            $batch->refresh();
+
+            if ($batch->isExecuted() || $batch->isFailed()) {
+                return $batch->fresh([
+                    'file',
+                    'uploadedBy',
+                    'executedBy',
+                    'rows' => fn ($query) => $query->orderByRaw($this->actionOrderSql())->orderBy('row_number'),
+                ]);
+            }
+
+            if (!$batch->isProcessing()) {
+                $batch = $this->startBatchExecution($batch, $user);
+            }
+
+            $pendingRows = WeaponImportRow::query()
+                ->with('weapon')
+                ->where('batch_id', $batch->id)
+                ->where('execution_status', WeaponImportRow::EXECUTION_PENDING)
+                ->orderBy('row_number')
+                ->limit($chunkSize)
+                ->get();
+
+            if ($pendingRows->isEmpty()) {
+                $batch->update([
+                    'status' => 'executed',
+                    'executed_at' => now(),
+                    'finished_at' => now(),
+                ]);
+
+                return $batch->fresh([
+                    'file',
+                    'uploadedBy',
+                    'executedBy',
+                    'rows' => fn ($query) => $query->orderByRaw($this->actionOrderSql())->orderBy('row_number'),
+                ]);
+            }
+
+            foreach ($pendingRows as $row) {
+                try {
+                    $this->processExecutionRow($row, $user);
+
+                    $batch->increment('processed_rows');
+                    $batch->increment('successful_rows');
+                } catch (Throwable $exception) {
+                    $message = $exception instanceof ValidationException
+                        ? collect($exception->errors())->flatten()->implode(' ')
+                        : 'No se pudo procesar una fila del lote.';
+
+                    WeaponImportRow::query()
+                        ->whereKey($row->id)
+                        ->update([
+                            'execution_status' => WeaponImportRow::EXECUTION_FAILED,
+                            'processed_at' => now(),
+                            'execution_error' => $message,
+                        ]);
+
+                    $batch->increment('processed_rows');
+                    $batch->increment('failed_rows');
+
+                    $batch->update([
+                        'status' => 'failed',
+                        'finished_at' => now(),
+                        'last_error' => $message,
+                    ]);
+
+                    return $batch->fresh([
+                        'file',
+                        'uploadedBy',
+                        'executedBy',
+                        'rows' => fn ($query) => $query->orderByRaw($this->actionOrderSql())->orderBy('row_number'),
+                    ]);
+                }
+            }
+
+            $batch->refresh();
+
+            if ((int) $batch->processed_rows >= (int) $batch->total_rows && !$batch->isFailed()) {
+                $batch->update([
+                    'status' => 'executed',
+                    'executed_at' => now(),
+                    'finished_at' => now(),
+                ]);
+            }
+
+            return $batch->fresh([
+                'file',
+                'uploadedBy',
+                'executedBy',
+                'rows' => fn ($query) => $query->orderByRaw($this->actionOrderSql())->orderBy('row_number'),
+            ]);
+        } finally {
+            optional($lock)->release();
+        }
+    }
+
     public function executeBatch(WeaponImportBatch $batch, User $user): WeaponImportBatch
     {
         if (!$batch->isDraft()) {
@@ -183,6 +351,15 @@ class WeaponImportService
         }
 
         return DB::transaction(function () use ($batch, $user) {
+            $batch->update([
+                'started_at' => now(),
+                'finished_at' => null,
+                'processed_rows' => 0,
+                'successful_rows' => 0,
+                'failed_rows' => 0,
+                'last_error' => null,
+            ]);
+
             $batch->load([
                 'rows' => fn ($query) => $query->orderBy('row_number'),
                 'rows.weapon',
@@ -204,6 +381,9 @@ class WeaponImportService
                         'weapon_id' => $weapon?->id,
                         'after_payload' => $weapon ? $this->weaponSnapshot($weapon) : null,
                     ]);
+
+                    $batch->processed_rows++;
+                    $batch->successful_rows++;
 
                     continue;
                 }
@@ -234,6 +414,9 @@ class WeaponImportService
                         'before' => null,
                         'after' => $after,
                     ]);
+
+                    $batch->processed_rows++;
+                    $batch->successful_rows++;
 
                     continue;
                 }
@@ -272,12 +455,18 @@ class WeaponImportService
                     'before' => $before,
                     'after' => $after,
                 ]);
+
+                $batch->processed_rows++;
+                $batch->successful_rows++;
             }
 
             $batch->update([
                 'status' => 'executed',
                 'executed_by' => $user->id,
                 'executed_at' => now(),
+                'finished_at' => now(),
+                'processed_rows' => $batch->processed_rows ?: $batch->total_rows,
+                'successful_rows' => $batch->successful_rows ?: $batch->total_rows,
             ]);
 
             return $batch->fresh([
@@ -285,6 +474,136 @@ class WeaponImportService
                 'uploadedBy',
                 'executedBy',
                 'rows' => fn ($query) => $query->orderByRaw($this->actionOrderSql())->orderBy('row_number'),
+            ]);
+        });
+    }
+
+    public function progressData(WeaponImportBatch $batch): array
+    {
+        $batch->refresh();
+
+        $elapsedSeconds = $batch->started_at ? max(1, now()->diffInSeconds($batch->started_at)) : 0;
+        $processedRows = (int) $batch->processed_rows;
+        $totalRows = max(0, (int) $batch->total_rows);
+        $remainingRows = max(0, $totalRows - $processedRows);
+        $etaSeconds = null;
+
+        if ($batch->isProcessing() && $processedRows > 0 && $remainingRows > 0) {
+            $etaSeconds = (int) ceil(($elapsedSeconds / $processedRows) * $remainingRows);
+        }
+
+        return [
+            'status' => $batch->status,
+            'processed_rows' => $processedRows,
+            'successful_rows' => (int) $batch->successful_rows,
+            'failed_rows' => (int) $batch->failed_rows,
+            'total_rows' => $totalRows,
+            'remaining_rows' => $remainingRows,
+            'percentage' => $batch->progressPercentage(),
+            'elapsed_seconds' => $batch->started_at ? $elapsedSeconds : 0,
+            'eta_seconds' => $etaSeconds,
+            'last_error' => $batch->last_error,
+            'source_name' => $batch->source_name,
+        ];
+    }
+
+    private function processExecutionRow(WeaponImportRow $row, User $user): void
+    {
+        DB::transaction(function () use ($row, $user) {
+            $row->refresh();
+            $row->loadMissing('weapon');
+
+            if ($row->execution_status === WeaponImportRow::EXECUTION_COMPLETED) {
+                return;
+            }
+
+            $row->update([
+                'execution_status' => WeaponImportRow::EXECUTION_PROCESSING,
+                'execution_error' => null,
+            ]);
+
+            if ($row->action === WeaponImportRow::ACTION_NO_CHANGE) {
+                $weapon = $row->weapon ?: Weapon::query()
+                    ->where('serial_number', $row->normalized_payload['serial_number'] ?? null)
+                    ->first();
+
+                $row->update([
+                    'weapon_id' => $weapon?->id,
+                    'after_payload' => $weapon ? $this->weaponSnapshot($weapon) : null,
+                    'execution_status' => WeaponImportRow::EXECUTION_COMPLETED,
+                    'processed_at' => now(),
+                ]);
+
+                return;
+            }
+
+            $payload = $row->normalized_payload ?? [];
+
+            if ($row->action === WeaponImportRow::ACTION_CREATE) {
+                $payload['internal_code'] = sprintf('SJ-%04d', $this->nextInternalCodeNumber());
+                $payload['ownership_type'] = 'company_owned';
+
+                $weapon = Weapon::create($payload);
+
+                $this->documentService->syncPermitDocument($weapon);
+                $this->documentService->syncRenewalDocument($weapon);
+
+                $after = $this->weaponSnapshot($weapon->fresh());
+
+                $row->update([
+                    'weapon_id' => $weapon->id,
+                    'after_payload' => $after,
+                    'execution_status' => WeaponImportRow::EXECUTION_COMPLETED,
+                    'processed_at' => now(),
+                ]);
+
+                AuditLog::create([
+                    'user_id' => $user->id,
+                    'action' => 'weapon_import_created',
+                    'auditable_type' => Weapon::class,
+                    'auditable_id' => $weapon->id,
+                    'before' => null,
+                    'after' => $after,
+                ]);
+
+                return;
+            }
+
+            $weapon = $row->weapon ?: Weapon::query()
+                ->where('serial_number', $payload['serial_number'] ?? null)
+                ->first();
+
+            if (!$weapon) {
+                throw new RuntimeException(sprintf(
+                    'No se encontro el arma de la fila %d al momento de ejecutar el lote.',
+                    $row->row_number
+                ));
+            }
+
+            $before = $this->weaponSnapshot($weapon);
+            $weapon->fill($payload);
+            $weapon->save();
+
+            $this->documentService->syncPermitDocument($weapon);
+            $this->documentService->syncRenewalDocument($weapon);
+
+            $after = $this->weaponSnapshot($weapon->fresh());
+
+            $row->update([
+                'weapon_id' => $weapon->id,
+                'before_payload' => $before,
+                'after_payload' => $after,
+                'execution_status' => WeaponImportRow::EXECUTION_COMPLETED,
+                'processed_at' => now(),
+            ]);
+
+            AuditLog::create([
+                'user_id' => $user->id,
+                'action' => 'weapon_import_updated',
+                'auditable_type' => Weapon::class,
+                'auditable_id' => $weapon->id,
+                'before' => $before,
+                'after' => $after,
             ]);
         });
     }

@@ -16,7 +16,7 @@ class GeocodingService
 
         try {
             $response = Http::withHeaders([
-                'User-Agent' => 'SJ_Armory/1.0 (contact@example.com)',
+                'User-Agent' => config('services.nominatim.user_agent'),
             ])->timeout(5)->connectTimeout(3)->get('https://nominatim.openstreetmap.org/search', [
                 'format' => 'json',
                 'q' => $query,
@@ -46,7 +46,7 @@ class GeocodingService
     {
         try {
             $response = Http::withHeaders([
-                'User-Agent' => 'SJ_Armory/1.0 (contact@example.com)',
+                'User-Agent' => config('services.nominatim.user_agent'),
             ])->timeout(5)->connectTimeout(3)->get('https://nominatim.openstreetmap.org/reverse', [
                 'format' => 'jsonv2',
                 'lat' => $lat,

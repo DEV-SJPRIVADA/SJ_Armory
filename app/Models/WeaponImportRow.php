@@ -13,6 +13,10 @@ class WeaponImportRow extends Model
     public const ACTION_CREATE = 'create';
     public const ACTION_UPDATE = 'update';
     public const ACTION_NO_CHANGE = 'no_change';
+    public const EXECUTION_PENDING = 'pending';
+    public const EXECUTION_PROCESSING = 'processing';
+    public const EXECUTION_COMPLETED = 'completed';
+    public const EXECUTION_FAILED = 'failed';
 
     public const ACTION_LABELS = [
         self::ACTION_CREATE => 'Crear',
@@ -26,6 +30,9 @@ class WeaponImportRow extends Model
         'weapon_id',
         'row_number',
         'action',
+        'execution_status',
+        'processed_at',
+        'execution_error',
         'summary',
         'raw_payload',
         'normalized_payload',
@@ -40,6 +47,7 @@ class WeaponImportRow extends Model
         'before_payload' => 'array',
         'after_payload' => 'array',
         'errors' => 'array',
+        'processed_at' => 'datetime',
     ];
 
     public function batch()

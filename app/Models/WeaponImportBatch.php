@@ -21,10 +21,18 @@ class WeaponImportBatch extends Model
         'no_change_count',
         'error_count',
         'executed_at',
+        'started_at',
+        'finished_at',
+        'processed_rows',
+        'successful_rows',
+        'failed_rows',
+        'last_error',
     ];
 
     protected $casts = [
         'executed_at' => 'datetime',
+        'started_at' => 'datetime',
+        'finished_at' => 'datetime',
     ];
 
     public function file()
@@ -57,8 +65,27 @@ class WeaponImportBatch extends Model
         return $this->status === 'executed';
     }
 
+    public function isProcessing(): bool
+    {
+        return $this->status === 'processing';
+    }
+
+    public function isFailed(): bool
+    {
+        return $this->status === 'failed';
+    }
+
     public function hasErrors(): bool
     {
         return (int) $this->error_count > 0;
+    }
+
+    public function progressPercentage(): int
+    {
+        if ((int) $this->total_rows <= 0) {
+            return 0;
+        }
+
+        return (int) min(100, floor(((int) $this->processed_rows / (int) $this->total_rows) * 100));
     }
 }

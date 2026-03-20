@@ -14,7 +14,7 @@
                     <label class="inline-flex items-center rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
                         <span class="mr-2">{{ __('Seleccionar archivo') }}</span>
                         <span class="text-xs text-gray-500" data-document-file-name>{{ __('Ningún archivo') }}</span>
-                        <input type="file" name="document" required class="hidden" data-document-file-input>
+                        <input type="file" name="document" required class="hidden" accept=".pdf,.doc,.docx,image/jpeg,image/png,image/webp" data-document-file-input>
                     </label>
                     <input type="date" name="valid_until" class="rounded-md border-gray-300 text-sm" placeholder="{{ __('Vence') }}">
                     <select name="status" class="rounded-md border-gray-300 text-sm" required>

@@ -164,10 +164,25 @@ Flujo:
   - `error`
 - Si existe al menos una fila con error, el lote no puede ejecutarse.
 - Si no hay errores, el usuario puede ejecutar el lote y aplicar cambios sobre `weapons`.
+- Durante la subida del archivo, la interfaz muestra progreso de carga.
+- Durante la ejecucion del lote, la interfaz muestra:
+  - porcentaje,
+  - filas procesadas,
+  - correctas,
+  - fallidas,
+  - estado del lote,
+  - estimado de tiempo restante.
 - El modulo conserva historial de lotes ejecutados y solo mantiene un borrador activo durante la revision.
 - La vista principal del modulo se mantiene limpia mientras el lote siga pendiente:
   - la validacion detallada se revisa solo en el modal,
   - el resultado detallado solo aparece en el `index` despues de ejecutar.
+
+Estados operativos del lote:
+
+- `draft`
+- `processing`
+- `executed`
+- `failed`
 
 Reglas de negocio:
 
@@ -403,8 +418,20 @@ Reportes:
 
 Alertas:
 
-- Documentos vencidos.
-- Documentos por vencer (30/60/90 dias).
+- Vista general por tarjetas:
+  - Documentos vencidos
+  - Documentos por vencer
+  - Armas sin alertas
+- Filtro por mes calendario opcional:
+  - si no se selecciona mes, muestra todo el sistema
+  - si se selecciona un mes, muestra solo vencimientos de ese mes
+- Cada tarjeta abre un modal con detalle seleccionable.
+- El detalle permite:
+  - buscar en todas las columnas,
+  - seleccionar armas individuales,
+  - seleccionar todo lo visible,
+  - descargar la relacion filtrada.
+- La ventana de alerta preventiva opera sobre 120 dias.
 
 ## 6. Auditoria
 
@@ -476,14 +503,15 @@ Las rutas estan en `routes/web.php` y `routes/auth.php`.
 Grupos funcionales:
 
 - Auth:
-  - `login`, `register`, `forgot-password`, `reset-password`, `verify-email`, `logout`.
+  - `login`, `forgot-password`, `reset-password`, `verify-email`, `logout`.
+  - `register` solo si `AUTH_ALLOW_PUBLIC_REGISTRATION=true`.
 - Perfil:
   - `profile.edit/update/destroy`.
 - Administracion:
   - `users.*`, `users.status`.
 - Operacion:
   - `weapons.*`
-  - `weapon-imports.index`, `weapon-imports.preview`, `weapon-imports.execute`, `weapon-imports.discard`
+  - `weapon-imports.index`, `weapon-imports.preview`, `weapon-imports.start`, `weapon-imports.process`, `weapon-imports.status`, `weapon-imports.execute`, `weapon-imports.discard`
   - `weapons.client_assignments.store`
   - `weapons.internal_assignments.store/retire`
   - `weapons.photos.*`
@@ -497,13 +525,11 @@ Grupos funcionales:
 - Cartera:
   - `portfolios.index/edit/update/transfer`.
 - Reportes y alertas:
-  - `reports.*`, `alerts.documents`.
+  - `reports.*`, `alerts.documents`, `alerts.documents.download`.
 - Mapa:
   - `maps.index`, `maps.weapons`.
 - Locale:
   - `locale.switch`.
-
-`php artisan route:list` actualmente reporta 90 rutas.
 
 ## 9. Frontend y UX
 
@@ -557,10 +583,12 @@ Rutas usadas por el dominio:
 3. Copiar `.env.example` a `.env`
 4. Configurar base de datos en `.env`
 5. `php artisan key:generate`
-6. `php artisan migrate --seed`
-7. `php artisan storage:link`
-8. `npm run build` (o `npm run dev`)
-9. `php artisan serve`
+6. Definir `SEED_ADMIN_PASSWORD` en `.env`
+7. `php artisan migrate --seed`
+8. Si vas a usar geocodificacion, definir `NOMINATIM_USER_AGENT`
+9. `php artisan storage:link`
+10. `npm run build` (o `npm run dev`)
+11. `php artisan serve`
 
 ### 12.1 Acceso por red local con Laragon/Apache
 
@@ -611,6 +639,16 @@ Base:
 - `MAIL_*`
 - `AWS_*` (si se usa S3)
 
+Operacion:
+
+- `AUTH_ALLOW_PUBLIC_REGISTRATION`
+  - `false` por defecto
+  - si esta en `false`, no se exponen rutas publicas de registro
+- `SEED_ADMIN_PASSWORD`
+  - obligatoria para ejecutar `AdminUserSeeder`
+- `NOMINATIM_USER_AGENT`
+  - identificacion usada por `GeocodingService` para Nominatim
+
 Importante para entorno real:
 
 - Ajustar `APP_URL` al dominio/IP real.
@@ -626,7 +664,15 @@ Importante para entorno real:
 - `ResponsibilityLevelSeeder`
 - `AdminUserSeeder`
 
-`AdminUserSeeder` crea/actualiza dos usuarios ADMIN por email.  
+`AdminUserSeeder` crea/actualiza dos usuarios ADMIN por email:
+
+- `wilder.rivera@example.com`
+- `andres.sanmiguel@example.com`
+
+Requisito:
+
+- exige `SEED_ADMIN_PASSWORD` antes de ejecutar `php artisan db:seed`
+
 Se recomienda cambiar passwords y correos en produccion inmediatamente despues del primer despliegue.
 
 ## 15. Pruebas automatizadas
@@ -635,11 +681,19 @@ Suite actual en `tests/`:
 
 - Unit basica.
 - Feature de autenticacion y perfil (Breeze).
-- Feature basica de vista previa para `Subir armas`.
+- Feature de `Subir armas`, incluyendo preview y progreso/ejecucion de lote.
 
 Comando:
 
 - `php artisan test`
+
+Configuracion de testing:
+
+- `phpunit.xml` fuerza `DB_CONNECTION=sqlite`
+- `DB_DATABASE=:memory:`
+- `.env.testing` define un entorno aislado para pruebas
+
+Con esto, `php artisan test` no debe tocar la base real del proyecto.
 
 Nota: actualmente no hay suite dedicada para reglas de negocio de armas/asignaciones/transferencias, aunque la logica ya esta implementada en controladores/servicios.
 

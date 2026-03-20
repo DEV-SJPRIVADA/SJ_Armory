@@ -65,6 +65,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('weapons', WeaponController::class);
     Route::get('/subir-armas', [WeaponImportController::class, 'index'])->name('weapon-imports.index');
     Route::post('/subir-armas/preview', [WeaponImportController::class, 'preview'])->name('weapon-imports.preview');
+    Route::post('/subir-armas/{weaponImportBatch}/execute/start', [WeaponImportController::class, 'startExecution'])->name('weapon-imports.start');
+    Route::post('/subir-armas/{weaponImportBatch}/execute/process', [WeaponImportController::class, 'processExecution'])->name('weapon-imports.process');
+    Route::get('/subir-armas/{weaponImportBatch}/execute/status', [WeaponImportController::class, 'executionStatus'])->name('weapon-imports.status');
     Route::post('/subir-armas/{weaponImportBatch}/execute', [WeaponImportController::class, 'execute'])->name('weapon-imports.execute');
     Route::post('/subir-armas/{weaponImportBatch}/discard', [WeaponImportController::class, 'discard'])->name('weapon-imports.discard');
     Route::post('/weapons/{weapon}/client-assignments', [WeaponClientAssignmentController::class, 'store'])

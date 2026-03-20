@@ -52,7 +52,7 @@ class WeaponImportController extends Controller
         return view('weapon-imports.index', [
             'batches' => $batches,
             'selectedBatch' => $selectedBatch,
-            'openPreview' => $request->boolean('preview') && $selectedBatch?->isDraft(),
+            'openPreview' => $request->boolean('preview') && ($selectedBatch?->isDraft() || $selectedBatch?->isProcessing()),
         ]);
     }
 
@@ -81,9 +81,73 @@ class WeaponImportController extends Controller
             ]);
         }
 
-        return redirect()->route('weapon-imports.index', [
+        $redirectUrl = route('weapon-imports.index', [
             'batch' => $batch->id,
             'preview' => 1,
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'redirect_url' => $redirectUrl,
+                'batch_id' => $batch->id,
+            ]);
+        }
+
+        return redirect()->to($redirectUrl);
+    }
+
+    public function startExecution(Request $request, WeaponImportBatch $weaponImportBatch, WeaponImportService $importService)
+    {
+        try {
+            $batch = $importService->startBatchExecution($weaponImportBatch, $request->user());
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw ValidationException::withMessages([
+                'batch' => 'No se pudo iniciar la ejecución del lote.',
+            ]);
+        }
+
+        return response()->json([
+            'progress' => $importService->progressData($batch),
+            'status_url' => route('weapon-imports.status', $batch),
+            'process_url' => route('weapon-imports.process', $batch),
+            'redirect_url' => route('weapon-imports.index', ['batch' => $batch->id]),
+        ]);
+    }
+
+    public function processExecution(Request $request, WeaponImportBatch $weaponImportBatch, WeaponImportService $importService)
+    {
+        try {
+            $batch = $importService->processBatchChunk($weaponImportBatch, $request->user());
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw ValidationException::withMessages([
+                'batch' => 'No se pudo continuar la ejecución del lote.',
+            ]);
+        }
+
+        return response()->json([
+            'progress' => $importService->progressData($batch),
+            'redirect_url' => route('weapon-imports.index', ['batch' => $batch->id]),
+        ]);
+    }
+
+    public function executionStatus(Request $request, WeaponImportBatch $weaponImportBatch, WeaponImportService $importService)
+    {
+        abort_unless(
+            $weaponImportBatch->uploaded_by === null
+            || $weaponImportBatch->uploaded_by === $request->user()?->id
+            || $request->user()?->isAdmin(),
+            403
+        );
+
+        $batch = $this->loadBatch($weaponImportBatch->id);
+
+        return response()->json([
+            'progress' => $importService->progressData($batch),
+            'redirect_url' => route('weapon-imports.index', ['batch' => $batch->id]),
         ]);
     }
 
