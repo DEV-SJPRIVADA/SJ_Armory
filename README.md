@@ -119,6 +119,14 @@ Archivo principal: `app/Http/Controllers/WeaponController.php`
 - Carga inicial y actualizacion de:
   - Foto de permiso (obligatoria al crear arma).
   - Fotos tecnicas del arma por tipo de descripcion.
+- Los campos de imagen en crear/editar arma soportan:
+  - seleccionar archivo,
+  - arrastrar y soltar,
+  - pegar imagen desde portapapeles.
+- Antes de aceptar una imagen, el sistema abre un editor para:
+  - recortar,
+  - girar,
+  - confirmar la version final.
 - Sincronizacion automatica de documentos:
   - Documento de permiso (`is_permit = true`).
   - Documento de renovacion (`is_renewal = true`).
@@ -304,6 +312,13 @@ Controlador: `app/Http/Controllers/ClientController.php`
 - RESPONSABLE ve solo clientes de su cartera.
 - Geocodificacion automatica por direccion/ciudad/departamento.
 - Opcion de coordenadas manuales desde mapa (`coords_source = map`).
+- Si la ubicacion se selecciona en mapa:
+  - completa latitud y longitud,
+  - intenta completar direccion, barrio, municipio y departamento.
+- Si luego el usuario corrige solo la direccion o barrio:
+  - conserva la ubicacion tomada del mapa.
+- Si el usuario diligencia manualmente direccion, barrio, municipio y departamento:
+  - el sistema intenta calcular latitud y longitud antes de guardar.
 - No permite borrar cliente con armas activas asignadas.
 
 ### 5.6 Puestos
@@ -314,6 +329,11 @@ Controlador: `app/Http/Controllers/PostController.php`
 - `index` para ADMIN/RESPONSABLE/AUDITOR.
 - Crear/editar/borrar solo ADMIN.
 - Geocodificacion equivalente a clientes.
+- Si la ubicacion se selecciona en mapa:
+  - completa latitud y longitud,
+  - conserva la ubicacion si luego solo se corrige la direccion.
+- Si el usuario diligencia manualmente direccion, municipio y departamento:
+  - el sistema intenta calcular latitud y longitud antes de guardar.
 - Filtros por cliente y texto.
 
 ### 5.7 Trabajadores
@@ -392,6 +412,11 @@ Controller: `app/Http/Controllers/GeocodingController.php`
 - Geocoding directo (Nominatim search).
 - Reverse geocoding (Nominatim reverse).
 - Timeouts cortos y fallback a `null` en error.
+- Endpoint de geocoding directo para formularios:
+  - `GET /geocode/search`
+- En formularios de clientes y puestos:
+  - muestra aviso corto si la direccion no es reconocida,
+  - permite guardar sin coordenadas o elegir la ubicacion en el mapa.
 
 ### 5.12 Carteras de responsables
 
@@ -546,9 +571,11 @@ Caracteristicas:
 - Idioma con cambio de session (`es`, `en`).
 - Modales de seleccion de ubicacion con mapa y buscador textual.
 - Cluster de mapa con icono personalizado y contador.
-- Tailwind escanea vistas y JS:
+- Tailwind escanea vistas, JS y helpers PHP usados para clases dinamicas:
+  - `./app/**/*.php`
   - `./resources/views/**/*.blade.php`
   - `./resources/js/**/*.js`
+- Se usa `safelist` para clases dinamicas de estados documentales, de modo que los colores de alertas no se pierdan en el build.
 
 ## 10. Archivos y almacenamiento
 
@@ -626,6 +653,49 @@ Notas:
 netsh advfirewall firewall add rule name="Laragon Apache HTTP 80 (LocalSubnet)" dir=in action=allow protocol=TCP localport=80 program="C:\laragon\bin\apache\httpd-2.4.54-win64-VS16\bin\httpd.exe" remoteip=LocalSubnet profile=any
 ```
 
+### 12.2 Configuracion detectada actualmente en este entorno
+
+`.env` detectado:
+
+- `APP_NAME="SJ_ARMORY"`
+- `APP_ENV=local`
+- `APP_URL=http://SJPCANAOPE1`
+- `DB_CONNECTION=mysql`
+- `DB_HOST=127.0.0.1`
+- `DB_PORT=3306`
+- `DB_DATABASE=sj_armory`
+- `DB_USERNAME=root`
+- `FILESYSTEM_DISK=local`
+- `SESSION_DRIVER=file`
+- `SESSION_DOMAIN=` vacio
+- `SANCTUM_STATEFUL_DOMAINS=sj_armory.test,sj_armory.test:80,SJPCANAOPE1,SJPCANAOPE1:80,172.16.23.36,172.16.23.36:80`
+
+VirtualHost detectado para este proyecto en Laragon:
+
+```apache
+<VirtualHost *:80>
+    ServerName SJPCANAOPE1
+    ServerAlias sj_armory.test
+    ServerAlias *.sj_armory.test
+    ServerAlias 172.16.23.36
+
+    DocumentRoot "C:/laragon/www/SJ_Armory/public"
+
+    <Directory "C:/laragon/www/SJ_Armory/public">
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+```
+
+Observacion operativa:
+
+- La configuracion detectada para `SJ_Armory` expone el proyecto por:
+  - `http://SJPCANAOPE1`
+  - `http://sj_armory.test`
+  - `http://172.16.23.36`
+- Si tambien quieres servirlo por otra IP o hostname, debes agregar ese valor tanto en el `VirtualHost` como en `SANCTUM_STATEFUL_DOMAINS`.
+
 ## 13. Variables de entorno relevantes
 
 Base:
@@ -634,6 +704,7 @@ Base:
 - `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
 - `FILESYSTEM_DISK`
 - `SESSION_DRIVER`, `SESSION_LIFETIME`
+- `SESSION_DOMAIN`
 - `CACHE_DRIVER`
 - `QUEUE_CONNECTION`
 - `MAIL_*`
@@ -648,6 +719,9 @@ Operacion:
   - obligatoria para ejecutar `AdminUserSeeder`
 - `NOMINATIM_USER_AGENT`
   - identificacion usada por `GeocodingService` para Nominatim
+- `SANCTUM_STATEFUL_DOMAINS`
+  - lista de hosts/IP autorizados para cookies de sesion y autenticacion stateful
+  - debe incluir hostname, alias local y/o IP real usada para acceder al sistema
 
 Importante para entorno real:
 

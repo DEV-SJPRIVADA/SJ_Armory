@@ -24,8 +24,8 @@ L.Icon.Default.mergeOptions(customIconOptions);
 const locale = document.documentElement.lang?.startsWith('en') ? 'en' : 'es';
 const t = {
     layerMap: locale === 'en' ? 'Map' : 'Mapa',
-    layerSatellite: locale === 'en' ? 'Satellite' : 'Satelite',
-    layerHybrid: locale === 'en' ? 'Hybrid' : 'Hibrida',
+    layerSatellite: locale === 'en' ? 'Satellite' : 'Satélite',
+    layerHybrid: locale === 'en' ? 'Hybrid' : 'Híbrida',
     viewWeapon: locale === 'en' ? 'View weapon' : 'Ver arma',
     weaponCount: locale === 'en' ? 'Weapon count' : 'Cantidad de armas',
     serial: locale === 'en' ? 'Serial' : 'Serie',

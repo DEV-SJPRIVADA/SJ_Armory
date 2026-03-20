@@ -94,9 +94,12 @@ class PostController extends Controller
         if ($useMapCoords && !empty($data['latitude']) && !empty($data['longitude'])) {
             $data['latitude'] = (float) $data['latitude'];
             $data['longitude'] = (float) $data['longitude'];
-        } else {
-            $location = trim(implode(', ', array_filter([$data['city'] ?? null, $data['department'] ?? null])));
-            $coords = $geocodingService->geocode($data['address'] ?? '', $location ?: ($client?->city));
+        } elseif (!empty($data['address'])) {
+            $coords = $geocodingService->geocode(
+                $data['address'] ?? null,
+                $data['city'] ?? ($client?->city),
+                $data['department'] ?? ($client?->department),
+            );
             if ($coords) {
                 $data['latitude'] = $coords['lat'];
                 $data['longitude'] = $coords['lng'];
@@ -148,10 +151,13 @@ class PostController extends Controller
         if ($useMapCoords && !empty($data['latitude']) && !empty($data['longitude'])) {
             $data['latitude'] = (float) $data['latitude'];
             $data['longitude'] = (float) $data['longitude'];
-        } elseif ($addressChanged) {
+        } elseif ($addressChanged && !empty($data['address'])) {
             $client = Client::find($data['client_id']);
-            $location = trim(implode(', ', array_filter([$data['city'] ?? null, $data['department'] ?? null])));
-            $coords = $geocodingService->geocode($data['address'] ?? '', $location ?: ($client?->city));
+            $coords = $geocodingService->geocode(
+                $data['address'] ?? null,
+                $data['city'] ?? ($client?->city),
+                $data['department'] ?? ($client?->department),
+            );
             if ($coords) {
                 $data['latitude'] = $coords['lat'];
                 $data['longitude'] = $coords['lng'];

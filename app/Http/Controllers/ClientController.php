@@ -54,9 +54,13 @@ class ClientController extends Controller
         if ($useMapCoords && !empty($data['latitude']) && !empty($data['longitude'])) {
             $data['latitude'] = (float) $data['latitude'];
             $data['longitude'] = (float) $data['longitude'];
-        } else {
-            $location = trim(implode(', ', array_filter([$data['city'] ?? null, $data['department'] ?? null])));
-            $coords = $geocodingService->geocode($data['address'] ?? '', $location);
+        } elseif (!empty($data['address'])) {
+            $coords = $geocodingService->geocode(
+                $data['address'] ?? null,
+                $data['city'] ?? null,
+                $data['department'] ?? null,
+                $data['neighborhood'] ?? null,
+            );
             if ($coords) {
                 $data['latitude'] = $coords['lat'];
                 $data['longitude'] = $coords['lng'];
@@ -102,15 +106,20 @@ class ClientController extends Controller
         ]);
 
         $addressChanged = ($data['address'] ?? null) !== $client->address
+            || ($data['neighborhood'] ?? null) !== $client->neighborhood
             || ($data['city'] ?? null) !== $client->city
             || ($data['department'] ?? null) !== $client->department;
         $useMapCoords = ($data['coords_source'] ?? null) === 'map';
         if ($useMapCoords && !empty($data['latitude']) && !empty($data['longitude'])) {
             $data['latitude'] = (float) $data['latitude'];
             $data['longitude'] = (float) $data['longitude'];
-        } elseif ($addressChanged) {
-            $location = trim(implode(', ', array_filter([$data['city'] ?? null, $data['department'] ?? null])));
-            $coords = $geocodingService->geocode($data['address'] ?? '', $location);
+        } elseif ($addressChanged && !empty($data['address'])) {
+            $coords = $geocodingService->geocode(
+                $data['address'] ?? null,
+                $data['city'] ?? null,
+                $data['department'] ?? null,
+                $data['neighborhood'] ?? null,
+            );
             if ($coords) {
                 $data['latitude'] = $coords['lat'];
                 $data['longitude'] = $coords['lng'];

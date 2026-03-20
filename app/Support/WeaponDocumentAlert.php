@@ -32,8 +32,8 @@ class WeaponDocumentAlert
                 'days' => $days,
                 'state' => 'Vencido',
                 'observation' => self::expiredMessage($days),
-                'row_class' => 'bg-red-100',
-                'text_class' => 'text-red-700',
+                'row_class' => 'bg-red-200',
+                'text_class' => 'text-red-800',
                 'severity' => 3,
             ];
         }
@@ -43,8 +43,8 @@ class WeaponDocumentAlert
                 'days' => $days,
                 'state' => 'Próximo a vencer',
                 'observation' => self::revalidationMessage($days),
-                'row_class' => 'bg-orange-50',
-                'text_class' => 'text-orange-700',
+                'row_class' => 'bg-orange-200',
+                'text_class' => 'text-orange-800',
                 'severity' => 2,
             ];
         }
@@ -54,8 +54,8 @@ class WeaponDocumentAlert
                 'days' => $days,
                 'state' => 'Alerta preventiva',
                 'observation' => self::revalidationMessage($days),
-                'row_class' => 'bg-yellow-50',
-                'text_class' => 'text-yellow-700',
+                'row_class' => 'bg-yellow-200',
+                'text_class' => 'text-amber-900',
                 'severity' => 1,
             ];
         }
@@ -84,8 +84,8 @@ class WeaponDocumentAlert
             'days' => null,
             'state' => $status,
             'observation' => $observation,
-            'row_class' => $inProcess ? 'bg-red-100' : '',
-            'text_class' => $inProcess ? 'text-red-700' : 'text-gray-700',
+            'row_class' => $inProcess ? 'bg-red-200' : '',
+            'text_class' => $inProcess ? 'text-red-800' : 'text-gray-700',
             'severity' => $inProcess ? 3 : 0,
         ];
     }

@@ -7,9 +7,17 @@ use Throwable;
 
 class GeocodingService
 {
-    public function geocode(string $address, ?string $city = null): ?array
+    public function geocode(?string $address, ?string $cityOrLocation = null, ?string $department = null, ?string $neighborhood = null): ?array
     {
-        $query = trim($address . ($city ? ', ' . $city : '') . ', Colombia');
+        $parts = array_filter([
+            $address ? trim($address) : null,
+            $neighborhood ? trim($neighborhood) : null,
+            $cityOrLocation ? trim($cityOrLocation) : null,
+            $department ? trim($department) : null,
+            'Colombia',
+        ], fn ($value) => is_string($value) && trim($value) !== '');
+
+        $query = trim(implode(', ', $parts));
         if ($query === '') {
             return null;
         }

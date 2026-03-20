@@ -109,7 +109,7 @@
                     ? Storage::disk($photo->file->disk)->url($photo->file->path)
                     : null;
             @endphp
-            <label for="photo_{{ $photoIndex }}" class="block cursor-pointer" data-drop-zone>
+            <label for="photo_{{ $photoIndex }}" class="block cursor-pointer" data-drop-zone tabindex="0" title="{{ __('Seleccione, arrastre o pegue una foto') }}">
                 <input id="photo_{{ $photoIndex }}" name="photos[]" type="file" accept="image/*" class="hidden"
                     data-photo-description="{{ $description }}"
                     data-preview-target="photo_preview_{{ $photoIndex }}"
@@ -124,7 +124,7 @@
                             'hidden' => $photoUrl,
                             'absolute inset-x-0 top-1 z-10 px-1 py-0.5 text-center text-[10px] font-medium text-gray-600',
                         ])>
-                        {{ __('Arrastra o selecciona foto') }}
+                        {{ __('Arrastra, selecciona o pega foto') }}
                     </span>
                     <img id="photo_preview_{{ $photoIndex }}" alt="Previsualizacion"
                         class="{{ $photoUrl ? '' : 'hidden' }} relative z-10 h-full w-full rounded object-cover"
@@ -170,12 +170,12 @@
 
     <div class="md:col-start-2 md:row-start-1 md:row-span-3 flex flex-col">
         <x-input-label for="permit_photo" :value="__('Foto del permiso')" />
-        <label for="permit_photo" class="mt-1 block h-full cursor-pointer" data-drop-zone>
+        <label for="permit_photo" class="mt-1 block h-full cursor-pointer" data-drop-zone tabindex="0" title="{{ __('Seleccione, arrastre o pegue una foto') }}">
             <input id="permit_photo" name="permit_photo" type="file" accept="image/*" class="hidden" @if (!empty($requirePermitPhoto)) required @endif
                 data-preview-target="permit_preview" data-placeholder-target="permit_placeholder" />
             <div class="flex h-full min-h-[12rem] w-full items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-xs text-gray-500 transition"
                 data-drop-surface>
-                <span id="permit_placeholder">{{ __('Arrastra o selecciona foto') }}</span>
+                <span id="permit_placeholder">{{ __('Arrastra, selecciona o pega foto') }}</span>
                 <img id="permit_preview" alt="Previsualizacion"
                     class="hidden h-full w-full rounded object-cover" />
             </div>
@@ -249,6 +249,7 @@
         let cropper = null;
         const photoGuidesByType = @json($photoGuidesByType);
         const dropZones = Array.from(document.querySelectorAll('[data-drop-zone]'));
+        let activePasteZone = null;
 
         const normalizeText = (value) => {
             if (!value) {
@@ -405,6 +406,31 @@
         surface.classList.toggle('ring-indigo-200', active);
     };
 
+    const getClipboardImage = (clipboardData) => {
+        const items = Array.from(clipboardData?.items || []);
+        const imageItem = items.find((item) => item.kind === 'file' && item.type.startsWith('image/'));
+
+        return imageItem ? imageItem.getAsFile() : null;
+    };
+
+    const handleImageSelection = (input, file) => {
+        if (!input || !file) {
+            return false;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            alert(@json(__('Solo puede usar archivos de imagen.')));
+            return false;
+        }
+
+        if (assignFileToInput(input, file)) {
+            openEditor(input);
+            return true;
+        }
+
+        return false;
+    };
+
     const closeEditor = (discardSelection = false) => {
         if (cropper) {
             cropper.destroy();
@@ -478,6 +504,7 @@
                     zone.addEventListener(eventName, (event) => {
                         event.preventDefault();
                         event.stopPropagation();
+                        activePasteZone = zone;
                         setDropZoneActive(zone, true);
                     });
                 });
@@ -495,6 +522,7 @@
                 zone.addEventListener('drop', (event) => {
                     event.preventDefault();
                     event.stopPropagation();
+                    activePasteZone = zone;
                     setDropZoneActive(zone, false);
 
                     const file = event.dataTransfer?.files?.[0];
@@ -502,15 +530,52 @@
                         return;
                     }
 
-                    if (!file.type.startsWith('image/')) {
-                        alert(@json(__('Solo puede soltar archivos de imagen.')));
+                    handleImageSelection(input, file);
+                });
+
+                zone.addEventListener('focus', () => {
+                    activePasteZone = zone;
+                });
+
+                zone.addEventListener('click', () => {
+                    activePasteZone = zone;
+                });
+
+                zone.addEventListener('mouseenter', () => {
+                    activePasteZone = zone;
+                });
+
+                zone.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        input.click();
+                    }
+                });
+
+                zone.addEventListener('paste', (event) => {
+                    const file = getClipboardImage(event.clipboardData);
+                    if (!file) {
                         return;
                     }
 
-                    if (assignFileToInput(input, file)) {
-                        openEditor(input);
-                    }
+                    event.preventDefault();
+                    event.stopPropagation();
+                    activePasteZone = zone;
+                    handleImageSelection(input, file);
                 });
+            });
+
+            document.addEventListener('paste', (event) => {
+                const zone = activePasteZone;
+                const input = zone?.querySelector('input[type="file"]');
+                const file = getClipboardImage(event.clipboardData);
+
+                if (!zone || !input || !file) {
+                    return;
+                }
+
+                event.preventDefault();
+                handleImageSelection(input, file);
             });
 
             if (weaponTypeInput) {

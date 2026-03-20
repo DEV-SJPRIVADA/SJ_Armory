@@ -104,6 +104,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/mapa', [MapController::class, 'index'])->name('maps.index');
     Route::get('/mapa/armas', [MapController::class, 'weapons'])->name('maps.weapons');
+    Route::get('/geocode/search', [GeocodingController::class, 'search'])->name('geocode.search');
     Route::get('/geocode/reverse', [GeocodingController::class, 'reverse'])->name('geocode.reverse');
 
     Route::get('/portfolios', [ResponsiblePortfolioController::class, 'index'])->name('portfolios.index');

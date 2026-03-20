@@ -27,10 +27,13 @@ const t = {
     noResults: locale === 'en' ? 'No matches found.' : 'No se encontraron resultados.',
     incompleteAddress: locale === 'en'
         ? 'Address or municipality could not be completed. Adjust it manually if needed.'
-        : 'No se pudo completar la direccion o el municipio. Ajusta manualmente si es necesario.',
+        : 'No se pudo completar la dirección o el municipio. Ajusta manualmente si es necesario.',
     geocodeFailed: locale === 'en'
         ? 'Location could not be obtained. Try again or complete the data manually.'
-        : 'No se pudo obtener la ubicacion. Intenta nuevamente o completa los datos manualmente.',
+        : 'No se pudo obtener la ubicación. Intenta nuevamente o completa los datos manualmente.',
+    manualAddressInvalid: locale === 'en'
+        ? 'Address not recognized. You can save it as is or choose the location on the map.'
+        : 'Dirección no reconocida. Puedes guardarla así o seleccionar la ubicación en el mapa.',
 };
 
 const buildOption = (value, label) => {
@@ -38,6 +41,18 @@ const buildOption = (value, label) => {
     option.value = value;
     option.textContent = label;
     return option;
+};
+
+const municipalityAliases = {
+    CALI: 'SANTIAGO DE CALI',
+};
+
+const getMunicipalityLabel = (municipality) => {
+    if (municipality === 'SANTIAGO DE CALI') {
+        return 'CALI';
+    }
+
+    return municipality;
 };
 
 const populateDepartments = (select, selected) => {
@@ -57,10 +72,12 @@ const populateMunicipalities = (select, department, selected) => {
         return;
     }
     municipios[department].forEach((municipality) => {
-        select.appendChild(buildOption(municipality, municipality));
+        select.appendChild(buildOption(municipality, getMunicipalityLabel(municipality)));
     });
     if (selected) {
-        select.value = selected;
+        if (!selectByNormalizedMatch(select, selected)) {
+            select.value = selected;
+        }
     }
 };
 
@@ -85,7 +102,15 @@ const selectByNormalizedMatch = (select, value) => {
         return false;
     }
     const options = Array.from(select.options);
-    const exactMatch = options.find((option) => normalizeText(option.value) === target);
+    const targetAlias = municipalityAliases[target.toUpperCase()] || null;
+    const exactMatch = options.find((option) => {
+        const optionValue = normalizeText(option.value);
+        const optionLabel = normalizeText(option.textContent);
+
+        return optionValue === target
+            || optionLabel === target
+            || (targetAlias && option.value === targetAlias);
+    });
     if (exactMatch) {
         select.value = exactMatch.value;
         return true;
@@ -129,6 +154,9 @@ const normalizeDepartmentName = (value) => {
     }
     if (base.includes('bogota')) {
         return 'BOGOTA D.C.';
+    }
+    if (base === 'cali' || base.endsWith(' cali') || base.includes('santiago de cali')) {
+        return 'SANTIAGO DE CALI';
     }
     return base.toUpperCase();
 };
@@ -222,19 +250,146 @@ const initMapPicker = () => {
     let activeForm = null;
     let searchDebounce = null;
     let searchAbortController = null;
+    const geocodeDebounces = new WeakMap();
+    const geocodeAbortControllers = new WeakMap();
 
-    const resolveInputs = () => {
-        if (!activeForm) {
+    const resolveInputs = (form = activeForm) => {
+        if (!form) {
             return {};
         }
         return {
-            latInput: activeForm.querySelector('[data-latitude-input]'),
-            lngInput: activeForm.querySelector('[data-longitude-input]'),
-            addressInput: activeForm.querySelector('[data-address-input]'),
-            departmentSelect: activeForm.querySelector('[data-department-select]'),
-            municipalitySelect: activeForm.querySelector('[data-municipality-select]'),
-            coordsSourceInput: activeForm.querySelector('[data-coords-source]'),
+            latInput: form.querySelector('[data-latitude-input]'),
+            lngInput: form.querySelector('[data-longitude-input]'),
+            addressInput: form.querySelector('[data-address-input]'),
+            neighborhoodInput: form.querySelector('[data-neighborhood-input]'),
+            departmentSelect: form.querySelector('[data-department-select]'),
+            municipalitySelect: form.querySelector('[data-municipality-select]'),
+            coordsSourceInput: form.querySelector('[data-coords-source]'),
+            notice: form.querySelector('[data-geocode-notice]'),
         };
+    };
+
+    const setNotice = (form, message = '') => {
+        const { notice } = resolveInputs(form);
+        if (!notice) {
+            return;
+        }
+        if (!message) {
+            notice.textContent = '';
+            notice.classList.add('hidden');
+            return;
+        }
+        notice.textContent = message;
+        notice.classList.remove('hidden');
+    };
+
+    const setCoordinates = (form, lat, lng, source = 'geocode') => {
+        const { latInput, lngInput, coordsSourceInput } = resolveInputs(form);
+        if (latInput) {
+            latInput.value = Number(lat).toFixed(6);
+        }
+        if (lngInput) {
+            lngInput.value = Number(lng).toFixed(6);
+        }
+        if (coordsSourceInput) {
+            coordsSourceInput.value = source;
+        }
+    };
+
+    const clearCoordinates = (form, source = 'geocode') => {
+        const { latInput, lngInput, coordsSourceInput } = resolveInputs(form);
+        if (latInput) {
+            latInput.value = '';
+        }
+        if (lngInput) {
+            lngInput.value = '';
+        }
+        if (coordsSourceInput) {
+            coordsSourceInput.value = source;
+        }
+    };
+
+    const collectLocationData = (form) => {
+        const { addressInput, neighborhoodInput, municipalitySelect, departmentSelect } = resolveInputs(form);
+
+        return {
+            address: addressInput?.value?.trim() || '',
+            neighborhood: neighborhoodInput?.value?.trim() || '',
+            city: municipalitySelect?.value?.trim() || '',
+            department: departmentSelect?.value?.trim() || '',
+        };
+    };
+
+    const hasEnoughDataToGeocode = (data) => data.address.length >= 5 && data.city !== '' && data.department !== '';
+
+    const geocodeManualLocation = async (form) => {
+        const data = collectLocationData(form);
+
+        if (!hasEnoughDataToGeocode(data)) {
+            setNotice(form, '');
+            return;
+        }
+
+        const previousAbort = geocodeAbortControllers.get(form);
+        if (previousAbort) {
+            previousAbort.abort();
+        }
+
+        const controller = new AbortController();
+        geocodeAbortControllers.set(form, controller);
+
+        const url = new URL('/geocode/search', window.location.origin);
+        url.searchParams.set('address', data.address);
+        url.searchParams.set('city', data.city);
+        url.searchParams.set('department', data.department);
+        if (data.neighborhood) {
+            url.searchParams.set('neighborhood', data.neighborhood);
+        }
+
+        try {
+            const response = await fetch(url.toString(), {
+                headers: {
+                    Accept: 'application/json',
+                },
+                signal: controller.signal,
+            });
+
+            if (!response.ok) {
+                clearCoordinates(form);
+                setNotice(form, t.manualAddressInvalid);
+                return;
+            }
+
+            const result = await response.json();
+            if (typeof result?.lat !== 'number' || typeof result?.lng !== 'number') {
+                clearCoordinates(form);
+                setNotice(form, t.manualAddressInvalid);
+                return;
+            }
+
+            setCoordinates(form, result.lat, result.lng, 'geocode');
+            setNotice(form, '');
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                return;
+            }
+
+            clearCoordinates(form);
+            setNotice(form, t.manualAddressInvalid);
+        }
+    };
+
+    const scheduleManualGeocode = (form) => {
+        const previousTimer = geocodeDebounces.get(form);
+        if (previousTimer) {
+            clearTimeout(previousTimer);
+        }
+
+        const timer = setTimeout(() => {
+            geocodeManualLocation(form);
+        }, 650);
+
+        geocodeDebounces.set(form, timer);
     };
 
     const hideSearchResults = () => {
@@ -255,16 +410,8 @@ const initMapPicker = () => {
         selectedLatLng = { lat, lng };
         mapInstance.setView([lat, lng], zoom);
 
-        const { latInput, lngInput, coordsSourceInput } = resolveInputs();
-        if (latInput) {
-            latInput.value = lat.toFixed(6);
-        }
-        if (lngInput) {
-            lngInput.value = lng.toFixed(6);
-        }
-        if (coordsSourceInput) {
-            coordsSourceInput.value = 'map';
-        }
+        setCoordinates(activeForm, lat, lng, 'map');
+        setNotice(activeForm, '');
         if (acceptButton) {
             acceptButton.disabled = false;
         }
@@ -392,10 +539,8 @@ const initMapPicker = () => {
         searchInput.value = '';
         hideSearchResults();
 
-        const { latInput, lngInput, coordsSourceInput } = resolveInputs();
-        if (coordsSourceInput) {
-            coordsSourceInput.value = 'geocode';
-        }
+        const { latInput, lngInput } = resolveInputs();
+        setNotice(activeForm, '');
 
         if (!mapInstance) {
             mapInstance = L.map(mapElement).setView([4.5709, -74.2973], 6);
@@ -493,30 +638,34 @@ const initMapPicker = () => {
         firstResult.click();
     });
 
+    const shouldHandleLocationField = (field) => field.matches('[data-address-input], [data-neighborhood-input], [data-department-select], [data-municipality-select]');
+
+    const handleLocationFieldChange = (field) => {
+        const form = field.closest('[data-location-form]');
+        if (!form || !shouldHandleLocationField(field)) {
+            return;
+        }
+
+        const { coordsSourceInput } = resolveInputs(form);
+        const isMapSelection = coordsSourceInput?.value === 'map';
+        const isOnlyTextAdjustment = field.matches('[data-address-input], [data-neighborhood-input]');
+
+        if (isMapSelection && isOnlyTextAdjustment) {
+            setNotice(form, '');
+            return;
+        }
+
+        clearCoordinates(form);
+        setNotice(form, '');
+        scheduleManualGeocode(form);
+    };
+
+    document.addEventListener('input', (event) => {
+        handleLocationFieldChange(event.target);
+    });
+
     document.addEventListener('change', (event) => {
-        if (!activeForm) {
-            return;
-        }
-        if (!activeForm.contains(event.target)) {
-            return;
-        }
-        const field = event.target;
-        const isAddress = field.matches('[data-address-input]');
-        const isDepartment = field.matches('[data-department-select]');
-        const isMunicipality = field.matches('[data-municipality-select]');
-        if (!isAddress && !isDepartment && !isMunicipality) {
-            return;
-        }
-        const { latInput, lngInput, coordsSourceInput } = resolveInputs();
-        if (coordsSourceInput) {
-            coordsSourceInput.value = 'geocode';
-        }
-        if (latInput) {
-            latInput.value = '';
-        }
-        if (lngInput) {
-            lngInput.value = '';
-        }
+        handleLocationFieldChange(event.target);
     });
 
     closeButtons.forEach((button) => {
@@ -533,7 +682,7 @@ const initMapPicker = () => {
                 return;
             }
 
-            const { addressInput, departmentSelect, municipalitySelect, coordsSourceInput } = resolveInputs();
+            const { addressInput, neighborhoodInput, departmentSelect, municipalitySelect, coordsSourceInput } = resolveInputs();
             const originalText = acceptButton.textContent;
             acceptButton.textContent = t.searching;
             acceptButton.disabled = true;
@@ -559,12 +708,22 @@ const initMapPicker = () => {
                     || address.suburb
                     || address.county
                     || '';
+                const neighborhood =
+                    address.neighbourhood
+                    || address.suburb
+                    || address.city_district
+                    || address.quarter
+                    || address.borough
+                    || '';
                 const department = address.state || address.region || address.state_district || '';
                 const normalizedDepartment = normalizeDepartmentName(department);
                 const normalizedMunicipality = normalizeMunicipalityName(municipality);
 
                 if (addressInput && addressValue) {
                     addressInput.value = addressValue;
+                }
+                if (neighborhoodInput && neighborhood) {
+                    neighborhoodInput.value = neighborhood;
                 }
 
                 if (departmentSelect && normalizedDepartment) {
@@ -588,6 +747,7 @@ const initMapPicker = () => {
                 if (coordsSourceInput) {
                     coordsSourceInput.value = 'map';
                 }
+                setNotice(activeForm, '');
 
                 if (!addressValue || !normalizedDepartment || !normalizedMunicipality) {
                     if (errorMessage) {
