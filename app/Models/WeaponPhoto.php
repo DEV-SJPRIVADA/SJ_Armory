@@ -12,7 +12,7 @@ class WeaponPhoto extends Model
     public const DESCRIPTIONS = [
         'lado_derecho' => 'Lado derecho',
         'lado_izquierdo' => 'Lado izquierdo',
-        'canon_disparador_marca' => 'Cañon, disparador, marca',
+        'canon_disparador_marca' => 'Cañón, disparador, marca',
         'serie' => 'Serie',
         'impronta' => 'Impronta',
     ];
@@ -33,4 +33,3 @@ class WeaponPhoto extends Model
         return $this->belongsTo(File::class);
     }
 }
-

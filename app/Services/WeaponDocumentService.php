@@ -4,8 +4,13 @@ namespace App\Services;
 
 use App\Models\File;
 use App\Models\Weapon;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\Str;
+use RuntimeException;
 
 class WeaponDocumentService
 {
@@ -96,7 +101,7 @@ class WeaponDocumentService
 
     public function buildBatchDocument(iterable $weapons): array
     {
-        $fileName = 'revalidacion_masiva_' . now()->format('Ymd_His') . '.docx';
+        $fileName = 'revalidacion_masiva_' . now()->format('Ymd_His_u') . '_' . Str::lower(Str::random(6)) . '.docx';
         $absolutePath = storage_path('app/tmp/' . $fileName);
 
         $this->builder->buildForWeapons($weapons, $absolutePath);
@@ -105,5 +110,59 @@ class WeaponDocumentService
             'file_name' => $fileName,
             'path' => $absolutePath,
         ];
+    }
+
+    public function hasPdfPreviewSupport(): bool
+    {
+        return class_exists(Dompdf::class);
+    }
+
+    public function buildBatchPreviewPdf(iterable $weapons): array
+    {
+        if (!$this->hasPdfPreviewSupport()) {
+            throw new RuntimeException('La vista previa PDF no está disponible en este momento.');
+        }
+
+        $previewDir = $this->createTempDirectory('sj-armory-preview-');
+        $fileName = 'revalidacion_masiva_' . now()->format('Ymd_His_u') . '_' . Str::lower(Str::random(6));
+        $pdfPath = $previewDir . DIRECTORY_SEPARATOR . $fileName . '.pdf';
+        $generatedAt = now();
+
+        $html = View::make(
+            'alerts.preview-pdf',
+            array_merge(
+                ['generatedAt' => $generatedAt],
+                $this->builder->buildPreviewData($weapons, $generatedAt)
+            )
+        )->render();
+
+        $options = new Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+        $options->set('defaultFont', 'Times New Roman');
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html, 'UTF-8');
+        $dompdf->setPaper('letter', 'portrait');
+        $dompdf->render();
+
+        file_put_contents($pdfPath, $dompdf->output());
+
+        return [
+            'file_name' => $fileName . '.pdf',
+            'path' => $pdfPath,
+        ];
+    }
+
+    private function createTempDirectory(string $prefix): string
+    {
+        $base = rtrim(sys_get_temp_dir(), '\\/');
+        $path = $base . DIRECTORY_SEPARATOR . $prefix . Str::uuid();
+
+        if (!is_dir($path) && !mkdir($path, 0777, true) && !is_dir($path)) {
+            throw new RuntimeException('No se pudo preparar la vista previa PDF.');
+        }
+
+        return $path;
     }
 }

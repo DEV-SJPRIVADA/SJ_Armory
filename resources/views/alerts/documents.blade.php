@@ -10,12 +10,21 @@
         .alerts-toolbar__filters { gap: 0.75rem; width: max-content; margin: 0 !important; }
         .alerts-toolbar__filters label, .alerts-toolbar__back { color: #374151; font-size: 0.95rem; font-weight: 600; line-height: 1; white-space: nowrap; }
         .alerts-toolbar__back { color: #6b7280; justify-self: end; }
-        .alerts-toolbar__filters input, .alerts-toolbar__filters button, .alerts-toolbar__filters a, .alerts-toolbar__download { height: 2.55rem; border-radius: 0.55rem; font-size: 0.95rem; margin-top: 0 !important; box-sizing: border-box; }
+        .alerts-toolbar__filters input, .alerts-toolbar__filters button, .alerts-toolbar__filters a, .alerts-toolbar__download, .alerts-toolbar__preview { height: 2.55rem; border-radius: 0.55rem; font-size: 0.95rem; margin-top: 0 !important; box-sizing: border-box; }
         .alerts-toolbar__month { min-width: 12.75rem; padding: 0 0.9rem; border: 1px solid #cbd5e1; background: #fff; color: #111827; }
         .alerts-toolbar__filters button, .alerts-toolbar__filters a { display: inline-flex; align-items: center; justify-content: center; padding: 0 1rem; border: 1px solid #cbd5e1; background: #fff; color: #374151; font-weight: 600; text-decoration: none; }
-        .alerts-toolbar__download { display: inline-flex; align-items: center; justify-content: center; min-width: 11rem; padding: 0 1.15rem; border: none; background: #cbd5e1; color: #fff; font-weight: 700; white-space: nowrap; }
+        .alerts-toolbar__download { display: inline-flex; align-items: center; justify-content: center; min-width: 11rem; padding: 0 1.15rem; border: none; background: #cbd5e1; color: #fff; font-weight: 700; white-space: nowrap; transition: background .18s ease, box-shadow .18s ease, transform .18s ease; }
+        .alerts-toolbar__download.is-ready { background: #0b6fb6; box-shadow: 0 10px 22px rgba(11, 111, 182, 0.24); }
+        .alerts-toolbar__download.is-ready:hover { background: #085a93; transform: translateY(-1px); }
         .alerts-toolbar__download:hover:not(:disabled) { background: #94a3b8; }
         .alerts-toolbar__download:disabled { cursor: not-allowed; opacity: 1; }
+        .alerts-toolbar__preview { display: inline-flex; align-items: center; justify-content: center; width: 3.1rem; min-width: 3.1rem; padding: 0; overflow: hidden; border: 1px solid #cbd5e1; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); color: #94a3b8; transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease; }
+        .alerts-toolbar__preview img { width: 2.7rem; height: 2.7rem; object-fit: contain; display: block; transform: scale(1.42); transform-origin: center; transition: transform .18s ease, opacity .18s ease; opacity: .86; }
+        .alerts-toolbar__preview.is-ready { border-color: #0b6fb6; background: linear-gradient(180deg, #18a3db 0%, #0b6fb6 100%); color: #ffffff; box-shadow: 0 10px 22px rgba(11, 111, 182, 0.28); }
+        .alerts-toolbar__preview.is-ready img { opacity: 1; transform: scale(1.55); }
+        .alerts-toolbar__preview.is-ready:hover { background: linear-gradient(180deg, #1393c6 0%, #085a93 100%); color: #ffffff; transform: translateY(-1px); }
+        .alerts-toolbar__preview:disabled { cursor: not-allowed; color: #b6c1d1; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); opacity: 1; }
+        .alerts-toolbar__preview:disabled img { opacity: .4; transform: scale(1.35); }
         .alerts-toolbar__bottom-group { width: min(100%, 43rem); }
         .alerts-toolbar__search { flex: 1 1 31rem; min-width: 0; }
         .alerts-toolbar__search input { width: 100%; height: 2.45rem; padding: 0 0.9rem; border: 1px solid #cbd5e1; border-radius: 0.55rem; font-size: 0.95rem; color: #374151; }
@@ -72,6 +81,19 @@
                             @if ($hasMonthFilter)
                                 <a href="{{ route('alerts.documents') }}">{{ __('Todos') }}</a>
                             @endif
+                            <button
+                                id="alerts-preview-button"
+                                type="submit"
+                                form="alerts-download-form"
+                                formaction="{{ route('alerts.documents.preview') }}"
+                                formtarget="_blank"
+                                class="alerts-toolbar__preview"
+                                @disabled(!$previewAvailable)
+                                title="{{ $previewAvailable ? __('Ver relación') : __('La vista previa PDF no está disponible') }}"
+                                aria-label="{{ __('Ver relación') }}"
+                            >
+                                <img src="{{ asset('images/Ojo.webp') }}" alt="" aria-hidden="true">
+                            </button>
                             <button id="alerts-download-button" type="submit" form="alerts-download-form" class="alerts-toolbar__download" disabled>{{ __('Descargar relacion') }}</button>
                         </form>
                     </div>
@@ -289,6 +311,7 @@
         const searchInput = document.getElementById('alerts-search');
         const countBadge = document.getElementById('alerts-selected-count');
         const downloadButton = document.getElementById('alerts-download-button');
+        const previewButton = document.getElementById('alerts-preview-button');
         const modalLayer = document.getElementById('alerts-modal-layer');
         const modalPanels = Array.from(document.querySelectorAll('[data-alerts-modal]'));
         const openButtons = Array.from(document.querySelectorAll('[data-open-modal]'));
@@ -334,6 +357,12 @@
             if (downloadButton) {
                 downloadButton.disabled = selected === 0;
                 downloadButton.textContent = selected > 0 ? `Descargar relacion (${selected})` : 'Descargar relacion';
+                downloadButton.classList.toggle('is-ready', selected > 0);
+            }
+            if (previewButton) {
+                const canPreview = @json($previewAvailable) && selected > 0;
+                previewButton.disabled = !canPreview;
+                previewButton.classList.toggle('is-ready', canPreview);
             }
 
             updateAllSelectAllStates();

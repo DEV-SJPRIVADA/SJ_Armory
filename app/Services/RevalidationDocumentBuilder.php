@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\File;
 use App\Models\Weapon;
+use App\Models\WeaponPhoto;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File as FileFacade;
 use Illuminate\Support\Facades\Storage;
@@ -81,6 +83,66 @@ class RevalidationDocumentBuilder
         IOFactory::createWriter($phpWord, 'Word2007')->save($outputPath);
     }
 
+    public function buildPreviewData(iterable $weapons, ?CarbonInterface $generatedAt = null): array
+    {
+        $generatedAt ??= now();
+        $weapons = $this->normalizeWeapons($weapons);
+
+        if ($weapons->isEmpty()) {
+            throw new \RuntimeException('No hay armas para generar el documento de revalidación.');
+        }
+
+        return [
+            'branding' => [
+                'header' => $this->pathToDataUri($this->extractTemplateMedia('word/media/image1.jpg')),
+                'footer' => $this->pathToDataUri($this->extractTemplateMedia('word/media/image2.jpg')),
+            ],
+            'date_line' => $this->coverDateLine($generatedAt),
+            'recipient_lines' => $this->coverRecipientLines(),
+            'reference' => $this->coverReference($weapons),
+            'greeting' => 'Cordial saludo,',
+            'body' => $this->coverBody($weapons),
+            'summary_headers' => collect($this->coverHeaders())->map(fn (array $header) => $header[0])->all(),
+            'summary_rows' => $weapons->map(fn (Weapon $weapon) => $this->coverRowValues($weapon))->all(),
+            'closing_lines' => [
+                'Agradezco de antemano la atención a la presente solicitud,',
+                'Cordialmente,',
+            ],
+            'signature_lines' => [
+                self::SIGNER_NAME,
+                self::SIGNER_ID,
+                self::SIGNER_ROLE,
+                self::COMPANY_NAME,
+                self::COMPANY_NIT,
+            ],
+            'annex' => $weapons->count() > 1
+                ? 'ANEXO: Registro fotográfico, improntas y copia de los salvoconductos.'
+                : null,
+            'weapon_pages' => $weapons->map(fn (Weapon $weapon) => [
+                'title' => $this->upper(trim($weapon->weapon_type . ' ' . $weapon->brand . ' ' . $weapon->serial_number)),
+                'photos' => collect($this->weaponPhotoDescriptions())
+                    ->map(fn (string $description) => [
+                        'label' => WeaponPhoto::DESCRIPTIONS[$description] ?? $description,
+                        'src' => $this->pathToDataUri($this->getPhotoPath($weapon, $description)),
+                    ])->all(),
+                'imprint' => $this->pathToDataUri($this->getPhotoPath($weapon, 'impronta')),
+            ])->all(),
+            'permit_mode' => $weapons->count() === 1 ? 'single' : 'batch',
+            'single_permit' => $weapons->count() === 1
+                ? $this->pathToDataUri($this->getPermitPath($weapons->first()))
+                : null,
+            'permit_pages' => $weapons->count() === 1
+                ? []
+                : $weapons->values()->chunk(8)->map(function (Collection $pageWeapons) {
+                    return $pageWeapons->chunk(2)->map(function (Collection $pair) {
+                        return $pair->values()->map(fn (Weapon $weapon) => [
+                            'src' => $this->pathToDataUri($this->getPermitPath($weapon)),
+                        ])->all();
+                    })->all();
+                })->all(),
+        ];
+    }
+
     private function normalizeWeapons(iterable $weapons): Collection
     {
         $items = $weapons instanceof Collection ? $weapons : collect($weapons);
@@ -102,38 +164,16 @@ class RevalidationDocumentBuilder
         $section = $phpWord->addSection(self::SECTION_STYLE);
         $this->applyBranding($section);
 
-        $section->addText(
-            'Santiago de Cali, ' . now()->locale('es')->translatedFormat('j \d\e F \d\e Y'),
-            [],
-            ['spaceAfter' => 220]
-        );
+        $section->addText($this->coverDateLine(now()), [], ['spaceAfter' => 220]);
 
-        foreach ([
-            'Señor Coronel:',
-            'Director Departamento Control y Comercio de Armas y Explosivos',
-            'Ministerio de Defensa Nacional',
-            'Colombia.',
-        ] as $line) {
+        foreach ($this->coverRecipientLines() as $line) {
             $section->addText($line, [], ['spaceAfter' => 0]);
         }
 
         $section->addTextBreak();
-        $section->addText(
-            'Ref.: ' . ($weapons->count() > 1 ? 'Solicitud Revalidación Armas' : 'Autorización Trámites'),
-            [],
-            ['spaceAfter' => 220]
-        );
+        $section->addText($this->coverReference($weapons), [], ['spaceAfter' => 220]);
         $section->addText('Cordial saludo,', [], ['spaceAfter' => 220]);
-
-        $body = 'Yo, ' . self::SIGNER_NAME . ', identificado con cédula de ciudadanía No. 94.506.540 de Cali, '
-            . 'en mi calidad de representante legal de la compañía, ' . self::COMPANY_NAME . '. '
-            . 'Con Nit. 900.576.718-6, comedidamente me permito solicitar al señor Director del DCCA, '
-            . 'autorice al Señor ' . self::SIGNER_NAME . ', identificado con cédula de ciudadanía No. 94.506.540 de Cali, '
-            . 'para que en mi nombre y en representación de la compañía realice los trámites de revalidación de '
-            . ($weapons->count() === 1 ? 'la siguiente arma' : 'las siguientes armas')
-            . ', así:';
-
-        $section->addText($body, [], ['alignment' => Jc::BOTH, 'spaceAfter' => 220]);
+        $section->addText($this->coverBody($weapons), [], ['alignment' => Jc::BOTH, 'spaceAfter' => 220]);
 
         $table = $section->addTable([
             'width' => 100 * 50,
@@ -187,13 +227,7 @@ class RevalidationDocumentBuilder
         $section = $phpWord->addSection(self::SECTION_STYLE);
         $this->applyBranding($section);
 
-        $photoDescriptions = [
-            'lado_derecho',
-            'lado_izquierdo',
-            'canon_disparador_marca',
-            'serie',
-        ];
-        $photoPaths = collect($photoDescriptions)
+        $photoPaths = collect($this->weaponPhotoDescriptions())
             ->map(fn (string $description) => $this->getPhotoPath($weapon, $description))
             ->values();
 
@@ -306,6 +340,47 @@ class RevalidationDocumentBuilder
                 }
             }
         }
+    }
+
+    private function coverDateLine(CarbonInterface $generatedAt): string
+    {
+        return 'Santiago de Cali, ' . $generatedAt->locale('es')->translatedFormat('j \d\e F \d\e Y');
+    }
+
+    private function coverRecipientLines(): array
+    {
+        return [
+            'Señor Coronel:',
+            'Director Departamento Control y Comercio de Armas y Explosivos',
+            'Ministerio de Defensa Nacional',
+            'Colombia.',
+        ];
+    }
+
+    private function coverReference(Collection $weapons): string
+    {
+        return 'Ref.: ' . ($weapons->count() > 1 ? 'Solicitud Revalidación Armas' : 'Autorización Trámites');
+    }
+
+    private function coverBody(Collection $weapons): string
+    {
+        return 'Yo, ' . self::SIGNER_NAME . ', identificado con cédula de ciudadanía No. 94.506.540 de Cali, '
+            . 'en mi calidad de representante legal de la compañía, ' . self::COMPANY_NAME . '. '
+            . 'Con Nit. 900.576.718-6, comedidamente me permito solicitar al señor Director del DCCA, '
+            . 'autorice al Señor ' . self::SIGNER_NAME . ', identificado con cédula de ciudadanía No. 94.506.540 de Cali, '
+            . 'para que en mi nombre y en representación de la compañía realice los trámites de revalidación de '
+            . ($weapons->count() === 1 ? 'la siguiente arma' : 'las siguientes armas')
+            . ', así:';
+    }
+
+    private function weaponPhotoDescriptions(): array
+    {
+        return [
+            'lado_derecho',
+            'lado_izquierdo',
+            'canon_disparador_marca',
+            'serie',
+        ];
     }
 
     private function applyBranding($section): void
@@ -453,6 +528,22 @@ class RevalidationDocumentBuilder
         return $targetPath;
     }
 
+    private function pathToDataUri(?string $path): ?string
+    {
+        if (!$path || !is_file($path)) {
+            return null;
+        }
+
+        $mime = mime_content_type($path) ?: 'application/octet-stream';
+        $content = file_get_contents($path);
+
+        if ($content === false) {
+            return null;
+        }
+
+        return 'data:' . $mime . ';base64,' . base64_encode($content);
+    }
+
     private function blankImage(): string
     {
         $path = storage_path('app/tmp/blank.png');
@@ -464,11 +555,6 @@ class RevalidationDocumentBuilder
         }
 
         return $path;
-    }
-
-    private function cmToPx(float $cm): int
-    {
-        return (int) round(($cm / 2.54) * 96);
     }
 
     private function cmToTwip(float $cm): int
@@ -488,5 +574,3 @@ class RevalidationDocumentBuilder
             : strtoupper($value);
     }
 }
-
-

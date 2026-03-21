@@ -7,10 +7,11 @@ use App\Models\WeaponDocument;
 use App\Services\WeaponDocumentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use RuntimeException;
 
 class AlertsController extends Controller
 {
-    public function documents(Request $request)
+    public function documents(Request $request, WeaponDocumentService $documentService)
     {
         $this->authorizeAdmin();
 
@@ -85,6 +86,8 @@ class AlertsController extends Controller
             ],
         ];
 
+        $previewAvailable = $documentService->hasPdfPreviewSupport();
+
         return view('alerts.documents', compact(
             'expired',
             'expiring',
@@ -93,6 +96,7 @@ class AlertsController extends Controller
             'monthLabel',
             'summaryCards',
             'hasMonthFilter',
+            'previewAvailable',
         ));
     }
 
@@ -100,6 +104,33 @@ class AlertsController extends Controller
     {
         $this->authorizeAdmin();
 
+        $weapons = $this->selectedWeapons($request);
+
+        $batch = $documentService->buildBatchDocument($weapons);
+
+        return response()->download($batch['path'], $batch['file_name'])->deleteFileAfterSend(true);
+    }
+
+    public function previewBatch(Request $request, WeaponDocumentService $documentService)
+    {
+        $this->authorizeAdmin();
+
+        $weapons = $this->selectedWeapons($request);
+
+        try {
+            $preview = $documentService->buildBatchPreviewPdf($weapons);
+        } catch (RuntimeException $exception) {
+            abort(503, $exception->getMessage());
+        }
+
+        return response()->file($preview['path'], [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $preview['file_name'] . '"',
+        ])->deleteFileAfterSend(true);
+    }
+
+    private function selectedWeapons(Request $request)
+    {
         $data = $request->validate([
             'weapon_ids' => ['required', 'array', 'min:1'],
             'weapon_ids.*' => ['integer', 'distinct', 'exists:weapons,id'],
@@ -116,9 +147,7 @@ class AlertsController extends Controller
 
         abort_if($weapons->isEmpty(), 422, 'Debe seleccionar al menos un arma.');
 
-        $batch = $documentService->buildBatchDocument($weapons);
-
-        return response()->download($batch['path'], $batch['file_name'])->deleteFileAfterSend(true);
+        return $weapons;
     }
 
     private function authorizeAdmin(): void
