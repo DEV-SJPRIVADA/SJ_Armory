@@ -596,6 +596,50 @@
         margin-bottom: 1rem;
     }
 
+    .sj-dashboard-filter {
+        align-items: center;
+        display: inline-flex;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .sj-dashboard-filter__label {
+        color: #64748b;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .sj-dashboard-filter__select {
+        appearance: none;
+        -webkit-appearance: none;
+        background:
+            linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        border: 1px solid #cfd9e6;
+        border-radius: 0.85rem;
+        color: #0f172a;
+        font-size: 0.92rem;
+        font-weight: 700;
+        min-width: 6.5rem;
+        padding: 0.62rem 2.25rem 0.62rem 0.9rem;
+    }
+
+    .sj-dashboard-grid--secondary > .sj-panel {
+        padding: 1rem 1rem 1.05rem;
+    }
+
+    .sj-dashboard-grid--secondary .sj-panel__head {
+        margin-bottom: 0.75rem;
+    }
+
+    .sj-panel--renewal-chart,
+    .sj-panel--incidents {
+        display: flex;
+        flex-direction: column;
+    }
+
     .sj-panel__title {
         color: #0f172a;
         font-size: 1.08rem;
@@ -762,17 +806,25 @@
         font-weight: 800;
     }
 
+    .sj-column-chart-wrap {
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 0.35rem;
+    }
+
     .sj-column-chart {
-        display: grid;
+        display: inline-grid;
         gap: 0.9rem;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-auto-columns: minmax(2.7rem, 1fr);
+        grid-auto-flow: column;
+        min-width: 100%;
     }
 
     .sj-column-chart__item {
         align-items: center;
         display: grid;
         gap: 0.55rem;
-        grid-template-rows: 1.2rem 12rem minmax(2rem, auto);
+        grid-template-rows: 1.05rem minmax(0, 1fr) minmax(1.7rem, auto);
         justify-items: center;
     }
 
@@ -800,12 +852,12 @@
             inset 4px 0 6px rgba(255, 255, 255, 0.46),
             inset -3px 0 5px rgba(148, 163, 184, 0.1);
         display: flex;
-        height: 12rem;
+        height: 100%;
         justify-content: center;
         overflow: hidden;
         padding: 0;
         position: relative;
-        width: 1.8rem;
+        width: 1.65rem;
     }
 
     .sj-column-chart__track::before {
@@ -834,9 +886,32 @@
         text-align: center;
     }
 
+    .sj-panel--renewal-chart .sj-column-chart-wrap {
+        display: flex;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    .sj-panel--renewal-chart .sj-column-chart {
+        align-items: stretch;
+        min-width: 100%;
+        width: 100%;
+    }
+
+    .sj-panel--renewal-chart .sj-column-chart__item {
+        height: 100%;
+    }
+
     .sj-stat-list {
         display: grid;
         gap: 0.85rem;
+    }
+
+    .sj-dashboard-grid--secondary .sj-stat-list {
+        flex: 1 1 auto;
+        gap: 0.55rem;
     }
 
     .sj-stat-list__item {
@@ -847,6 +922,11 @@
         display: flex;
         justify-content: space-between;
         padding: 0.8rem 0.9rem;
+    }
+
+    .sj-dashboard-grid--secondary .sj-stat-list__item {
+        border-radius: 0.85rem;
+        padding: 0.62rem 0.8rem;
     }
 
     .sj-stat-list__meta {
@@ -868,6 +948,10 @@
         color: #0f172a;
         font-size: 0.92rem;
         font-weight: 600;
+    }
+
+    .sj-dashboard-grid--secondary .sj-stat-list__label {
+        font-size: 0.9rem;
     }
 
     .sj-stat-list__value {
@@ -902,7 +986,18 @@
         }
 
         .sj-column-chart {
-            grid-template-columns: repeat(6, minmax(0, 1fr));
+            grid-auto-columns: minmax(2.8rem, 1fr);
+        }
+    }
+
+    @media (max-width: 767px) {
+        .sj-panel__head {
+            gap: 0.75rem;
+            flex-direction: column;
+        }
+
+        .sj-dashboard-filter {
+            justify-content: flex-start;
         }
     }
 
@@ -912,7 +1007,7 @@
         }
 
         .sj-column-chart {
-            grid-template-columns: repeat(12, minmax(0, 1fr));
+            grid-auto-columns: minmax(3rem, 1fr);
         }
     }
 

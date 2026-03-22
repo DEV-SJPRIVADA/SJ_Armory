@@ -15,14 +15,20 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         return view('dashboard', [
-            'dashboard' => $this->metrics->forUser($request->user()),
+            'dashboard' => $this->metrics->forUser(
+                $request->user(),
+                $request->integer('renewal_year')
+            ),
         ]);
     }
 
     public function metrics(Request $request): JsonResponse
     {
         return response()->json(
-            $this->metrics->forUser($request->user())
+            $this->metrics->forUser(
+                $request->user(),
+                $request->integer('renewal_year')
+            )
         );
     }
 }

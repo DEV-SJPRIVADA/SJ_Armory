@@ -1,6 +1,7 @@
 window.dashboardMonitor = ({ initialData, dataUrl }) => ({
     dashboard: initialData,
     dataUrl,
+    renewalYear: initialData?.renewal_chart?.selected_year ? String(initialData.renewal_chart.selected_year) : '',
     currentTime: null,
     clockTimer: null,
     refreshTimer: null,
@@ -37,7 +38,9 @@ window.dashboardMonitor = ({ initialData, dataUrl }) => ({
         this.isRefreshing = true;
 
         try {
-            const response = await window.axios.get(this.dataUrl);
+            const response = await window.axios.get(this.dataUrl, {
+                params: this.renewalYear ? { renewal_year: this.renewalYear } : {},
+            });
             this.setDashboard(response.data);
         } catch (error) {
             console.error('No se pudo actualizar el dashboard.', error);
@@ -48,7 +51,13 @@ window.dashboardMonitor = ({ initialData, dataUrl }) => ({
 
     setDashboard(payload) {
         this.dashboard = payload;
+        this.renewalYear = payload?.renewal_chart?.selected_year ? String(payload.renewal_chart.selected_year) : '';
         this.currentTime = payload?.as_of ? new Date(payload.as_of) : new Date();
+    },
+
+    async applyRenewalYear(year) {
+        this.renewalYear = String(year);
+        await this.refreshMetrics();
     },
 
     formatNumber(value) {

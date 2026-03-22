@@ -18,6 +18,7 @@ El proyecto cubre de extremo a extremo:
 - Generacion automatica de documento de renovacion en `.docx`.
 - Mapa operativo con ubicacion de armas.
 - Reporteria y auditoria.
+- Dashboard operativo con metricas y graficos del sistema.
 - Alertas documentales por vencimiento.
 - Gestion de cartera de clientes por responsable.
 - Control de acceso por rol y nivel.
@@ -455,8 +456,48 @@ Alertas:
   - buscar en todas las columnas,
   - seleccionar armas individuales,
   - seleccionar todo lo visible,
-  - descargar la relacion filtrada.
+  - ver la relacion consolidada en PDF antes de descargar,
+  - descargar la relacion filtrada en `.docx`.
 - La ventana de alerta preventiva opera sobre 120 dias.
+
+### 5.14 Dashboard operativo
+
+Controlador: `app/Http/Controllers/DashboardController.php`  
+Servicio: `app/Services/DashboardMetricsService.php`
+
+El dashboard principal ya no es una pantalla de accesos rapidos. Ahora muestra informacion real del sistema:
+
+- KPIs de inventario:
+  - total de armas
+  - con destino activo
+  - sin destino
+  - documentos vencidos
+  - por vencer
+  - transferencias pendientes
+- Metricas auxiliares:
+  - clientes
+  - puestos
+  - trabajadores
+- Graficos operativos:
+  - armas por responsable
+  - estado documental
+  - renovaciones por mes
+  - incidencias activas
+  - estados del flujo de transferencias
+  - distribucion interna
+
+Comportamiento relevante:
+
+- La cabecera muestra fecha y hora en tiempo real.
+- El dashboard se refresca automaticamente sin recargar la pagina.
+- El grafico `Renovaciones por mes`:
+  - muestra solo meses con datos,
+  - filtra por anio,
+  - por defecto usa el anio actual si existe en los documentos,
+  - y solo ofrece en el selector los anios que realmente tienen documentos.
+- El alcance de los datos respeta el rol del usuario:
+  - `ADMIN` y `AUDITOR` ven alcance global.
+  - `RESPONSABLE` ve solo su operacion.
 
 ## 6. Auditoria
 
@@ -550,7 +591,9 @@ Grupos funcionales:
 - Cartera:
   - `portfolios.index/edit/update/transfer`.
 - Reportes y alertas:
-  - `reports.*`, `alerts.documents`, `alerts.documents.download`.
+  - `reports.*`, `alerts.documents`, `alerts.documents.preview`, `alerts.documents.download`.
+- Dashboard:
+  - `dashboard`, `dashboard.metrics`.
 - Mapa:
   - `maps.index`, `maps.weapons`.
 - Locale:
@@ -719,6 +762,9 @@ Operacion:
   - obligatoria para ejecutar `AdminUserSeeder`
 - `NOMINATIM_USER_AGENT`
   - identificacion usada por `GeocodingService` para Nominatim
+- `APP_TIMEZONE`
+  - zona horaria operativa del sistema
+  - configurada actualmente para `America/Bogota`
 - `SANCTUM_STATEFUL_DOMAINS`
   - lista de hosts/IP autorizados para cookies de sesion y autenticacion stateful
   - debe incluir hostname, alias local y/o IP real usada para acceder al sistema

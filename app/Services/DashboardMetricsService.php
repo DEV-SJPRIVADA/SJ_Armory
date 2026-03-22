@@ -24,7 +24,7 @@ class DashboardMetricsService
         'Dar de Baja',
     ];
 
-    public function forUser(User $user): array
+    public function forUser(User $user, ?int $renewalYear = null): array
     {
         $weapons = $this->weaponsQuery($user)
             ->with([
@@ -100,17 +100,36 @@ class DashboardMetricsService
             ->sortDesc()
             ->take(8);
 
-        $renewalMonths = collect(range(0, 11))->map(function (int $offset) use ($renewalDocuments, $today) {
-            $month = $today->copy()->startOfMonth()->addMonths($offset);
-            $count = $renewalDocuments
-                ->filter(fn (WeaponDocument $document) => $document->valid_until?->format('Y-m') === $month->format('Y-m'))
-                ->count();
+        $availableRenewalYears = $renewalDocuments
+            ->filter(fn (WeaponDocument $document) => $document->valid_until !== null)
+            ->map(fn (WeaponDocument $document) => (int) $document->valid_until->format('Y'))
+            ->unique()
+            ->sort()
+            ->values();
 
-            return [
-                'label' => ucfirst($month->translatedFormat('M y')),
-                'value' => $count,
-            ];
-        });
+        $currentYear = (int) now()->format('Y');
+        $selectedRenewalYear = $availableRenewalYears->contains($renewalYear)
+            ? $renewalYear
+            : ($availableRenewalYears->contains($currentYear)
+                ? $currentYear
+                : $availableRenewalYears->first());
+
+        $renewalMonths = $renewalDocuments
+            ->filter(fn (WeaponDocument $document) => $document->valid_until !== null)
+            ->when($selectedRenewalYear, fn (Collection $items) => $items->filter(
+                fn (WeaponDocument $document) => (int) $document->valid_until->format('Y') === (int) $selectedRenewalYear
+            ))
+            ->groupBy(fn (WeaponDocument $document) => $document->valid_until->format('Y-m'))
+            ->sortKeys()
+            ->map(function (Collection $group, string $monthKey) {
+                $month = now()->createFromFormat('Y-m', $monthKey)->startOfMonth();
+
+                return [
+                    'label' => ucfirst($month->translatedFormat('M y')),
+                    'value' => $group->count(),
+                ];
+            })
+            ->values();
 
         $transferCounts = $this->transferStatusCounts($user);
 
@@ -190,6 +209,8 @@ class DashboardMetricsService
             'renewal_chart' => [
                 'items' => $renewalMonths->all(),
                 'max' => max(1, (int) $renewalMonths->max('value')),
+                'years' => $availableRenewalYears->all(),
+                'selected_year' => $selectedRenewalYear,
             ],
             'risk_chart' => [
                 'items' => $riskItems,
