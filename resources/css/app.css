@@ -40,9 +40,11 @@
     }
 
     .sj-shell .sj-fixed-header {
-        position: static;
+        position: relative;
+        z-index: 200;
         margin-top: 0;
         padding-top: 0;
+        overflow: visible;
     }
 
     .sj-shell .sj-content {
@@ -175,8 +177,15 @@
 
     .sj-mobile-menu {
         background: var(--sj-navy);
+        max-height: calc(100svh - 4rem);
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
         position: relative;
         z-index: 1201;
+        padding-bottom: 1rem;
+        width: 100%;
     }
 
     .sj-nav select {
@@ -208,10 +217,13 @@
     }
 
     .sj-page-header {
+        position: relative;
+        z-index: 210;
         background: rgba(255, 255, 255, 0.95);
         border-bottom: 1px solid #e2e8f0;
         backdrop-filter: blur(6px);
         margin-top: 0.8rem;
+        overflow: visible;
     }
 
     .sj-shell main .bg-white {

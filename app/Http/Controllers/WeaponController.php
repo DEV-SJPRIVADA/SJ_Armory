@@ -5,12 +5,17 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use App\Models\File;
 use App\Models\Client;
+use App\Models\User;
 use App\Models\Weapon;
 use App\Models\WeaponPhoto;
 use App\Services\WeaponDocumentService;
+use App\Support\WeaponDocumentAlert;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 class WeaponController extends Controller
@@ -22,48 +27,13 @@ class WeaponController extends Controller
 
     public function index(Request $request)
     {
-        $query = Weapon::query();
-        $user = $request->user();
         $search = trim((string) $request->input('q', ''));
-
-        if ($user->isResponsible() && !$user->isAdmin()) {
-            $query->whereHas('clientAssignments', function ($assignmentQuery) use ($user) {
-                $assignmentQuery->where('responsible_user_id', $user->id)->where('is_active', true);
-            });
-        }
-
-        if ($search !== '') {
-            $query->where(function ($builder) use ($search) {
-                $builder->where('internal_code', 'like', '%' . $search . '%')
-                    ->orWhere('serial_number', 'like', '%' . $search . '%')
-                    ->orWhere('weapon_type', 'like', '%' . $search . '%')
-                    ->orWhere('permit_type', 'like', '%' . $search . '%')
-                    ->orWhere('permit_number', 'like', '%' . $search . '%')
-                    ->orWhere('caliber', 'like', '%' . $search . '%')
-                    ->orWhere('brand', 'like', '%' . $search . '%')
-                    ->orWhereHas('activeClientAssignment.client', function ($clientQuery) use ($search) {
-                        $clientQuery->where('name', 'like', '%' . $search . '%');
-                    })
-                    ->orWhereHas('activeClientAssignment.responsible', function ($userQuery) use ($search) {
-                        $userQuery->where('name', 'like', '%' . $search . '%');
-                    })
-                    ->orWhereHas('activePostAssignment.post', function ($postQuery) use ($search) {
-                        $postQuery->where('name', 'like', '%' . $search . '%');
-                    })
-                    ->orWhereHas('activeWorkerAssignment.worker', function ($workerQuery) use ($search) {
-                        $workerQuery->where('name', 'like', '%' . $search . '%')
-                            ->orWhere('document', 'like', '%' . $search . '%');
-                    });
-            });
-        }
-
-        $weapons = $query->with([
-            'activeClientAssignment.client',
-            'activeClientAssignment.responsible',
-            'activePostAssignment.post',
-            'activeWorkerAssignment.worker',
-            'documents',
-        ])->orderByDesc('id')->paginate(50)->withQueryString();
+        $filters = $this->filtersFromRequest($request);
+        $weapons = $this->buildIndexQuery($request)
+            ->with($this->indexRelationships())
+            ->orderByDesc('id')
+            ->paginate(50)
+            ->withQueryString();
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -72,7 +42,19 @@ class WeaponController extends Controller
             ]);
         }
 
-        return view('weapons.index', compact('weapons', 'search'));
+        [$clients, $responsibles] = $this->indexFilterOptions($request->user());
+        $weaponTypes = $this->weaponTypeOptions();
+        $destinationOptions = $this->destinationOptions();
+
+        return view('weapons.index', compact(
+            'weapons',
+            'search',
+            'filters',
+            'clients',
+            'responsibles',
+            'weaponTypes',
+            'destinationOptions',
+        ));
     }
 
     public function create()
@@ -80,6 +62,55 @@ class WeaponController extends Controller
         $ownershipTypes = $this->ownershipOptions();
 
         return view('weapons.create', compact('ownershipTypes'));
+    }
+
+    public function export(Request $request): StreamedResponse
+    {
+        $this->authorize('viewAny', Weapon::class);
+
+        $query = $this->buildIndexQuery($request)
+            ->with($this->indexRelationships())
+            ->orderByDesc('id');
+
+        return $this->streamWeaponsExport(
+            $query->get(),
+            'armamento-filtrado-' . now()->format('Ymd-His') . '.csv'
+        );
+    }
+
+    public function exportSelected(Request $request): StreamedResponse
+    {
+        $this->authorize('viewAny', Weapon::class);
+
+        $validated = $request->validate([
+            'weapon_ids' => ['required', 'array', 'min:1'],
+            'weapon_ids.*' => ['integer', 'distinct'],
+        ]);
+
+        $weaponIds = collect($validated['weapon_ids'])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $query = Weapon::query()
+            ->whereIn('id', $weaponIds);
+
+        $this->applyRoleScope($query, $request->user());
+
+        $weapons = $query
+            ->with($this->indexRelationships())
+            ->orderByDesc('id')
+            ->get();
+
+        if ($weapons->count() !== count($weaponIds)) {
+            abort(403);
+        }
+
+        return $this->streamWeaponsExport(
+            $weapons,
+            'armamento-seleccionado-' . now()->format('Ymd-His') . '.csv'
+        );
     }
 
     public function store(Request $request, WeaponDocumentService $documentService)
@@ -353,6 +384,7 @@ class WeaponController extends Controller
 
     public function edit(Weapon $weapon)
     {
+        $weapon->loadMissing(['photos.file', 'permitFile']);
         $ownershipTypes = $this->ownershipOptions();
 
         return view('weapons.edit', compact('weapon', 'ownershipTypes'));
@@ -540,6 +572,232 @@ class WeaponController extends Controller
         ];
     }
 
+    private function destinationOptions(): array
+    {
+        return [
+            'with_destination' => 'Con destino',
+            'without_destination' => 'Sin destino',
+            'post' => 'Asignadas a puesto',
+            'worker' => 'Asignadas a trabajador',
+        ];
+    }
+
+    private function buildIndexQuery(Request $request): Builder
+    {
+        $query = Weapon::query();
+
+        $this->applyRoleScope($query, $request->user());
+        $this->applySearch($query, trim((string) $request->input('q', '')));
+        $this->applyFilters($query, $this->filtersFromRequest($request));
+
+        return $query;
+    }
+
+    private function applyRoleScope(Builder $query, User $user): void
+    {
+        if ($user->isResponsible() && !$user->isAdmin()) {
+            $query->whereHas('clientAssignments', function (Builder $assignmentQuery) use ($user) {
+                $assignmentQuery
+                    ->where('responsible_user_id', $user->id)
+                    ->where('is_active', true);
+            });
+        }
+    }
+
+    private function applySearch(Builder $query, string $search): void
+    {
+        if ($search === '') {
+            return;
+        }
+
+        $query->where(function (Builder $builder) use ($search) {
+            $builder->where('serial_number', 'like', '%' . $search . '%')
+                ->orWhere('weapon_type', 'like', '%' . $search . '%')
+                ->orWhere('permit_type', 'like', '%' . $search . '%')
+                ->orWhere('permit_number', 'like', '%' . $search . '%')
+                ->orWhere('caliber', 'like', '%' . $search . '%')
+                ->orWhere('brand', 'like', '%' . $search . '%')
+                ->orWhereHas('activeClientAssignment.client', function (Builder $clientQuery) use ($search) {
+                    $clientQuery->where('name', 'like', '%' . $search . '%');
+                })
+                ->orWhereHas('activeClientAssignment.responsible', function (Builder $userQuery) use ($search) {
+                    $userQuery->where('name', 'like', '%' . $search . '%');
+                })
+                ->orWhereHas('activePostAssignment.post', function (Builder $postQuery) use ($search) {
+                    $postQuery->where('name', 'like', '%' . $search . '%');
+                })
+                ->orWhereHas('activeWorkerAssignment.worker', function (Builder $workerQuery) use ($search) {
+                    $workerQuery->where('name', 'like', '%' . $search . '%')
+                        ->orWhere('document', 'like', '%' . $search . '%');
+                });
+        });
+    }
+
+    private function applyFilters(Builder $query, array $filters): void
+    {
+        if ($filters['client_id']) {
+            $query->whereHas('activeClientAssignment', function (Builder $assignmentQuery) use ($filters) {
+                $assignmentQuery->where('client_id', $filters['client_id']);
+            });
+        }
+
+        if ($filters['responsible_user_id']) {
+            $query->whereHas('activeClientAssignment', function (Builder $assignmentQuery) use ($filters) {
+                $assignmentQuery->where('responsible_user_id', $filters['responsible_user_id']);
+            });
+        }
+
+        if ($filters['weapon_type']) {
+            $query->where('weapon_type', $filters['weapon_type']);
+        }
+
+        if ($filters['permit_expires_from']) {
+            $query->whereDate('permit_expires_at', '>=', $filters['permit_expires_from']);
+        }
+
+        if ($filters['permit_expires_to']) {
+            $query->whereDate('permit_expires_at', '<=', $filters['permit_expires_to']);
+        }
+
+        switch ($filters['destination']) {
+            case 'with_destination':
+                $query->where(function (Builder $builder) {
+                    $builder->whereHas('activeClientAssignment')
+                        ->orWhereHas('activePostAssignment')
+                        ->orWhereHas('activeWorkerAssignment');
+                });
+                break;
+            case 'without_destination':
+                $query->whereDoesntHave('activeClientAssignment')
+                    ->whereDoesntHave('activePostAssignment')
+                    ->whereDoesntHave('activeWorkerAssignment');
+                break;
+            case 'post':
+                $query->whereHas('activePostAssignment');
+                break;
+            case 'worker':
+                $query->whereHas('activeWorkerAssignment');
+                break;
+        }
+    }
+
+    private function filtersFromRequest(Request $request): array
+    {
+        return [
+            'client_id' => $request->filled('client_id') ? (int) $request->input('client_id') : null,
+            'responsible_user_id' => $request->filled('responsible_user_id') ? (int) $request->input('responsible_user_id') : null,
+            'weapon_type' => trim((string) $request->input('weapon_type', '')) ?: null,
+            'permit_expires_from' => trim((string) $request->input('permit_expires_from', '')) ?: null,
+            'permit_expires_to' => trim((string) $request->input('permit_expires_to', '')) ?: null,
+            'destination' => trim((string) $request->input('destination', '')) ?: null,
+        ];
+    }
+
+    private function indexRelationships(): array
+    {
+        return [
+            'activeClientAssignment.client',
+            'activeClientAssignment.responsible',
+            'activePostAssignment.post',
+            'activeWorkerAssignment.worker',
+            'documents',
+        ];
+    }
+
+    private function indexFilterOptions(User $user): array
+    {
+        $clients = $user->isResponsible() && !$user->isAdmin()
+            ? $user->clients()->orderBy('name')->get(['clients.id', 'name'])
+            : Client::query()->orderBy('name')->get(['id', 'name']);
+
+        $responsibles = $user->isResponsible() && !$user->isAdmin()
+            ? collect([$user])
+            : User::query()
+                ->whereIn('role', ['ADMIN', 'RESPONSABLE'])
+                ->orderBy('name')
+                ->get(['id', 'name']);
+
+        return [$clients, $responsibles];
+    }
+
+    private function streamWeaponsExport(iterable $weapons, string $filename): StreamedResponse
+    {
+        $headers = [
+            'Cliente',
+            'Tipo',
+            'Marca',
+            'Serie',
+            'Calibre',
+            'Capacidad',
+            'Tipo de permiso',
+            'N° de permiso',
+            'Vence',
+            'Estado',
+            'Cant. munición',
+            'Cant. proveedor',
+            'Responsable',
+            'Puesto o trabajador',
+            'Cédula',
+            'Impronta',
+        ];
+
+        return response()->streamDownload(function () use ($weapons, $headers) {
+            $output = fopen('php://output', 'w');
+            fwrite($output, "\xEF\xBB\xBF");
+            fputcsv($output, $headers);
+
+            foreach ($weapons as $weapon) {
+                fputcsv($output, $this->weaponExportRow($weapon));
+            }
+
+            fclose($output);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    private function weaponExportRow(Weapon $weapon): array
+    {
+        $renewalDocument = $weapon->documents->firstWhere('is_renewal', true)
+            ?? $weapon->documents->firstWhere('is_permit', true);
+        $renewalAlert = WeaponDocumentAlert::forComplianceDocument($renewalDocument);
+        $manualInProcess = $weapon->documents
+            ->filter(fn ($doc) => !($doc->is_permit || $doc->is_renewal))
+            ->first(fn ($doc) => ($doc->status ?? '') === 'En proceso');
+        $internalAssignment = $weapon->activePostAssignment ?? $weapon->activeWorkerAssignment;
+        $statusText = $manualInProcess
+            ? trim(($manualInProcess->document_name ?: 'Documento') . ': ' . ($manualInProcess->observations ?: 'En proceso'))
+            : ($renewalAlert['observation'] !== '-'
+                ? $renewalAlert['observation']
+                : ($weapon->activeClientAssignment ? 'Asignada' : 'Sin destino'));
+
+        $destination = '-';
+        if ($weapon->activePostAssignment) {
+            $destination = $weapon->activePostAssignment->post?->name ?? '-';
+        } elseif ($weapon->activeWorkerAssignment) {
+            $destination = $weapon->activeWorkerAssignment->worker?->name ?? '-';
+        }
+
+        return [
+            $weapon->activeClientAssignment?->client?->name ?? 'Sin destino',
+            $weapon->weapon_type,
+            $weapon->brand,
+            $weapon->serial_number,
+            $weapon->caliber,
+            $weapon->capacity ?? '-',
+            ($weapon->permit_type ? Str::ucfirst($weapon->permit_type) : '-'),
+            $weapon->permit_number ?? '-',
+            $weapon->permit_expires_at?->format('Y-m-d') ?? '-',
+            $statusText,
+            $internalAssignment?->ammo_count ?? '-',
+            $internalAssignment?->provider_count ?? '-',
+            $weapon->activeClientAssignment?->responsible?->name ?? '-',
+            $destination,
+            $weapon->activeWorkerAssignment?->worker?->document ?? '-',
+            $weapon->imprint_month ? 'Recibida ' . $weapon->imprint_month : 'Pendiente',
+        ];
+    }
+
     private function generateInternalCode(): string
     {
         $prefix = 'SJ-';
@@ -579,3 +837,8 @@ class WeaponController extends Controller
         return back();
     }
 }
+
+
+
+
+

@@ -66,6 +66,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('workers', WorkerController::class)->except(['show']);
     Route::resource('users', UserController::class)->except(['show']);
     Route::patch('/users/{user}/status', [UserController::class, 'updateStatus'])->name('users.status');
+    Route::get('/weapons/export', [WeaponController::class, 'export'])->name('weapons.export');
+    Route::post('/weapons/export-selected', [WeaponController::class, 'exportSelected'])->name('weapons.export.selected');
     Route::resource('weapons', WeaponController::class);
     Route::get('/subir-armas', [WeaponImportController::class, 'index'])->name('weapon-imports.index');
     Route::post('/subir-armas/preview', [WeaponImportController::class, 'preview'])->name('weapon-imports.preview');

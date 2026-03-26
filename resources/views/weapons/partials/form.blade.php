@@ -2,6 +2,7 @@
     $weapon = $weapon ?? null;
     $photoDescriptions = \App\Models\WeaponPhoto::DESCRIPTIONS;
     $existingPhotos = $weapon?->photos?->keyBy('description') ?? collect();
+    $permitPhotoUrl = $weapon?->permitFile ? route('weapons.permit', $weapon) : null;
     $photoGuidesByType = [
         'escopeta' => [
             'lado_derecho' => asset('images/weapon-guides/Escopeta lado derecho-09.svg'),
@@ -177,9 +178,10 @@
             <div class="relative flex h-full min-h-[12rem] w-full items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-xs text-gray-500 transition"
                 data-drop-surface>
                 <div class="sj-paste-proxy" data-paste-proxy contenteditable="true" spellcheck="false"></div>
-                <span id="permit_placeholder">{{ __('Arrastra, selecciona o pega foto') }}</span>
+                <span id="permit_placeholder" @class(['hidden' => $permitPhotoUrl])>{{ __('Arrastra, selecciona o pega foto') }}</span>
                 <img id="permit_preview" alt="Previsualizacion"
-                    class="hidden h-full w-full rounded bg-gray-50 object-fill" />
+                    class="{{ $permitPhotoUrl ? '' : 'hidden' }} h-full w-full rounded bg-gray-50 object-fill"
+                    @if ($permitPhotoUrl) src="{{ $permitPhotoUrl }}" @endif />
             </div>
         </label>
         <x-input-error :messages="$errors->get('permit_photo')" class="mt-2" />

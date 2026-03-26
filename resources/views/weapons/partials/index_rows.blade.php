@@ -1,4 +1,4 @@
-@forelse ($weapons as $weapon)
+﻿@forelse ($weapons as $weapon)
     @php
         $renewalDocument = $weapon->documents->firstWhere('is_renewal', true) ?? $weapon->documents->firstWhere('is_permit', true);
         $renewalAlert = \App\Support\WeaponDocumentAlert::forComplianceDocument($renewalDocument);
@@ -13,12 +13,29 @@
             ? trim(($manualInProcess->document_name ?: 'Documento') . ': ' . ($manualInProcess->observations ?: 'En proceso'))
             : ($renewalAlert['observation'] !== '-' ? $renewalAlert['observation'] : ($weapon->activeClientAssignment ? __('Asignada') : __('Sin destino')));
         $statusClass = $manualInProcess ? 'text-red-700' : ($renewalAlert['text_class'] ?? '');
+        $destinationLabel = '-';
+        if ($weapon->activePostAssignment) {
+            $destinationLabel = $weapon->activePostAssignment->post?->name ?? '-';
+        } elseif ($weapon->activeWorkerAssignment) {
+            $destinationLabel = $weapon->activeWorkerAssignment->worker?->name ?? '-';
+        }
     @endphp
-    <tr class="{{ $rowClass }}">
-        <td class="px-3 py-2 whitespace-nowrap">
-            <span title="{{ $weapon->internal_code }}">
-                {{ \Illuminate\Support\Str::limit($weapon->internal_code, 8) }}
-            </span>
+    <tr
+        class="weapon-row {{ $rowClass }} cursor-pointer transition-colors hover:bg-blue-50/70"
+        data-weapon-id="{{ $weapon->id }}"
+        data-show-url="{{ route('weapons.show', $weapon) }}"
+        data-edit-url="{{ route('weapons.edit', $weapon) }}"
+        data-delete-url="{{ route('weapons.destroy', $weapon) }}"
+        data-can-edit="{{ auth()->user()?->can('update', $weapon) ? '1' : '0' }}"
+        data-can-delete="{{ auth()->user()?->can('delete', $weapon) ? '1' : '0' }}"
+    >
+        <td class="px-3 py-2 text-center whitespace-nowrap" data-searchable="false">
+            <input
+                type="checkbox"
+                class="weapon-export-checkbox rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                value="{{ $weapon->id }}"
+                aria-label="{{ __('Seleccionar arma :serial', ['serial' => $weapon->serial_number]) }}"
+            >
         </td>
         <td class="px-3 py-2 min-w-[200px] whitespace-nowrap">{{ $weapon->activeClientAssignment?->client?->name ?? __('Sin destino') }}</td>
         <td class="px-3 py-2 whitespace-nowrap">{{ $weapon->weapon_type }}</td>
@@ -26,7 +43,7 @@
         <td class="px-3 py-2 whitespace-nowrap">{{ $weapon->serial_number }}</td>
         <td class="px-3 py-2 whitespace-nowrap">{{ $weapon->caliber }}</td>
         <td class="px-3 py-2 whitespace-nowrap text-center">{{ $weapon->capacity ?? '-' }}</td>
-        <td class="px-3 py-2 whitespace-nowrap">{{ $weapon->permit_type ?? '-' }}</td>
+        <td class="px-3 py-2 whitespace-nowrap">{{ $weapon->permit_type ? \Illuminate\Support\Str::ucfirst($weapon->permit_type) : '-' }}</td>
         <td class="px-3 py-2 whitespace-nowrap">{{ $weapon->permit_number ?? '-' }}</td>
         <td class="px-3 py-2 whitespace-nowrap">{{ $weapon->permit_expires_at?->format('Y-m-d') ?? '-' }}</td>
         <td class="px-3 py-2 whitespace-nowrap">
@@ -39,38 +56,11 @@
             {{ $internalAssignment?->provider_count ?? '-' }}
         </td>
         <td class="px-3 py-2 min-w-[200px] whitespace-nowrap">{{ $weapon->activeClientAssignment?->responsible?->name ?? '-' }}</td>
-        <td class="px-3 py-2 min-w-[220px] whitespace-nowrap">
-            @if ($weapon->activePostAssignment)
-                {{ $weapon->activePostAssignment->post?->name }}
-            @elseif ($weapon->activeWorkerAssignment)
-                {{ $weapon->activeWorkerAssignment->worker?->name }}
-            @else
-                -
-            @endif
-        </td>
+        <td class="px-3 py-2 min-w-[220px] whitespace-nowrap">{{ $destinationLabel }}</td>
         <td class="px-3 py-2 whitespace-nowrap">
             {{ $weapon->activeWorkerAssignment?->worker?->document ?? '-' }}
         </td>
-        <td class="px-3 py-2 text-right space-x-2 whitespace-nowrap">
-            <a href="{{ route('weapons.show', $weapon) }}" class="text-indigo-600 hover:text-indigo-900">
-                {{ __('Ver') }}
-            </a>
-            @can('update', $weapon)
-                <a href="{{ route('weapons.edit', $weapon) }}" class="text-indigo-600 hover:text-indigo-900">
-                    {{ __('Editar') }}
-                </a>
-            @endcan
-            @can('delete', $weapon)
-                <form action="{{ route('weapons.destroy', $weapon) }}" method="POST" class="inline">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="text-red-600 hover:text-red-900" onclick="return confirm(@js(__('¿Eliminar arma?')))">
-                        {{ __('Eliminar') }}
-                    </button>
-                </form>
-            @endcan
-        </td>
-        <td class="px-3 py-2 text-center whitespace-nowrap">
+        <td class="px-3 py-2 text-center whitespace-nowrap" data-searchable="false">
             <form method="POST" action="{{ route('weapons.imprints.toggle', $weapon) }}">
                 @csrf
                 @method('PATCH')
@@ -82,12 +72,11 @@
     </tr>
 @empty
     <tr>
-        <td colspan="18" class="px-3 py-6 text-center text-gray-500">
+        <td colspan="16" class="px-3 py-6 text-center text-gray-500">
             {{ __('No hay armas registradas.') }}
         </td>
     </tr>
 @endforelse
-
 
 
 
