@@ -227,11 +227,12 @@
                 </div>
             </div>
 
-            <div id="weapons-scrollbar-shell" class="fixed bottom-0 left-0 right-0 z-50 px-4 pb-0.5 sm:px-6 lg:px-8">
-                <div id="weapons-scrollbar" class="overflow-x-auto w-full">
-                    <div class="min-w-[2200px] h-3"></div>
+            <div id="weapons-scrollbar-shell" class="fixed bottom-0 z-40 pb-2 pointer-events-none">
+                <div id="weapons-scrollbar" class="pointer-events-auto h-4 w-full overflow-x-scroll overflow-y-hidden">
+                    <div id="weapons-scrollbar-spacer" class="h-px w-[2200px]"></div>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -251,6 +252,20 @@
 
     #weapons-table-scroll::-webkit-scrollbar {
         height: 0;
+    }
+
+    #weapons-scrollbar {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        height: 1rem;
+        overflow-x: scroll;
+        scrollbar-width: auto;
+        -ms-overflow-style: auto;
+    }
+
+    #weapons-scrollbar-spacer {
+        min-width: 100%;
     }
 
     .sj-page-header {
@@ -409,23 +424,51 @@
 <script>
     (() => {
         const tableScroll = document.getElementById('weapons-table-scroll');
-        const barScroll = document.getElementById('weapons-scrollbar');
-        const barShell = document.getElementById('weapons-scrollbar-shell');
-        if (!tableScroll || !barScroll || !barShell) {
+        const scrollbarShell = document.getElementById('weapons-scrollbar-shell');
+        const scrollbar = document.getElementById('weapons-scrollbar');
+        const spacer = document.getElementById('weapons-scrollbar-spacer');
+
+        if (!tableScroll || !scrollbarShell || !scrollbar || !spacer) {
             return;
         }
 
         let syncing = false;
+        let resizeObserver = null;
 
-        const sync = (from, to) => {
-            if (syncing) return;
+        const syncMetrics = () => {
+            const rect = tableScroll.getBoundingClientRect();
+            scrollbarShell.style.left = `${Math.max(rect.left, 0)}px`;
+            scrollbarShell.style.width = `${tableScroll.clientWidth}px`;
+            spacer.style.width = `${tableScroll.scrollWidth}px`;
+            scrollbar.scrollLeft = tableScroll.scrollLeft;
+        };
+
+        const syncScroll = (from, to) => {
+            if (syncing) {
+                return;
+            }
+
             syncing = true;
             to.scrollLeft = from.scrollLeft;
             syncing = false;
         };
 
-        barScroll.addEventListener('scroll', () => sync(barScroll, tableScroll));
-        tableScroll.addEventListener('scroll', () => sync(tableScroll, barScroll));
+        scrollbar.addEventListener('scroll', () => syncScroll(scrollbar, tableScroll));
+        tableScroll.addEventListener('scroll', () => syncScroll(tableScroll, scrollbar));
+        window.addEventListener('resize', syncMetrics);
+
+        if ('ResizeObserver' in window) {
+            resizeObserver = new ResizeObserver(() => syncMetrics());
+            resizeObserver.observe(tableScroll);
+
+            const table = tableScroll.querySelector('table');
+            if (table) {
+                resizeObserver.observe(table);
+            }
+        }
+
+        window.syncWeaponsHorizontalScrollbar = syncMetrics;
+        syncMetrics();
     })();
 </script>
 
@@ -617,6 +660,7 @@
             syncExportCheckboxes();
             syncExportForms();
             highlight(input.value.trim());
+            window.syncWeaponsHorizontalScrollbar?.();
         };
 
         let timer = null;
@@ -703,10 +747,8 @@
             const form = imprintCheckbox.closest('form');
             if (form) {
                 const tableScroll = document.getElementById('weapons-table-scroll');
-                const barScroll = document.getElementById('weapons-scrollbar');
                 sessionStorage.setItem('weaponsScrollTop', String(window.scrollY || 0));
                 sessionStorage.setItem('weaponsTableScrollLeft', String(tableScroll?.scrollLeft || 0));
-                sessionStorage.setItem('weaponsBarScrollLeft', String(barScroll?.scrollLeft || 0));
                 form.submit();
             }
         });
@@ -750,10 +792,9 @@
 <script>
     (() => {
         const tableScroll = document.getElementById('weapons-table-scroll');
-        const barScroll = document.getElementById('weapons-scrollbar');
+        const fakeScrollbar = document.getElementById('weapons-scrollbar');
         const scrollTop = sessionStorage.getItem('weaponsScrollTop');
         const tableLeft = sessionStorage.getItem('weaponsTableScrollLeft');
-        const barLeft = sessionStorage.getItem('weaponsBarScrollLeft');
 
         if (scrollTop !== null) {
             window.scrollTo(0, Number(scrollTop));
@@ -761,12 +802,12 @@
         }
         if (tableScroll && tableLeft !== null) {
             tableScroll.scrollLeft = Number(tableLeft);
+            if (fakeScrollbar) {
+                fakeScrollbar.scrollLeft = Number(tableLeft);
+            }
             sessionStorage.removeItem('weaponsTableScrollLeft');
         }
-        if (barScroll && barLeft !== null) {
-            barScroll.scrollLeft = Number(barLeft);
-            sessionStorage.removeItem('weaponsBarScrollLeft');
-        }
+        window.syncWeaponsHorizontalScrollbar?.();
     })();
 </script>
 
