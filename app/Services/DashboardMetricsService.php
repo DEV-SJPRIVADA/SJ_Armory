@@ -184,6 +184,18 @@ class DashboardMetricsService
                     'helper' => 'Inventario visible para tu rol',
                 ],
                 [
+                    'label' => 'Armas operativas',
+                    'value' => $operationalWeaponsCount,
+                    'tone' => 'green',
+                    'helper' => 'Disponibles para operación',
+                ],
+                [
+                    'label' => 'Armas con novedad',
+                    'value' => $nonOperationalWeaponsCount,
+                    'tone' => 'red',
+                    'helper' => 'Fuera de operación por novedad bloqueante',
+                ],
+                [
                     'label' => 'Con destino activo',
                     'value' => $activeDestinationWeapons->count(),
                     'tone' => 'blue',
@@ -194,12 +206,6 @@ class DashboardMetricsService
                     'value' => $weapons->filter(fn (Weapon $weapon) => ! $weapon->activeClientAssignment)->count(),
                     'tone' => 'amber',
                     'helper' => 'Pendientes de asignación operativa',
-                ],
-                [
-                    'label' => 'Armas operativas',
-                    'value' => $operationalWeaponsCount,
-                    'tone' => 'green',
-                    'helper' => 'Disponibles para operación',
                 ],
                 [
                     'label' => 'Documentos vencidos',
@@ -218,12 +224,6 @@ class DashboardMetricsService
                     'value' => $transferCounts['Pendientes'],
                     'tone' => 'indigo',
                     'helper' => 'Solicitudes aún sin resolver',
-                ],
-                [
-                    'label' => 'Armas con novedad',
-                    'value' => $nonOperationalWeaponsCount,
-                    'tone' => 'red',
-                    'helper' => 'Fuera de operación por novedad bloqueante',
                 ],
             ],
             'meta' => [

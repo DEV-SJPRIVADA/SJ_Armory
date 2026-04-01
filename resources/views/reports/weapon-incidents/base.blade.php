@@ -1,7 +1,11 @@
 @php
     $selectedYear = $filters['year'] ?? null;
-    $typeChartItems = collect($dashboard['type_chart']['items'])->filter(fn ($item) => ($item['value'] ?? 0) > 0)->take(4)->values();
-    $modalityChartItems = collect($dashboard['modality_chart']['items'])->filter(fn ($item) => ($item['value'] ?? 0) > 0)->take(4)->values();
+    $typeChartItems = collect($dashboard['type_chart']['items'])
+        ->filter(fn ($item) => ($item['value'] ?? 0) > 0)
+        ->values();
+    $modalityChartItems = collect($dashboard['modality_chart']['items'])
+        ->filter(fn ($item) => ($item['value'] ?? 0) > 0)
+        ->values();
 @endphp
 
 <section class="sj-dashboard-kpis sj-dashboard-kpis--compact">
@@ -23,19 +27,29 @@
             </div>
         </div>
 
-        <div class="sj-donut-card">
-            <div class="sj-donut-stage">
-                <div class="sj-donut-card__chart">
-                    <div class="sj-donut-chart" style="--donut-gradient: {{ $dashboard['type_chart']['gradient'] }};">
-                        <div class="sj-donut-chart__center">
+        <div class="sj-donut-card sj-donut-card--stacked">
+            <div class="sj-donut-card__chart sj-donut-card__chart--stacked">
+                <div class="sj-donut-chart-shell">
+                    <div class="sj-donut-chart sj-donut-chart--executive" style="--donut-gradient: {{ $dashboard['type_chart']['gradient'] }};">
+                        <div class="sj-donut-chart__center sj-donut-chart__center--executive">
                             <span class="sj-donut-chart__label">{{ $dashboard['type_chart']['center_label'] }}</span>
                             <strong class="sj-donut-chart__value">{{ number_format($dashboard['type_chart']['center_value']) }}</strong>
-                            <span class="sj-donut-chart__helper">{{ $dashboard['type_chart']['center_helper'] }}</span>
                         </div>
+
+                        @foreach ($typeChartItems as $item)
+                            @if (!empty($item['show_arc_label']))
+                                <span class="sj-donut-chart__arc-label" style="left: {{ $item['arc_x'] }}%; top: {{ $item['arc_y'] }}%;">
+                                    <span class="sj-donut-chart__arc-share">{{ $item['share_label'] }}</span>
+                                    <span class="sj-donut-chart__arc-value">{{ number_format($item['value']) }}</span>
+                                </span>
+                            @endif
+                        @endforeach
                     </div>
                 </div>
+            </div>
 
-                @foreach ($typeChartItems as $item)
+            <div class="sj-donut-card__legend sj-donut-card__legend--stacked">
+                @forelse ($typeChartItems as $item)
                     @php
                         $typeRoute = ['incidentType' => $item['code']];
                         if ($selectedYear !== null) {
@@ -44,13 +58,20 @@
                     @endphp
                     <a
                         href="{{ route('reports.weapon-incidents.show', $typeRoute) }}"
-                        class="sj-donut-chip sj-donut-chip--{{ $loop->index }} {{ $item['selected'] ? 'sj-donut-chip--active' : '' }}"
+                        class="sj-donut-legend__row {{ $item['selected'] ? 'sj-donut-legend__row--active' : '' }}"
                     >
-                        <span class="sj-donut-chip__swatch" style="background: {{ $item['color'] }};"></span>
-                        <span class="sj-donut-chip__text">{{ $item['label'] }}</span>
-                        <span class="sj-donut-chip__meta">{{ $item['share_label'] }} · {{ number_format($item['value']) }}</span>
+                        <span class="sj-donut-legend__swatch" style="background: {{ $item['color'] }};"></span>
+                        <span class="sj-donut-legend__text">{{ $item['label'] }}</span>
+                        @if (empty($item['show_arc_label']))
+                            <span class="sj-donut-legend__meta">
+                                <span class="sj-donut-legend__share">{{ $item['share_label'] }}</span>
+                                <span class="sj-donut-legend__count">{{ number_format($item['value']) }}</span>
+                            </span>
+                        @endif
                     </a>
-                @endforeach
+                @empty
+                    <p class="sj-panel__empty sj-panel__empty--soft">{{ __('No hay tipos con datos para el filtro actual.') }}</p>
+                @endforelse
             </div>
         </div>
     </article>
@@ -65,26 +86,41 @@
             </div>
         </div>
 
-        <div class="sj-donut-card">
-            <div class="sj-donut-stage">
-                <div class="sj-donut-card__chart">
-                    <div class="sj-donut-chart" style="--donut-gradient: {{ $dashboard['modality_chart']['gradient'] }};">
-                        <div class="sj-donut-chart__center">
+        <div class="sj-donut-card sj-donut-card--stacked">
+            <div class="sj-donut-card__chart sj-donut-card__chart--stacked">
+                <div class="sj-donut-chart-shell">
+                    <div class="sj-donut-chart sj-donut-chart--executive" style="--donut-gradient: {{ $dashboard['modality_chart']['gradient'] }};">
+                        <div class="sj-donut-chart__center sj-donut-chart__center--executive">
                             <span class="sj-donut-chart__label">{{ $dashboard['modality_chart']['center_label'] }}</span>
                             <strong class="sj-donut-chart__value">{{ number_format($dashboard['modality_chart']['center_value']) }}</strong>
-                            <span class="sj-donut-chart__helper">{{ $dashboard['modality_chart']['center_helper'] }}</span>
                         </div>
+
+                        @foreach ($modalityChartItems as $item)
+                            @if (!empty($item['show_arc_label']))
+                                <span class="sj-donut-chart__arc-label" style="left: {{ $item['arc_x'] }}%; top: {{ $item['arc_y'] }}%;">
+                                    <span class="sj-donut-chart__arc-share">{{ $item['share_label'] }}</span>
+                                    <span class="sj-donut-chart__arc-value">{{ number_format($item['value']) }}</span>
+                                </span>
+                            @endif
+                        @endforeach
                     </div>
                 </div>
+            </div>
 
+            <div class="sj-donut-card__legend sj-donut-card__legend--stacked">
                 @forelse ($modalityChartItems as $item)
-                    <div class="sj-donut-chip sj-donut-chip--{{ $loop->index }} sj-donut-chip--static">
-                        <span class="sj-donut-chip__swatch" style="background: {{ $item['color'] }};"></span>
-                        <span class="sj-donut-chip__text">{{ $item['label'] }}</span>
-                        <span class="sj-donut-chip__meta">{{ $item['share_label'] }} · {{ number_format($item['value']) }}</span>
+                    <div class="sj-donut-legend__row sj-donut-legend__row--static">
+                        <span class="sj-donut-legend__swatch" style="background: {{ $item['color'] }};"></span>
+                        <span class="sj-donut-legend__text">{{ $item['label'] }}</span>
+                        @if (empty($item['show_arc_label']))
+                            <span class="sj-donut-legend__meta">
+                                <span class="sj-donut-legend__share">{{ $item['share_label'] }}</span>
+                                <span class="sj-donut-legend__count">{{ number_format($item['value']) }}</span>
+                            </span>
+                        @endif
                     </div>
                 @empty
-                    <p class="sj-panel__empty sj-panel__empty--centered">{{ __('No hay modalidades para el filtro actual.') }}</p>
+                    <p class="sj-panel__empty sj-panel__empty--soft">{{ __('No hay modalidades para el filtro actual.') }}</p>
                 @endforelse
             </div>
         </div>
