@@ -28,6 +28,7 @@ class WeaponImportRow extends Model
     protected $fillable = [
         'batch_id',
         'weapon_id',
+        'client_id',
         'row_number',
         'action',
         'execution_status',
@@ -58,6 +59,11 @@ class WeaponImportRow extends Model
     public function weapon()
     {
         return $this->belongsTo(Weapon::class);
+    }
+
+    public function client()
+    {
+        return $this->belongsTo(Client::class);
     }
 
     public function actionLabel(): string

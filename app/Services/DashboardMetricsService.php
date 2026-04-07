@@ -436,3 +436,5 @@ class DashboardMetricsService
         return $user->isResponsible() && ! $user->isAdmin() && ! $user->isAuditor();
     }
 }
+
+

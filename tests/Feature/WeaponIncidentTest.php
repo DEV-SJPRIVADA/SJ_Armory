@@ -301,6 +301,7 @@ class WeaponIncidentTest extends TestCase
         $this->actingAs($admin)
             ->patch(route('weapon-incidents.close', $incident), [
                 'status' => WeaponIncident::STATUS_RESOLVED,
+                'closure_outcome' => WeaponIncident::OUTCOME_REINTEGRATED,
                 'resolution_note' => 'Arma asegurada y expediente cerrado.',
                 'redirect_to' => route('weapons.show', $weapon),
             ])
@@ -371,6 +372,7 @@ class WeaponIncidentTest extends TestCase
             'resolved_at' => now()->subDay(),
             'resolved_by' => $admin->id,
             'resolution_note' => 'Arma recuperada y expediente finalizado.',
+            'closure_outcome' => WeaponIncident::OUTCOME_REINTEGRATED,
         ]);
 
         $this->actingAs($admin)
@@ -398,6 +400,7 @@ class WeaponIncidentTest extends TestCase
             'resolved_at' => now()->subHours(12),
             'resolved_by' => $admin->id,
             'resolution_note' => 'Cierre previo',
+            'closure_outcome' => WeaponIncident::OUTCOME_REINTEGRATED,
         ]);
 
         $this->actingAs($admin)
@@ -467,6 +470,7 @@ class WeaponIncidentTest extends TestCase
         $this->actingAs($admin)
             ->patch(route('weapon-incidents.close', $incident), [
                 'status' => WeaponIncident::STATUS_RESOLVED,
+                'closure_outcome' => WeaponIncident::OUTCOME_RETIRED_DEFINITIVE,
                 'resolution_note' => '',
                 'redirect_to' => route('weapons.show', $weapon),
             ])
@@ -475,6 +479,39 @@ class WeaponIncidentTest extends TestCase
         $incident->refresh();
         $this->assertSame(WeaponIncident::STATUS_IN_PROGRESS, $incident->status);
         $this->assertNull($incident->resolved_at);
+    }
+
+    public function test_incautada_definitive_close_keeps_weapon_out_of_operation(): void
+    {
+        $admin = User::factory()->create(['role' => 'ADMIN']);
+        [$weapon] = $this->createWeaponContext($admin);
+        $type = \App\Models\IncidentType::query()->where('code', 'incautada')->firstOrFail();
+
+        $incident = WeaponIncident::query()->create([
+            'weapon_id' => $weapon->id,
+            'incident_type_id' => $type->id,
+            'status' => WeaponIncident::STATUS_IN_PROGRESS,
+            'observation' => 'Incautación en control',
+            'note' => 'Caso abierto',
+            'event_at' => now()->subDay(),
+            'reported_at' => now()->subDay(),
+            'reported_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('weapon-incidents.close', $incident), [
+                'status' => WeaponIncident::STATUS_RESOLVED,
+                'closure_outcome' => WeaponIncident::OUTCOME_SEIZURE_DEFINITIVE,
+                'resolution_note' => 'Incautación definitiva confirmada.',
+                'redirect_to' => route('reports.weapon-incidents.index'),
+            ])
+            ->assertRedirect(route('reports.weapon-incidents.index'));
+
+        $incident->refresh();
+
+        $this->assertSame(WeaponIncident::STATUS_RESOLVED, $incident->status);
+        $this->assertSame(WeaponIncident::OUTCOME_SEIZURE_DEFINITIVE, $incident->closure_outcome);
+        $this->assertTrue($incident->blocksOperationalAvailability());
     }
 
     public function test_weapon_history_renders_incident_table_and_detail_stays_clean(): void

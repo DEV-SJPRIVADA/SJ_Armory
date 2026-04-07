@@ -7,7 +7,7 @@ Sistema web de gestion de armamento, asignaciones operativas, transferencias, do
 El proyecto cubre de extremo a extremo:
 
 - Gestion de armas.
-- Carga masiva de armas con validacion previa y ejecucion por lote.
+- Centro de cargas masivas con validacion previa, revision por lote y ejecucion por chunks.
 - Gestion de clientes.
 - Gestion de puestos e instalaciones del cliente.
 - Gestion de trabajadores (escoltas y supervisores).
@@ -148,12 +148,19 @@ Tipos de propiedad:
 - `leased`
 - `third_party`
 
-### 5.1.1 Subir armas
+### 5.1.1 Centro de cargas masivas
 
 Controlador: `app/Http/Controllers/WeaponImportController.php`  
 Servicios: `app/Services/WeaponImportService.php`, `app/Services/WeaponImportSpreadsheetReader.php`
 
-Flujo:
+El modulo se expone hoy como **Subir armas**, pero conceptualmente funciona como un centro de cargas masivas con dos vistas principales:
+
+- indice de lotes ejecutados;
+- detalle del lote con previsualizacion, ejecucion y cancelacion.
+
+El flujo operativo implementado actualmente corresponde a armas. El esquema de datos ya reserva soporte para otros tipos de lote mediante `weapon_import_batches.type` y relaciona filas con `client_id` cuando aplique.
+
+Flujo actual de armas:
 
 - Modulo exclusivo para `ADMIN`.
 - Permite cargar archivos `.xlsx`, `.csv` y `.txt`.
@@ -246,6 +253,12 @@ Campos excluidos por ahora:
 - foto del permiso
 - cantidad de municion
 - cantidad de proveedor
+
+Notas de ampliacion:
+
+- `WeaponImportBatch::TYPE_WEAPON` y `WeaponImportBatch::TYPE_CLIENT` definen la tipologia del lote.
+- `weapon_import_rows.client_id` queda disponible para asociar filas a clientes cuando el flujo correspondiente exista.
+- La UI y las rutas vigentes siguen centradas en `weapon-imports.*`.
 
 ### 5.2 Asignacion a cliente (destino operativo)
 
@@ -556,6 +569,8 @@ Se registran, entre otros:
 - Unicidad de `weapons.internal_code` y `weapons.serial_number`.
 - Unicidad de `user_clients (user_id, client_id)`.
 - Unicidad de foto por tipo en arma: `weapon_photos (weapon_id, description)`.
+- `weapon_import_batches.type` clasifica el lote (`weapon`, `client`).
+- `weapon_import_rows.client_id` referencia opcional a `clients`.
 - Indexado por lote/accion y lote/fila en `weapon_import_rows`.
 - Unicidad de activa por arma en asignaciones:
   - `weapon_client_assignments (weapon_id, is_active)`
@@ -577,7 +592,7 @@ Grupos funcionales:
   - `users.*`, `users.status`.
 - Operacion:
   - `weapons.*`
-  - `weapon-imports.index`, `weapon-imports.preview`, `weapon-imports.start`, `weapon-imports.process`, `weapon-imports.status`, `weapon-imports.execute`, `weapon-imports.discard`
+  - `weapon-imports.index`, `weapon-imports.preview`, `weapon-imports.start`, `weapon-imports.process`, `weapon-imports.status`, `weapon-imports.execute`, `weapon-imports.discard` (centro de cargas masivas de armas)
   - `weapons.client_assignments.store`
   - `weapons.internal_assignments.store/retire`
   - `weapons.photos.*`

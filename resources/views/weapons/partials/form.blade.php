@@ -1,4 +1,4 @@
-@php
+﻿@php
     $weapon = $weapon ?? null;
     $photoDescriptions = \App\Models\WeaponPhoto::DESCRIPTIONS;
     $existingPhotos = $weapon?->photos?->keyBy('description') ?? collect();
@@ -95,13 +95,13 @@
 </div>
 
 <div>
-    <x-input-label for="ownership_entity" :value="__('Entidad de propiedad (si aplica)')" />
+    <x-input-label for="ownership_entity" :value="__('Entidad propietaria (si aplica)')" />
     <x-text-input id="ownership_entity" name="ownership_entity" type="text" class="mt-1 block w-full" value="{{ old('ownership_entity', $weapon?->ownership_entity) }}" />
     <x-input-error :messages="$errors->get('ownership_entity')" class="mt-2" />
 </div>
 
 <div class="md:col-span-2">
-    <span class="text-sm font-medium text-gray-700">{{ __('Fotos del arma') }}</span>
+    <span class="text-sm font-medium text-gray-700">{{ __('Registro fotográfico del arma') }}</span>
     <div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-5">
         @foreach ($photoDescriptions as $description => $label)
             @php
@@ -110,7 +110,7 @@
                     ? Storage::disk($photo->file->disk)->url($photo->file->path)
                     : null;
             @endphp
-            <label for="photo_{{ $photoIndex }}" class="block cursor-pointer" data-drop-zone tabindex="0" title="{{ __('Seleccione, arrastre o pegue una foto') }}">
+            <label for="photo_{{ $photoIndex }}" class="block cursor-pointer" data-drop-zone tabindex="0" title="{{ __('Selecciona, arrastra o pega una foto') }}">
                 <input id="photo_{{ $photoIndex }}" name="photos[]" type="file" accept="image/*" class="hidden"
                     data-photo-description="{{ $description }}"
                     data-preview-target="photo_preview_{{ $photoIndex }}"
@@ -119,16 +119,16 @@
                 <div class="relative flex h-24 w-full items-center justify-center overflow-hidden rounded border border-dashed border-gray-300 bg-gray-50 text-xs text-gray-500 transition"
                     data-drop-surface>
                     <div class="sj-paste-proxy" data-paste-proxy contenteditable="true" spellcheck="false"></div>
-                    <img id="photo_guide_{{ $photoIndex }}" alt="Guia"
+                    <img id="photo_guide_{{ $photoIndex }}" alt="Guía"
                         class="pointer-events-none hidden absolute inset-0 h-full w-full object-contain p-1 opacity-55" />
                     <span id="photo_placeholder_{{ $photoIndex }}"
                         @class([
                             'hidden' => $photoUrl,
                             'absolute inset-x-0 top-1 z-10 px-1 py-0.5 text-center text-[10px] font-medium text-gray-600',
                         ])>
-                        {{ __('Arrastra, selecciona o pega foto') }}
+                        {{ __('Arrastra, selecciona o pega una foto') }}
                     </span>
-                    <img id="photo_preview_{{ $photoIndex }}" alt="Previsualizacion"
+                    <img id="photo_preview_{{ $photoIndex }}" alt="Previsualización"
                         class="{{ $photoUrl ? '' : 'hidden' }} relative z-10 h-full w-full rounded bg-gray-50 object-fill"
                         @if ($photoUrl) src="{{ $photoUrl }}" @endif />
                 </div>
@@ -154,7 +154,7 @@
     </select>
     <x-input-error :messages="$errors->get('permit_type')" class="mt-2" />
     @if ($errors->has('permit_type'))
-        <div class="mt-1 text-xs text-red-600">{{ __('Seleccione Porte o Tenencia.') }}</div>
+            <div class="mt-1 text-xs text-red-600">{{ __('Seleccione el tipo de permiso: Porte o Tenencia.') }}</div>
     @endif
 </div>
 
@@ -171,25 +171,25 @@
     </div>
 
     <div class="md:col-start-2 md:row-start-1 md:row-span-3 flex flex-col">
-        <x-input-label for="permit_photo" :value="__('Foto del permiso')" />
-        <label for="permit_photo" class="mt-1 block h-full cursor-pointer" data-drop-zone tabindex="0" title="{{ __('Seleccione, arrastre o pegue una foto') }}">
+        <x-input-label for="permit_photo" :value="__('Imagen del permiso')" />
+        <label for="permit_photo" class="mt-1 block h-full cursor-pointer" data-drop-zone tabindex="0" title="{{ __('Selecciona, arrastra o pega una foto') }}">
             <input id="permit_photo" name="permit_photo" type="file" accept="image/*" class="hidden" @if (!empty($requirePermitPhoto)) required @endif
                 data-preview-target="permit_preview" data-placeholder-target="permit_placeholder" />
             <div class="relative flex h-full min-h-[12rem] w-full items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-xs text-gray-500 transition"
                 data-drop-surface>
                 <div class="sj-paste-proxy" data-paste-proxy contenteditable="true" spellcheck="false"></div>
-                <span id="permit_placeholder" @class(['hidden' => $permitPhotoUrl])>{{ __('Arrastra, selecciona o pega foto') }}</span>
-                <img id="permit_preview" alt="Previsualizacion"
+                <span id="permit_placeholder" @class(['hidden' => $permitPhotoUrl])>{{ __('Arrastra, selecciona o pega una foto') }}</span>
+                <img id="permit_preview" alt="Previsualización"
                     class="{{ $permitPhotoUrl ? '' : 'hidden' }} h-full w-full rounded bg-gray-50 object-fill"
                     @if ($permitPhotoUrl) src="{{ $permitPhotoUrl }}" @endif />
             </div>
         </label>
         <x-input-error :messages="$errors->get('permit_photo')" class="mt-2" />
         @if ($errors->has('permit_photo'))
-            <div class="mt-1 text-xs text-red-600">{{ __('Debe agregar la foto del permiso.') }}</div>
+            <div class="mt-1 text-xs text-red-600">{{ __('Debe cargar la imagen del permiso.') }}</div>
         @endif
         <div id="permit_photo_alert" class="mt-1 text-xs text-red-600 hidden">
-            {{ __('Debe agregar la foto del permiso.') }}
+            {{ __('Debe cargar la imagen del permiso.') }}
         </div>
     </div>
 </div>

@@ -17,6 +17,14 @@ class WeaponIncident extends Model
     public const STATUS_RESOLVED = 'resolved';
     public const STATUS_CANCELLED = 'cancelled';
 
+    public const OUTCOME_REINTEGRATED = 'reintegrated';
+    public const OUTCOME_RECOVERED_PENDING_VALIDATION = 'recovered_pending_validation';
+    public const OUTCOME_THEFT_DEFINITIVE = 'theft_definitive';
+    public const OUTCOME_LOSS_DEFINITIVE = 'loss_definitive';
+    public const OUTCOME_SEIZURE_DEFINITIVE = 'seizure_definitive';
+    public const OUTCOME_RETIRED_DEFINITIVE = 'retired_definitive';
+    public const OUTCOME_ADMINISTRATIVE_CLOSURE = 'administrative_closure';
+
     protected $fillable = [
         'weapon_id',
         'incident_type_id',
@@ -32,6 +40,7 @@ class WeaponIncident extends Model
         'resolved_at',
         'resolved_by',
         'resolution_note',
+        'closure_outcome',
     ];
 
     protected $casts = [
@@ -107,16 +116,112 @@ class WeaponIncident extends Model
 
     public function scopeOperationalBlockers(Builder $query): Builder
     {
+        $persistentOutcomes = self::persistentClosureOutcomes();
+
         return $query
             ->whereHas('type', fn (Builder $typeQuery) => $typeQuery->where('blocks_operation', true))
-            ->where(function (Builder $statusQuery) {
+            ->where(function (Builder $statusQuery) use ($persistentOutcomes) {
                 $statusQuery->whereIn('status', [self::STATUS_OPEN, self::STATUS_IN_PROGRESS])
-                    ->orWhere(function (Builder $terminalQuery) {
+                    ->orWhere(function (Builder $terminalQuery) use ($persistentOutcomes) {
                         $terminalQuery
-                            ->where('status', '!=', self::STATUS_CANCELLED)
-                            ->whereHas('type', fn (Builder $typeQuery) => $typeQuery->where('persists_operational_block', true));
+                            ->where('status', self::STATUS_RESOLVED)
+                            ->where(function (Builder $resolvedQuery) use ($persistentOutcomes) {
+                                $resolvedQuery
+                                    ->whereIn('closure_outcome', $persistentOutcomes)
+                                    ->orWhere(function (Builder $legacyQuery) {
+                                        $legacyQuery
+                                            ->whereNull('closure_outcome')
+                                            ->whereHas('type', fn (Builder $typeQuery) => $typeQuery->where('persists_operational_block', true));
+                                    });
+                            });
                     });
             });
+    }
+
+    public static function closureOutcomeDefinitions(): array
+    {
+        return [
+            self::OUTCOME_REINTEGRATED => [
+                'label' => 'Recuperada y reintegrada',
+                'blocks_operation' => false,
+                'impact_label' => 'Devuelve el arma a operación',
+            ],
+            self::OUTCOME_RECOVERED_PENDING_VALIDATION => [
+                'label' => 'Recuperada pendiente de validación',
+                'blocks_operation' => true,
+                'impact_label' => 'Mantiene el arma fuera de operación',
+            ],
+            self::OUTCOME_THEFT_DEFINITIVE => [
+                'label' => 'Hurto definitivo',
+                'blocks_operation' => true,
+                'impact_label' => 'Mantiene el arma fuera de operación de forma definitiva',
+            ],
+            self::OUTCOME_LOSS_DEFINITIVE => [
+                'label' => 'Pérdida definitiva',
+                'blocks_operation' => true,
+                'impact_label' => 'Mantiene el arma fuera de operación de forma definitiva',
+            ],
+            self::OUTCOME_SEIZURE_DEFINITIVE => [
+                'label' => 'Incautación definitiva',
+                'blocks_operation' => true,
+                'impact_label' => 'Mantiene el arma fuera de operación de forma definitiva',
+            ],
+            self::OUTCOME_RETIRED_DEFINITIVE => [
+                'label' => 'Dar de baja definitiva',
+                'blocks_operation' => true,
+                'impact_label' => 'Retira el arma de operación de forma permanente',
+            ],
+            self::OUTCOME_ADMINISTRATIVE_CLOSURE => [
+                'label' => 'Cierre administrativo sin afectación operativa',
+                'blocks_operation' => false,
+                'impact_label' => 'No bloquea la operación del arma',
+            ],
+        ];
+    }
+
+    public static function closureOutcomeOptionsForType(?IncidentType $type): array
+    {
+        $definitions = self::closureOutcomeDefinitions();
+
+        if (! $type) {
+            return [];
+        }
+
+        $allowed = match ($type->code) {
+            'hurtada' => [
+                self::OUTCOME_REINTEGRATED,
+                self::OUTCOME_RECOVERED_PENDING_VALIDATION,
+                self::OUTCOME_THEFT_DEFINITIVE,
+            ],
+            'perdida' => [
+                self::OUTCOME_REINTEGRATED,
+                self::OUTCOME_RECOVERED_PENDING_VALIDATION,
+                self::OUTCOME_LOSS_DEFINITIVE,
+            ],
+            'incautada' => [
+                self::OUTCOME_REINTEGRATED,
+                self::OUTCOME_RECOVERED_PENDING_VALIDATION,
+                self::OUTCOME_SEIZURE_DEFINITIVE,
+            ],
+            'dar_de_baja' => [
+                self::OUTCOME_RETIRED_DEFINITIVE,
+            ],
+            default => [
+                self::OUTCOME_ADMINISTRATIVE_CLOSURE,
+            ],
+        };
+
+        return collect($allowed)
+            ->mapWithKeys(fn (string $key) => [$key => $definitions[$key]['label']])
+            ->all();
+    }
+
+    public static function persistentClosureOutcomes(): array
+    {
+        return collect(self::closureOutcomeDefinitions())
+            ->filter(fn (array $definition) => (bool) $definition['blocks_operation'])
+            ->keys()
+            ->all();
     }
 
     public static function statusOptions(): array
@@ -152,7 +257,33 @@ class WeaponIncident extends Model
             return true;
         }
 
-        return $this->status !== self::STATUS_CANCELLED && (bool) $this->type?->persists_operational_block;
+        if ($this->status === self::STATUS_CANCELLED) {
+            return false;
+        }
+
+        if ($this->closure_outcome) {
+            return (bool) (self::closureOutcomeDefinitions()[$this->closure_outcome]['blocks_operation'] ?? false);
+        }
+
+        return (bool) $this->type?->persists_operational_block;
+    }
+
+    public function closureOutcomeLabel(): ?string
+    {
+        if (! $this->closure_outcome) {
+            return null;
+        }
+
+        return self::closureOutcomeDefinitions()[$this->closure_outcome]['label'] ?? $this->closure_outcome;
+    }
+
+    public function closureImpactLabel(): ?string
+    {
+        if (! $this->closure_outcome) {
+            return null;
+        }
+
+        return self::closureOutcomeDefinitions()[$this->closure_outcome]['impact_label'] ?? null;
     }
 
     public function latestActivityAt()
@@ -172,3 +303,4 @@ class WeaponIncident extends Model
             : $this->event_at;
     }
 }
+

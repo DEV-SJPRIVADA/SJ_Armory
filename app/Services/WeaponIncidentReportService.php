@@ -505,3 +505,4 @@ class WeaponIncidentReportService
             : null;
     }
 }
+

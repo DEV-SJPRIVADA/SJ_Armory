@@ -28,7 +28,7 @@
             <div>
                 <div class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Subir armas</div>
                 <h2 class="mt-1 text-xl font-semibold leading-tight text-gray-800">Detalle del lote</h2>
-                <p class="mt-1 text-sm text-gray-500">Revisa el resultado del lote y ejecuta o descarta cambios segÃºn el estado actual.</p>
+                <p class="mt-1 text-sm text-gray-500">Revisa el resultado del lote y ejecuta o descarta cambios según el estado actual.</p>
             </div>
             <a href="{{ route('weapon-imports.index') }}"
                 class="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
@@ -41,7 +41,7 @@
         $selectedBatchBadge = $selectedBatch->isExecuted()
             ? ['classes' => 'bg-green-100 text-green-700', 'label' => 'Lote ejecutado']
             : ($selectedBatch->isProcessing()
-                ? ['classes' => 'bg-blue-100 text-blue-700', 'label' => 'Lote en ejecuciÃ³n']
+                ? ['classes' => 'bg-blue-100 text-blue-700', 'label' => 'Lote en ejecución']
                 : ($selectedBatch->isFailed()
                     ? ['classes' => 'bg-rose-100 text-rose-700', 'label' => 'Lote con fallo']
                     : ['classes' => 'bg-amber-100 text-amber-700', 'label' => 'Lote pendiente']));
@@ -146,15 +146,15 @@
                     </div>
                 @elseif ($selectedBatch->isProcessing())
                     <div class="mt-5 rounded-lg border border-blue-100 bg-blue-50 px-4 py-5 text-sm text-blue-800">
-                        El lote se estÃ¡ ejecutando. Puedes seguir el avance en el panel de progreso.
+                        El lote se está ejecutando. Puedes seguir el avance en el panel de progreso.
                     </div>
                 @elseif ($selectedBatch->isFailed())
                     <div class="mt-5 rounded-lg border border-rose-100 bg-rose-50 px-4 py-5 text-sm text-rose-700">
-                        {{ $selectedBatch->last_error ?: 'La ejecuciÃ³n del lote fallÃ³.' }}
+                        {{ $selectedBatch->last_error ?: 'La ejecución del lote falló.' }}
                     </div>
                 @else
                     <div class="mt-5 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-sm text-gray-600">
-                        Este lote estÃ¡ pendiente. Usa <strong>Revisar lote</strong> para validar la carga antes de ejecutarla.
+                        Este lote está pendiente. Usa <strong>Revisar lote</strong> para validar la carga antes de ejecutarla.
                     </div>
                 @endif
             </div>
@@ -168,8 +168,8 @@
                     <div style="width: min(1400px, 100%); height: 100%; background: #ffffff; border-radius: 16px; box-shadow: 0 24px 48px rgba(15, 23, 42, 0.22); display: flex; flex-direction: column; overflow: hidden;">
                         <div style="flex: 0 0 auto; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 24px; border-bottom: 1px solid #e5e7eb; background: #ffffff;">
                             <div>
-                                <h3 class="text-lg font-semibold text-gray-800">RevisiÃ³n del lote</h3>
-                                <p class="mt-1 text-sm text-gray-500">Verifica la acciÃ³n de cada fila antes de ejecutar los cambios.</p>
+                                <h3 class="text-lg font-semibold text-gray-800">Revisión del lote</h3>
+                                <p class="mt-1 text-sm text-gray-500">Verifica la acción de cada fila antes de ejecutar los cambios.</p>
                             </div>
                             @if ($selectedBatch->isDraft())
                                 <form method="POST" action="{{ route('weapon-imports.discard', $selectedBatch) }}" class="weapon-import-discard-form">
@@ -194,7 +194,7 @@
                         <div style="flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 24px; border-top: 1px solid #e5e7eb; background: #ffffff;">
                             @if ($selectedBatch->isProcessing())
                                 <div class="text-sm text-blue-700">
-                                    El lote se estÃ¡ ejecutando. Puedes seguir el avance en el panel de progreso.
+                                    El lote se está ejecutando. Puedes seguir el avance en el panel de progreso.
                                 </div>
                                 <div class="flex items-center gap-3">
                                     <a href="{{ route('weapon-imports.show', $selectedBatch) }}"
@@ -244,7 +244,7 @@
     <div id="weapon-import-execution-panel" class="weapon-import-execution-panel" aria-live="polite">
         <div>
             <div id="weapon-import-execution-title" class="weapon-import-execution-panel__title">Ejecutando lote</div>
-            <div id="weapon-import-execution-subtitle" class="weapon-import-execution-panel__subtitle">Preparando ejecuciÃ³n...</div>
+            <div id="weapon-import-execution-subtitle" class="weapon-import-execution-panel__subtitle">Preparando ejecución...</div>
         </div>
         <div class="weapon-import-progress is-visible" style="padding: 0; border: none; background: transparent;">
             <div class="weapon-import-progress__top">
@@ -336,7 +336,7 @@
             const failedRows = Number(progress.failed_rows || 0);
             const percentage = total > 0 ? Math.round((processedRows / total) * 100) : 0;
 
-            title.textContent = progress.status === 'executed' ? 'Lote ejecutado' : (progress.status === 'failed' ? 'EjecuciÃ³n detenida' : 'Ejecutando lote');
+            title.textContent = progress.status === 'executed' ? 'Lote ejecutado' : (progress.status === 'failed' ? 'Ejecución detenida' : 'Ejecutando lote');
             subtitle.textContent = state.sourceName;
             percent.textContent = `${percentage}%`;
             fill.style.width = `${percentage}%`;
@@ -345,9 +345,9 @@
             processed.textContent = processedRows;
             successful.textContent = successfulRows;
             failed.textContent = failedRows;
-            if (progress.status === 'failed') message.textContent = progress.last_error || 'La ejecuciÃ³n del lote se detuvo.';
+            if (progress.status === 'failed') message.textContent = progress.last_error || 'La ejecución del lote se detuvo.';
             else if (progress.status === 'executed') message.textContent = 'Carga completada. Redirigiendo...';
-            else message.textContent = 'El lote se estÃ¡ procesando. Puedes cambiar de pestaÃ±a mientras termina.';
+            else message.textContent = 'El lote se está procesando. Puedes cambiar de pestaña mientras termina.';
             message.classList.toggle('is-error', progress.status === 'failed');
         };
 
@@ -409,7 +409,7 @@
                 });
                 const payload = await response.json();
                 if (!response.ok) {
-                    message.textContent = payload.message || 'No se pudo iniciar la ejecuciÃ³n del lote.';
+                    message.textContent = payload.message || 'No se pudo iniciar la ejecución del lote.';
                     message.classList.add('is-error');
                     setRunningState(false);
                     return;
@@ -420,7 +420,7 @@
                 renderProgress(payload.progress);
                 pollStatus();
             } catch {
-                message.textContent = 'No se pudo iniciar la ejecuciÃ³n del lote.';
+                message.textContent = 'No se pudo iniciar la ejecución del lote.';
                 message.classList.add('is-error');
                 setRunningState(false);
             }

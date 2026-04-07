@@ -281,3 +281,4 @@
 @foreach ($incidents as $incident)
     @include('reports.weapon-incidents.partials.case-modal', ['incident' => $incident, 'statusOptions' => $statusOptions])
 @endforeach
+

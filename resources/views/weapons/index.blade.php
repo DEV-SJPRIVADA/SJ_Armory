@@ -1,4 +1,4 @@
-<x-app-layout>
+﻿<x-app-layout>
     <x-slot name="header">
         <div class="weapon-header">
             <div class="weapon-header__row">
@@ -804,6 +804,7 @@
         window.syncWeaponsHorizontalScrollbar?.();
     })();
 </script>
+
 
 
 

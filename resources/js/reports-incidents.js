@@ -104,6 +104,35 @@ const initReportsIncidents = () => {
 
     modalitySelects.forEach(buildOptions);
 
+    const closeStatusSelects = Array.from(document.querySelectorAll('[data-close-status-select]'));
+
+    const syncCloseOutcomeVisibility = (statusSelect) => {
+        const targetId = statusSelect.dataset.targetOutcome;
+        const outcomeWrap = targetId ? document.getElementById(targetId) : null;
+
+        if (!outcomeWrap) {
+            return;
+        }
+
+        const outcomeSelect = outcomeWrap.querySelector('[data-close-outcome-select]');
+        const isCancelled = statusSelect.value === 'cancelled';
+
+        outcomeWrap.classList.toggle('hidden', isCancelled);
+
+        if (outcomeSelect) {
+            outcomeSelect.required = !isCancelled;
+
+            if (isCancelled) {
+                outcomeSelect.value = '';
+            }
+        }
+    };
+
+    closeStatusSelects.forEach((statusSelect) => {
+        syncCloseOutcomeVisibility(statusSelect);
+        statusSelect.addEventListener('change', () => syncCloseOutcomeVisibility(statusSelect));
+    });
+
     const createWeaponResultButton = (item, onSelect) => {
         const button = document.createElement('button');
         button.type = 'button';

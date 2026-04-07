@@ -64,6 +64,12 @@ class WeaponIncidentStructureTest extends TestCase
         $this->assertFalse($maintenance->requires_resolution_note);
         $this->assertSame(WeaponIncident::STATUS_IN_PROGRESS, $maintenance->default_status);
         $this->assertSame(72, $maintenance->sla_hours);
+
+        $this->assertSame([
+            WeaponIncident::OUTCOME_REINTEGRATED => 'Recuperada y reintegrada',
+            WeaponIncident::OUTCOME_RECOVERED_PENDING_VALIDATION => 'Recuperada pendiente de validación',
+            WeaponIncident::OUTCOME_SEIZURE_DEFINITIVE => 'Incautación definitiva',
+        ], WeaponIncident::closureOutcomeOptionsForType($incautada));
     }
 
     public function test_weapon_incident_follow_ups_are_related_and_cascade_on_delete(): void

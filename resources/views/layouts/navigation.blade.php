@@ -146,7 +146,7 @@
                     @endcan
                     @if (Auth::user()?->isAdmin())
                         <x-nav-link :href="route('weapon-imports.index')" :active="request()->routeIs('weapon-imports.*')">
-                            {{ __('Subir armas') }}
+                            {{ __('Cargas masivas') }}
                         </x-nav-link>
                     @endif
                     @can('viewAny', App\Models\Client::class)
@@ -264,7 +264,7 @@
             @endcan
             @if (Auth::user()?->isAdmin())
                 <x-responsive-nav-link :href="route('weapon-imports.index')" :active="request()->routeIs('weapon-imports.*')">
-                    {{ __('Subir armas') }}
+                    {{ __('Cargas masivas') }}
                 </x-responsive-nav-link>
             @endif
             @can('viewAny', App\Models\Client::class)

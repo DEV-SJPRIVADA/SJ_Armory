@@ -21,6 +21,13 @@
     $defaultReopenTime = $isFocusedIncident
         ? old('follow_up_at', now()->format('Y-m-d\TH:i'))
         : now()->format('Y-m-d\TH:i');
+    $closureOutcomeOptions = App\Models\WeaponIncident::closureOutcomeOptionsForType($incident->type);
+    $selectedClosureStatus = $isFocusedIncident
+        ? old('status', App\Models\WeaponIncident::STATUS_RESOLVED)
+        : App\Models\WeaponIncident::STATUS_RESOLVED;
+    $selectedClosureOutcome = $isFocusedIncident
+        ? old('closure_outcome', $incident->closure_outcome)
+        : $incident->closure_outcome;
 @endphp
 
 <div
@@ -83,6 +90,13 @@
                             <strong class="sj-case-pill__value">{{ $incident->observation ?: __('Sin resumen') }}</strong>
                             <span class="sj-case-pill__meta">{{ $incident->modality?->name ?? __('Sin modalidad') }}</span>
                         </article>
+                        @if ($incident->closureOutcomeLabel())
+                            <article class="sj-case-pill sj-case-pill--neutral">
+                                <span class="sj-case-pill__label">{{ __('Resultado de cierre') }}</span>
+                                <strong class="sj-case-pill__value">{{ $incident->closureOutcomeLabel() }}</strong>
+                                <span class="sj-case-pill__meta">{{ $incident->closureImpactLabel() }}</span>
+                            </article>
+                        @endif
                     </div>
 
                     <div class="sj-case-sheet__layout">
@@ -224,20 +238,46 @@
 
                                                 <div class="sj-form-grid sj-form-grid--two">
                                                     <div>
-                                                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500" for="incident_close_status_{{ $incident->id }}">{{ __('Cerrar como') }}</label>
-                                                        <select id="incident_close_status_{{ $incident->id }}" name="status" class="mt-1 block w-full rounded-xl border-slate-300 text-sm shadow-sm" required>
-                                                            <option value="{{ App\Models\WeaponIncident::STATUS_RESOLVED }}" @selected(!$isFocusedIncident || old('status') === App\Models\WeaponIncident::STATUS_RESOLVED)>{{ __('Resuelta') }}</option>
-                                                            <option value="{{ App\Models\WeaponIncident::STATUS_CANCELLED }}" @selected($isFocusedIncident && old('status') === App\Models\WeaponIncident::STATUS_CANCELLED)>{{ __('Cancelada') }}</option>
+                                                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500" for="incident_close_status_{{ $incident->id }}">{{ __('Estado final') }}</label>
+                                                        <select
+                                                            id="incident_close_status_{{ $incident->id }}"
+                                                            name="status"
+                                                            class="mt-1 block w-full rounded-xl border-slate-300 text-sm shadow-sm"
+                                                            data-close-status-select
+                                                            data-target-outcome="incident_close_outcome_wrap_{{ $incident->id }}"
+                                                            required
+                                                        >
+                                                            <option value="{{ App\Models\WeaponIncident::STATUS_RESOLVED }}" @selected($selectedClosureStatus === App\Models\WeaponIncident::STATUS_RESOLVED)>{{ __('Cerrado') }}</option>
+                                                            <option value="{{ App\Models\WeaponIncident::STATUS_CANCELLED }}" @selected($selectedClosureStatus === App\Models\WeaponIncident::STATUS_CANCELLED)>{{ __('Cancelado') }}</option>
                                                         </select>
                                                     </div>
 
                                                     <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                                                        @if ($incident->type?->persists_operational_block)
-                                                            {{ __('Cerrar este caso no devuelve el arma a operativa porque el tipo conserva bloqueo permanente.') }}
-                                                        @else
-                                                            {{ __('Cerrar como resuelta devuelve el arma a operativa cuando este tipo no conserva bloqueo permanente.') }}
-                                                        @endif
+                                                        {{ __('Cancelado solo debe usarse para reportes errados, duplicados o anulados. Si el caso fue real, ciérralo como cerrado y define el resultado del cierre.') }}
                                                     </div>
+                                                </div>
+
+                                                <div
+                                                    id="incident_close_outcome_wrap_{{ $incident->id }}"
+                                                    data-close-outcome-wrap
+                                                    class="{{ $selectedClosureStatus === App\Models\WeaponIncident::STATUS_CANCELLED ? 'hidden ' : '' }}mt-4"
+                                                >
+                                                    <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500" for="incident_close_outcome_{{ $incident->id }}">{{ __('Resultado del cierre') }}</label>
+                                                    <select
+                                                        id="incident_close_outcome_{{ $incident->id }}"
+                                                        name="closure_outcome"
+                                                        class="mt-1 block w-full rounded-xl border-slate-300 text-sm shadow-sm"
+                                                        data-close-outcome-select
+                                                        {{ $selectedClosureStatus !== App\Models\WeaponIncident::STATUS_CANCELLED ? 'required' : '' }}
+                                                    >
+                                                        <option value="">{{ __('Seleccione') }}</option>
+                                                        @foreach ($closureOutcomeOptions as $value => $label)
+                                                            <option value="{{ $value }}" @selected($selectedClosureOutcome === $value)>{{ $label }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                    <p class="mt-2 text-xs text-slate-500">
+                                                        {{ __('Este resultado define si el arma vuelve a operación o permanece fuera de servicio después del cierre.') }}
+                                                    </p>
                                                 </div>
 
                                                 <div class="mt-4">
@@ -259,6 +299,10 @@
                                             <div class="mt-1">
                                                 {{ $incident->resolution_note ?: __('No se dejó nota final de cierre.') }}
                                             </div>
+                                            @if ($incident->closureOutcomeLabel())
+                                                <div class="mt-2 font-semibold">{{ $incident->closureOutcomeLabel() }}</div>
+                                                <div class="mt-1">{{ $incident->closureImpactLabel() }}</div>
+                                            @endif
                                         </div>
 
                                         <form method="POST" action="{{ route('weapon-incidents.reopen', $incident) }}" class="sj-case-form">
@@ -309,3 +353,4 @@
         </section>
     </div>
 </div>
+

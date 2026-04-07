@@ -98,14 +98,21 @@ class WeaponIncidentController extends Controller
 
         $data = $request->validate([
             'status' => ['required', Rule::in([WeaponIncident::STATUS_RESOLVED, WeaponIncident::STATUS_CANCELLED])],
+            'closure_outcome' => ['nullable', 'string', 'max:100'],
             'resolution_note' => ['nullable', 'string'],
             'redirect_to' => ['nullable', 'url'],
         ]);
 
+        if ($data['status'] === WeaponIncident::STATUS_RESOLVED && empty($data['closure_outcome'])) {
+            return back()->withErrors(['closure_outcome' => 'Seleccione el resultado del cierre para definir el impacto operativo.'])->withInput();
+        }
+
         try {
             $this->service->close($weaponIncident, $data, $request->user());
         } catch (InvalidArgumentException $e) {
-            return back()->withErrors(['resolution_note' => $e->getMessage()])->withInput();
+            $field = str_contains(mb_strtolower($e->getMessage()), 'resultado') ? 'closure_outcome' : 'resolution_note';
+
+            return back()->withErrors([$field => $e->getMessage()])->withInput();
         }
 
         return redirect()

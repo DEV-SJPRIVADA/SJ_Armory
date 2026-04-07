@@ -29,7 +29,7 @@ class WeaponImportController extends Controller
             ->latest()
             ->get();
 
-        return view('weapon-imports.index', [
+        return view('weapon-imports.center', [
             'batches' => $batches,
         ]);
     }
@@ -38,7 +38,7 @@ class WeaponImportController extends Controller
     {
         $selectedBatch = $this->loadBatch($weaponImportBatch->id);
 
-        return view('weapon-imports.show', [
+        return view('weapon-imports.batch', [
             'selectedBatch' => $selectedBatch,
             'openPreview' => $request->boolean('preview') && ($selectedBatch->isDraft() || $selectedBatch->isProcessing()),
         ]);
@@ -48,10 +48,13 @@ class WeaponImportController extends Controller
     {
         $data = $request->validate([
             'document' => ['required', 'file', 'mimes:xlsx,csv,txt', 'max:10240'],
+            'type' => ['nullable', 'string'],
         ]);
 
+        $type = $this->resolveImportType($data['type'] ?? null);
+
         try {
-            $batch = $importService->createPreviewBatch($data['document'], $request->user());
+            $batch = $importService->createPreviewBatch($data['document'], $request->user(), $type);
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (RuntimeException $exception) {
@@ -59,7 +62,7 @@ class WeaponImportController extends Controller
                 'document' => $exception->getMessage(),
             ]);
         } catch (Throwable $exception) {
-            Log::error('Weapon import preview failed.', [
+            Log::error('Import preview failed.', [
                 'user_id' => $request->user()?->id,
                 'file_name' => $data['document']->getClientOriginalName(),
                 'exception' => $exception,
@@ -184,8 +187,19 @@ class WeaponImportController extends Controller
                 'rows' => fn ($query) => $query
                     ->orderByRaw("CASE action WHEN 'error' THEN 0 WHEN 'create' THEN 1 WHEN 'update' THEN 2 WHEN 'no_change' THEN 3 ELSE 4 END")
                     ->orderBy('row_number'),
+                'rows.weapon',
+                'rows.client',
             ])
             ->findOrFail($id);
     }
+
+    private function resolveImportType(?string $type): string
+    {
+        return in_array($type, [WeaponImportBatch::TYPE_CLIENT, WeaponImportBatch::TYPE_WEAPON], true)
+            ? $type
+            : WeaponImportBatch::TYPE_WEAPON;
+    }
 }
+
+
 

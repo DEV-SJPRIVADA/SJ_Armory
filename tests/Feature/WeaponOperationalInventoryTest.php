@@ -43,7 +43,7 @@ class WeaponOperationalInventoryTest extends TestCase
         $this->createIncident($maintenance, 'en_mantenimiento', WeaponIncident::STATUS_IN_PROGRESS, $admin);
         $this->createIncident($stolen, 'hurtada', WeaponIncident::STATUS_OPEN, $admin);
         $this->createIncident($seized, 'incautada', WeaponIncident::STATUS_IN_PROGRESS, $admin);
-        $this->createIncident($retired, 'dar_de_baja', WeaponIncident::STATUS_RESOLVED, $admin);
+        $this->createIncident($retired, 'dar_de_baja', WeaponIncident::STATUS_RESOLVED, $admin, WeaponIncident::OUTCOME_RETIRED_DEFINITIVE);
 
         $this->actingAs($admin)
             ->get(route('weapons.index'))
@@ -136,7 +136,7 @@ class WeaponOperationalInventoryTest extends TestCase
         return $weapon;
     }
 
-    private function createIncident(Weapon $weapon, string $typeCode, string $status, User $admin): WeaponIncident
+    private function createIncident(Weapon $weapon, string $typeCode, string $status, User $admin, ?string $closureOutcome = null): WeaponIncident
     {
         $type = IncidentType::query()->where('code', $typeCode)->firstOrFail();
 
@@ -151,6 +151,7 @@ class WeaponOperationalInventoryTest extends TestCase
             'resolved_at' => $status === WeaponIncident::STATUS_RESOLVED ? now() : null,
             'resolved_by' => $status === WeaponIncident::STATUS_RESOLVED ? $admin->id : null,
             'resolution_note' => $status === WeaponIncident::STATUS_RESOLVED ? 'Cierre de prueba' : null,
+            'closure_outcome' => $status === WeaponIncident::STATUS_RESOLVED ? $closureOutcome : null,
         ]);
     }
 }

@@ -80,3 +80,4 @@ class WeaponIncidentUpdate extends Model
         return self::eventTypeOptions()[$this->event_type] ?? $this->event_type;
     }
 }
+

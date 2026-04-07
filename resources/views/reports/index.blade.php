@@ -44,10 +44,9 @@
                 </a>
 
                 <a href="{{ route('reports.weapon-incidents.index') }}" class="sj-report-card sj-report-card--accent">
-                    <span class="sj-report-card__eyebrow">{{ __('Novedades') }}</span>
-                    <div class="sj-report-card__title">{{ __('Panel gerencial') }}</div>
-                    <div class="sj-report-card__subtitle">{{ __('Incidentes por tipo, modalidad y arma.') }}</div>
-                    <span class="sj-report-card__footer">{{ __('Panel gerencial') }}</span>
+                    <div class="sj-report-card__title">{{ __('Análisis Estratégico de Incidentes') }}</div>
+                    <div class="sj-report-card__subtitle">{{ __('Distribución y caracterización de eventos por tipología, modalidad y medio empleado') }}</div>
+                    <span class="sj-report-card__footer">{{ __('Ver análisis') }}</span>
                 </a>
             </div>
         </div>

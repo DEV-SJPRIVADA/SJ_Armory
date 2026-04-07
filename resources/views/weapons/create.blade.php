@@ -17,7 +17,7 @@
                             'showInternalCode' => false,
                             'requirePermitPhoto' => true,
                             'cancelUrl' => route('weapons.index'),
-                            'submitLabel' => __('Guardar'),
+                            'submitLabel' => __('Crear arma'),
                         ])
                     </form>
                 </div>

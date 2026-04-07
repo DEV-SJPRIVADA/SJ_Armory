@@ -9,11 +9,15 @@ class WeaponImportBatch extends Model
 {
     use HasFactory;
 
+    public const TYPE_WEAPON = 'weapon';
+    public const TYPE_CLIENT = 'client';
+
     protected $fillable = [
         'file_id',
         'uploaded_by',
         'executed_by',
         'status',
+        'type',
         'source_name',
         'total_rows',
         'create_count',
@@ -78,6 +82,24 @@ class WeaponImportBatch extends Model
     public function hasErrors(): bool
     {
         return (int) $this->error_count > 0;
+    }
+
+    public function isWeaponImport(): bool
+    {
+        return ($this->type ?: self::TYPE_WEAPON) === self::TYPE_WEAPON;
+    }
+
+    public function isClientImport(): bool
+    {
+        return $this->type === self::TYPE_CLIENT;
+    }
+
+    public function typeLabel(): string
+    {
+        return match ($this->type ?: self::TYPE_WEAPON) {
+            self::TYPE_CLIENT => 'Clientes',
+            default => 'Armas',
+        };
     }
 
     public function progressPercentage(): int

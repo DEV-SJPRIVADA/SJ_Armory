@@ -66,6 +66,7 @@ class WeaponIncidentService
                     'resolved_at' => in_array($status, [WeaponIncident::STATUS_RESOLVED, WeaponIncident::STATUS_CANCELLED], true) ? now() : null,
                     'resolved_by' => in_array($status, [WeaponIncident::STATUS_RESOLVED, WeaponIncident::STATUS_CANCELLED], true) ? $actor->id : null,
                     'resolution_note' => Arr::get($data, 'resolution_note'),
+                    'closure_outcome' => null,
                 ]);
 
                 $this->createUpdateRecord($incident, [
@@ -163,7 +164,8 @@ class WeaponIncidentService
                         $statusTo,
                         $actor,
                         Arr::get($data, 'note') ?: $update->note,
-                        $happenedAt
+                        $happenedAt,
+                        Arr::get($data, 'closure_outcome')
                     );
                 }
 
@@ -203,15 +205,31 @@ class WeaponIncidentService
     {
         $status = (string) ($data['status'] ?? WeaponIncident::STATUS_RESOLVED);
         $resolutionNote = trim((string) Arr::get($data, 'resolution_note', ''));
+        $closureOutcome = Arr::get($data, 'closure_outcome');
 
         if ($incident->type?->requires_resolution_note && $resolutionNote === '') {
             throw new InvalidArgumentException('Esta novedad exige una nota de cierre para conservar la trazabilidad.');
+        }
+
+        if ($status === WeaponIncident::STATUS_RESOLVED) {
+            if (! $closureOutcome) {
+                throw new InvalidArgumentException('Seleccione el resultado del cierre para definir el impacto operativo.');
+            }
+
+            $allowedOutcomes = WeaponIncident::closureOutcomeOptionsForType($incident->type);
+
+            if (! array_key_exists($closureOutcome, $allowedOutcomes)) {
+                throw new InvalidArgumentException('El resultado de cierre no aplica para este tipo de novedad.');
+            }
+        } else {
+            $closureOutcome = null;
         }
 
         $this->addUpdate($incident, [
             'event_type' => WeaponIncidentUpdate::EVENT_CLOSURE,
             'status' => $status,
             'note' => $resolutionNote,
+            'closure_outcome' => $closureOutcome,
             'happened_at' => now(),
         ], $actor);
 
@@ -230,6 +248,7 @@ class WeaponIncidentService
             'event_type' => WeaponIncidentUpdate::EVENT_REOPEN,
             'status' => $status,
             'note' => Arr::get($data, 'message'),
+            'closure_outcome' => null,
             'happened_at' => Arr::get($data, 'follow_up_at', now()),
         ], $actor);
 
@@ -286,7 +305,7 @@ class WeaponIncidentService
         ]);
     }
 
-    private function applyStatusTransition(WeaponIncident $incident, string $statusTo, User $actor, string $resolutionNote, mixed $happenedAt): void
+    private function applyStatusTransition(WeaponIncident $incident, string $statusTo, User $actor, string $resolutionNote, mixed $happenedAt, ?string $closureOutcome = null): void
     {
         $updates = ['status' => $statusTo];
 
@@ -294,10 +313,15 @@ class WeaponIncidentService
             $updates['resolved_at'] = $happenedAt;
             $updates['resolved_by'] = $actor->id;
             $updates['resolution_note'] = $resolutionNote;
+            $updates['closure_outcome'] = $statusTo === WeaponIncident::STATUS_RESOLVED ? $closureOutcome : null;
+            if ($statusTo === WeaponIncident::STATUS_CANCELLED) {
+                $updates['closure_outcome'] = null;
+            }
         } else {
             $updates['resolved_at'] = null;
             $updates['resolved_by'] = null;
             $updates['resolution_note'] = null;
+            $updates['closure_outcome'] = null;
         }
 
         $incident->update($updates);
