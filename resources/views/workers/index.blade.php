@@ -1,19 +1,22 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('Trabajadores') }}
-            </h2>
-            @can('create', App\Models\Worker::class)
-                <a href="{{ route('workers.create') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-900">
-                    {{ __('Nuevo trabajador') }}
-                </a>
-            @endcan
+        <div class="sj-section-header">
+            <div class="sj-section-header__main">
+                <h2 class="sj-section-header__title">{{ __('Trabajadores') }}</h2>
+            </div>
+
+            <div class="sj-section-header__actions">
+                @can('create', App\Models\Worker::class)
+                    <a href="{{ route('workers.create') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-900">
+                        {{ __('Nuevo trabajador') }}
+                    </a>
+                @endcan
+            </div>
         </div>
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="sj-page-shell sj-page-shell--wide">
             @if (session('status'))
                 <div class="mb-4 rounded bg-green-50 p-3 text-sm text-green-700">
                     {{ session('status') }}

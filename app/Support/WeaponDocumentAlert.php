@@ -41,7 +41,7 @@ class WeaponDocumentAlert
         if ($days <= 90) {
             return [
                 'days' => $days,
-                'state' => 'Próximo a vencer',
+                'state' => "Pr\u{00F3}ximo a vencer",
                 'observation' => self::revalidationMessage($days),
                 'row_class' => 'bg-orange-200',
                 'text_class' => 'text-orange-800',
@@ -92,14 +92,14 @@ class WeaponDocumentAlert
 
     private static function revalidationMessage(int $days): string
     {
-        return 'Faltan ' . $days . ' ' . self::pluralize($days, 'día', 'días') . ' para revalidar';
+        return 'Faltan ' . $days . ' ' . self::pluralize($days, "d\u{00ED}a", "d\u{00ED}as") . ' para revalidar';
     }
 
     private static function expiredMessage(int $days): string
     {
         $expiredDays = abs($days);
 
-        return $expiredDays . ' ' . self::pluralize($expiredDays, 'día', 'días') . ' vencido. Fuera de servicio';
+        return $expiredDays . ' ' . self::pluralize($expiredDays, "d\u{00ED}a", "d\u{00ED}as") . ' vencido. Fuera de servicio';
     }
 
     private static function pluralize(int $value, string $singular, string $plural): string

@@ -23,7 +23,7 @@
                 <!-- Page Heading -->
                 @if (isset($header))
                     <header class="sj-page-header">
-                        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                        <div class="sj-page-shell sj-page-shell--wide py-6">
                             {{ $header }}
                         </div>
                     </header>

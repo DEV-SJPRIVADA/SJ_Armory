@@ -1,17 +1,20 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('Armas por cliente') }}
-            </h2>
-            <a href="{{ route('reports.index') }}" class="text-sm text-gray-600 hover:text-gray-900">
-                {{ __('Volver') }}
-            </a>
+        <div class="sj-section-header">
+            <div class="sj-section-header__main">
+                <h2 class="sj-section-header__title">{{ __('Armas por cliente') }}</h2>
+            </div>
+
+            <div class="sj-section-header__actions">
+                <a href="{{ route('reports.index') }}" class="text-sm text-gray-600 hover:text-gray-900">
+                    {{ __('Volver') }}
+                </a>
+            </div>
         </div>
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="sj-page-shell sj-page-shell--wide">
             <form method="GET" class="mb-4 flex items-center gap-2">
                 <label class="text-sm text-gray-600">{{ __('Cliente') }}</label>
                 <select name="client_id" class="rounded-md border-gray-300 text-sm">

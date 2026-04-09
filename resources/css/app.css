@@ -226,6 +226,89 @@
         overflow: visible;
     }
 
+    .sj-page-shell {
+        box-sizing: border-box;
+        margin-inline: auto;
+        max-width: 1440px;
+        padding-inline: 1rem;
+        width: 100%;
+    }
+
+    .sj-page-shell--wide {
+        max-width: 1680px;
+    }
+
+    .sj-section-header {
+        align-items: flex-end;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem 1.5rem;
+        justify-content: space-between;
+    }
+
+    .sj-section-header__main {
+        border-left: 4px solid var(--sj-blue);
+        min-width: 0;
+        padding-left: 0.9rem;
+    }
+
+    .sj-section-header__eyebrow {
+        color: #4b6280;
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        margin: 0 0 0.45rem;
+        text-transform: uppercase;
+    }
+
+    .sj-section-header__title {
+        color: #0f172a;
+        font-size: clamp(1.35rem, 1.8vw, 1.75rem);
+        font-weight: 800;
+        letter-spacing: -0.035em;
+        line-height: 1.04;
+        margin: 0;
+    }
+
+    .sj-section-header__subtitle {
+        color: #52637a;
+        font-size: 0.9rem;
+        line-height: 1.45;
+        margin: 0.4rem 0 0;
+        max-width: 44rem;
+    }
+
+    .sj-section-header__actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        justify-content: flex-end;
+    }
+
+    @media (min-width: 640px) {
+        .sj-page-shell {
+            padding-inline: 1.5rem;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .sj-page-shell {
+            padding-inline: 2rem;
+        }
+    }
+
+    @media (max-width: 767px) {
+        .sj-section-header {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .sj-section-header__actions {
+            justify-content: flex-start;
+        }
+    }
+
     .sj-shell main .bg-white {
         border: 1px solid #e2e8f0;
         box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
@@ -417,6 +500,60 @@
         color: var(--sj-ink);
     }
 
+    .sj-dashboard-header {
+        align-items: end;
+        display: grid;
+        gap: 1rem 1.5rem;
+    }
+
+    .sj-dashboard-header__main {
+        min-width: 0;
+    }
+
+    .sj-dashboard-header__eyebrow {
+        color: #4b6280;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        margin: 0 0 0.45rem;
+        text-transform: uppercase;
+    }
+
+    .sj-dashboard-header__title {
+        color: #0f172a;
+        font-size: clamp(1.45rem, 2vw, 2.15rem);
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        line-height: 1.05;
+        margin: 0;
+    }
+
+    .sj-dashboard-header__subtitle {
+        color: #52637a;
+        font-size: 0.96rem;
+        line-height: 1.6;
+        margin: 0.65rem 0 0;
+        max-width: 52rem;
+    }
+
+    .sj-dashboard-header__side {
+        display: grid;
+        gap: 0.85rem;
+        justify-items: end;
+    }
+
+    .sj-dashboard-header .sj-dashboard-stamp {
+        background: linear-gradient(180deg, #f5f9ff 0%, #edf4fc 100%);
+        border-color: #c7d9ec;
+        box-shadow: none;
+        min-width: min(100%, 36rem);
+        width: 100%;
+    }
+
+    .sj-dashboard-header .sj-dashboard-meta {
+        justify-content: flex-end;
+    }
+
     .sj-dashboard-hero {
         align-items: end;
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 251, 255, 0.92) 100%);
@@ -429,6 +566,10 @@
         overflow: hidden;
         padding: 1.5rem;
         position: relative;
+    }
+
+    .sj-dashboard-hero--header {
+        margin-bottom: 0;
     }
 
     .sj-dashboard-hero::after {
@@ -3053,6 +3194,10 @@
             grid-template-columns: minmax(0, 1.08fr) minmax(22rem, 0.92fr);
         }
 
+        .sj-dashboard-header {
+            grid-template-columns: minmax(0, 1.55fr) minmax(18rem, 0.95fr);
+        }
+
         .sj-dashboard-hero {
             grid-template-columns: minmax(0, 1.55fr) minmax(18rem, 0.95fr);
             padding: 1.75rem;
@@ -3224,6 +3369,14 @@
         }
 
         .sj-filter-console__actions {
+            justify-content: flex-start;
+        }
+
+        .sj-dashboard-header__side {
+            justify-items: start;
+        }
+
+        .sj-dashboard-header .sj-dashboard-meta {
             justify-content: flex-start;
         }
 

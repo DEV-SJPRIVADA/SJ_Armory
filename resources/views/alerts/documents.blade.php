@@ -1,7 +1,7 @@
 @push('styles')
     <style>
         .sj-page-header { position: sticky; top: 4rem; z-index: 1100; }
-        .alerts-toolbar-shell { max-width: 68rem; margin: 0 auto; width: 100%; }
+        .alerts-toolbar-shell { margin: 0 auto; max-width: none; width: 100%; }
         .alerts-toolbar { display: flex; flex-direction: column; gap: 1rem; width: 100%; }
         .alerts-toolbar__top { display: grid; align-items: center; column-gap: 2.5rem; grid-template-columns: minmax(18rem, 1fr) auto minmax(7rem, 1fr); }
         .alerts-toolbar__title { margin: 0; color: #111827; font-size: 1.12rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1; white-space: nowrap; }
@@ -112,7 +112,7 @@
     </x-slot>
 
     <div class="py-8" data-alerts-page>
-        <div class="mx-auto max-w-6xl space-y-6 px-4 sm:px-6 lg:px-8">
+        <div class="sj-page-shell sj-page-shell--wide space-y-6">
             <section class="alerts-overview">
                 <button type="button" class="alerts-card alerts-card--expired" data-open-modal="expired">
                     <span class="alerts-card__eyebrow">{{ $monthLabel }}</span>

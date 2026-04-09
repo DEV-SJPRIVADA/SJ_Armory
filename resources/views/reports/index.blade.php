@@ -1,17 +1,18 @@
 <x-app-layout>
     <x-slot name="header">
-        <div>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('Reportes') }}
-            </h2>
-            <p class="mt-1 text-sm text-slate-500">
-                {{ __('Centro gerencial para revisar estado, historial y novedades operativas.') }}
-            </p>
+        <div class="sj-section-header">
+            <div class="sj-section-header__main">
+                <p class="sj-section-header__eyebrow">{{ __('Centro de reportes') }}</p>
+                <h2 class="sj-section-header__title">{{ __('Reportes') }}</h2>
+                <p class="sj-section-header__subtitle">
+                    {{ __('Centro gerencial para revisar estado, historial y novedades operativas.') }}
+                </p>
+            </div>
         </div>
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
+        <div class="sj-page-shell sj-page-shell--wide space-y-6">
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <a href="{{ route('reports.assignments') }}" class="sj-report-card">
                     <span class="sj-report-card__eyebrow">{{ __('Consulta') }}</span>

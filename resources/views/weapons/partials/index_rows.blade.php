@@ -40,6 +40,14 @@
         data-show-url="{{ route('weapons.show', $weapon) }}"
         data-edit-url="{{ route('weapons.edit', $weapon) }}"
         data-can-edit="{{ auth()->user()?->can('update', $weapon) ? '1' : '0' }}"
+        data-export-client="{{ $weapon->activeClientAssignment?->client?->name ?? __('Sin destino') }}"
+        data-export-type="{{ $weapon->weapon_type }}"
+        data-export-brand="{{ $weapon->brand }}"
+        data-export-serial="{{ $weapon->serial_number }}"
+        data-export-caliber="{{ $weapon->caliber }}"
+        data-export-permit-type="{{ $weapon->permit_type ? \Illuminate\Support\Str::ucfirst($weapon->permit_type) : '-' }}"
+        data-export-permit-number="{{ $weapon->permit_number ?? '-' }}"
+        data-export-expires-at="{{ $weapon->permit_expires_at?->format('Y-m-d') ?? '-' }}"
     >
         <td class="px-3 py-2 text-center whitespace-nowrap" data-searchable="false">
             <input

@@ -223,20 +223,32 @@
             </div>
         </div>
         <div class="flex items-center justify-between gap-2 border-t px-4 py-3">
+            <div class="flex flex-1 flex-wrap items-center gap-3">
+                <div class="flex items-center gap-2">
+                    <button id="image_editor_rotate_left" type="button" class="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100">
+                        {{ __('Girar izquierda') }}
+                    </button>
+                    <button id="image_editor_rotate_right" type="button" class="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100">
+                        {{ __('Girar derecha') }}
+                    </button>
+                </div>
+                <div class="flex min-w-[18rem] flex-1 flex-wrap items-center gap-2">
+                    <span class="text-xs font-medium text-gray-600">{{ __('Ajuste fino') }}</span>
+                    <input id="image_editor_rotate_fine" type="range" min="-5" max="5" step="0.1" value="0" class="h-2 min-w-[10rem] flex-1 cursor-pointer accent-indigo-600">
+                    <span id="image_editor_rotate_value" class="w-14 text-right text-xs font-medium text-gray-600">0.0°</span>
+                    <button id="image_editor_rotate_reset" type="button" class="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100">
+                        {{ __('Restablecer') }}
+                    </button>
+                </div>
+            </div>
             <div class="flex items-center gap-2">
-                <button id="image_editor_rotate_left" type="button" class="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100">
-                    {{ __('Girar izquierda') }}
+                <button id="image_editor_cancel" type="button" class="text-sm text-gray-600 hover:text-gray-900">
+                    {{ __('Cancelar') }}
                 </button>
-                <button id="image_editor_rotate_right" type="button" class="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100">
-                    {{ __('Girar derecha') }}
+                <button id="image_editor_crop" type="button" class="rounded bg-indigo-600 px-3 py-1 text-xs text-white hover:bg-indigo-700">
+                    {{ __('Guardar') }}
                 </button>
             </div>
-            <button id="image_editor_cancel" type="button" class="text-sm text-gray-600 hover:text-gray-900">
-                {{ __('Cancelar') }}
-            </button>
-            <button id="image_editor_crop" type="button" class="rounded bg-indigo-600 px-3 py-1 text-xs text-white hover:bg-indigo-700">
-                {{ __('Guardar') }}
-            </button>
         </div>
     </div>
 </div>
@@ -278,6 +290,7 @@
         let cropper = null;
         let editorSourceFile = null;
         let editorRotation = 0;
+        let editorFineRotation = 0;
         const photoGuidesByType = @json($photoGuidesByType);
         const dropZones = Array.from(document.querySelectorAll('[data-drop-zone]'));
         const normalizeText = (value) => {
@@ -319,6 +332,9 @@
     const cropButton = document.getElementById('image_editor_crop');
 	    const rotateLeftButton = document.getElementById('image_editor_rotate_left');
 	    const rotateRightButton = document.getElementById('image_editor_rotate_right');
+        const fineRotateInput = document.getElementById('image_editor_rotate_fine');
+        const fineRotateValue = document.getElementById('image_editor_rotate_value');
+        const resetRotateButton = document.getElementById('image_editor_rotate_reset');
         const weaponTypeInput = document.getElementById('weapon_type');
 
         const syncGuideForInput = (input) => {
@@ -427,6 +443,22 @@
             restore: false,
             background: false,
         });
+
+        requestAnimationFrame(() => {
+            if (cropper) {
+                cropper.rotateTo(editorFineRotation);
+            }
+        });
+    };
+
+    const syncFineRotationUi = () => {
+        if (fineRotateInput) {
+            fineRotateInput.value = editorFineRotation.toString();
+        }
+
+        if (fineRotateValue) {
+            fineRotateValue.textContent = `${editorFineRotation.toFixed(1)}°`;
+        }
     };
 
     const renderEditorImage = async () => {
@@ -474,6 +506,8 @@
         activeInput = input;
         editorSourceFile = file;
         editorRotation = 0;
+        editorFineRotation = 0;
+        syncFineRotationUi();
 
         modal.classList.remove('hidden');
         modal.classList.add('flex');
@@ -540,6 +574,8 @@
         modalImage.removeAttribute('src');
         editorSourceFile = null;
         editorRotation = 0;
+        editorFineRotation = 0;
+        syncFineRotationUi();
 
         if (discardSelection && activeInput) {
 	            const previewId = activeInput.dataset.previewTarget;
@@ -598,6 +634,24 @@
         }
 
         editorRotation += 90;
+        await renderEditorImage();
+    });
+    fineRotateInput?.addEventListener('input', () => {
+        editorFineRotation = Number.parseFloat(fineRotateInput.value || '0') || 0;
+        syncFineRotationUi();
+
+        if (cropper) {
+            cropper.rotateTo(editorFineRotation);
+        }
+    });
+    resetRotateButton?.addEventListener('click', async () => {
+        if (!editorSourceFile) {
+            return;
+        }
+
+        editorRotation = 0;
+        editorFineRotation = 0;
+        syncFineRotationUi();
         await renderEditorImage();
     });
 

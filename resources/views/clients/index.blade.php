@@ -53,7 +53,7 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-7xl mx-auto space-y-4 px-4 sm:px-6 lg:px-8">
+        <div class="sj-page-shell sj-page-shell--wide space-y-4">
             @if (session('status'))
                 <div class="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                     {{ session('status') }}

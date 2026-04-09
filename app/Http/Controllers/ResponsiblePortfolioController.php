@@ -18,7 +18,17 @@ class ResponsiblePortfolioController extends Controller
             abort(403);
         }
 
-        $responsibles = User::whereIn('role', ['RESPONSABLE', 'ADMIN'])->orderBy('name')->get();
+        $activeWeaponCount = WeaponClientAssignment::query()
+            ->selectRaw('count(*)')
+            ->whereColumn('responsible_user_id', 'users.id')
+            ->where('is_active', true);
+
+        $responsibles = User::query()
+            ->whereIn('role', ['RESPONSABLE', 'ADMIN'])
+            ->withCount('clients')
+            ->addSelect(['active_weapons_count' => $activeWeaponCount])
+            ->orderBy('name')
+            ->get();
 
         return view('portfolios.index', compact('responsibles'));
     }
@@ -44,8 +54,20 @@ class ResponsiblePortfolioController extends Controller
             ->pluck('total', 'client_id')
             ->all();
         $responsibles = User::whereIn('role', ['RESPONSABLE', 'ADMIN'])->orderBy('name')->get();
+        $assignedCount = count($assigned);
+        $blockedCount = count(array_filter($blockedClientCounts, fn ($count) => $count > 0));
+        $availableCount = max($clients->count() - $assignedCount, 0);
 
-        return view('portfolios.edit', compact('user', 'clients', 'assigned', 'blockedClientCounts', 'responsibles'));
+        return view('portfolios.edit', compact(
+            'user',
+            'clients',
+            'assigned',
+            'blockedClientCounts',
+            'responsibles',
+            'assignedCount',
+            'blockedCount',
+            'availableCount',
+        ));
     }
 
     public function update(Request $request, User $user)

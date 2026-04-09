@@ -1,10 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-4">
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <div class="sj-section-header">
+            <div class="sj-section-header__main">
+                <h2 class="sj-section-header__title">
                     {{ __('Auditoría reciente') }}
                 </h2>
+            </div>
+            <div class="sj-section-header__actions">
                 <form method="GET" class="flex flex-wrap items-center gap-2">
                     <label class="text-sm text-gray-600">{{ __('Rango') }}</label>
                     <select name="days" class="rounded-md border-gray-300 text-sm">
@@ -21,15 +23,15 @@
                         {{ __('Filtrar') }}
                     </button>
                 </form>
+                <a href="{{ route('reports.index') }}" class="text-sm text-gray-600 hover:text-gray-900">
+                    {{ __('Volver') }}
+                </a>
             </div>
-            <a href="{{ route('reports.index') }}" class="text-sm text-gray-600 hover:text-gray-900">
-                {{ __('Volver') }}
-            </a>
         </div>
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="sj-page-shell sj-page-shell--wide">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <div class="overflow-x-auto">

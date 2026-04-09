@@ -1,10 +1,11 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('Transferencias') }}
-            </h2>
-            <div class="flex items-center gap-3">
+        <div class="sj-section-header">
+            <div class="sj-section-header__main">
+                <h2 class="sj-section-header__title">{{ __('Transferencias') }}</h2>
+            </div>
+
+            <div class="sj-section-header__actions">
                 <a href="{{ route('dashboard') }}" class="text-sm text-gray-600 hover:text-gray-900">
                     {{ __('Volver') }}
                 </a>
@@ -20,7 +21,7 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
+        <div class="sj-page-shell sj-page-shell--wide space-y-6">
             @if (session('status'))
                 <div class="rounded bg-green-50 p-3 text-sm text-green-700">
                     {{ session('status') }}

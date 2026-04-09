@@ -13,6 +13,7 @@ use App\Models\WeaponPhoto;
 use App\Services\WeaponDocumentService;
 use App\Support\WeaponDocumentAlert;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -77,21 +78,62 @@ class WeaponController extends Controller
     public function export(Request $request): StreamedResponse
     {
         $this->authorize('viewAny', Weapon::class);
+        $format = $this->normalizeExportFormat($request->input('format'));
 
-        $query = $this->buildIndexQuery($request)
+        $query = $this->buildExportQuery($request)
             ->with($this->indexRelationships());
 
         $this->applyInventoryOrdering($query);
 
         return $this->streamWeaponsExport(
             $query->get(),
-            'armamento-filtrado-' . now()->format('Ymd-His') . '.csv'
+            'armamento-filtrado-' . now()->format('Ymd-His'),
+            $format
         );
+    }
+
+    public function exportPreview(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Weapon::class);
+
+        $hasExplicitFilters = $this->hasExplicitExportFilters($request);
+        $query = $this->buildExportQuery($request);
+        $count = (clone $query)->count();
+
+        if (!$hasExplicitFilters) {
+            return response()->json([
+                'count' => $count,
+                'has_filters' => false,
+                'items' => [],
+                'truncated' => false,
+            ]);
+        }
+
+        $previewLimit = 50;
+        $previewQuery = (clone $query)
+            ->with($this->indexRelationships());
+
+        $this->applyInventoryOrdering($previewQuery);
+
+        $items = $previewQuery
+            ->limit($previewLimit)
+            ->get()
+            ->map(fn (Weapon $weapon) => $this->weaponPreviewRow($weapon))
+            ->values()
+            ->all();
+
+        return response()->json([
+            'count' => $count,
+            'has_filters' => true,
+            'items' => $items,
+            'truncated' => $count > $previewLimit,
+        ]);
     }
 
     public function exportSelected(Request $request): StreamedResponse
     {
         $this->authorize('viewAny', Weapon::class);
+        $format = $this->normalizeExportFormat($request->input('format'));
 
         $validated = $request->validate([
             'weapon_ids' => ['required', 'array', 'min:1'],
@@ -125,7 +167,8 @@ class WeaponController extends Controller
 
         return $this->streamWeaponsExport(
             $weapons,
-            'armamento-seleccionado-' . now()->format('Ymd-His') . '.csv'
+            'armamento-seleccionado-' . now()->format('Ymd-His'),
+            $format
         );
     }
 
@@ -574,7 +617,7 @@ class WeaponController extends Controller
 
         return redirect()
             ->route('weapons.show', $weapon)
-            ->with('status', 'La eliminacion fisica de armas esta deshabilitada. Usa historial y novedades para mantener la trazabilidad.');
+            ->with('status', 'La eliminación física de armas esta deshabilitada. Usa historial y novedades para mantener la trazabilidad.');
     }
 
     private function ownershipOptions(): array
@@ -591,7 +634,7 @@ class WeaponController extends Controller
         return [
             'Escopeta',
             'Pistola',
-            'Revólver',
+            "Rev\u{00F3}lver",
             'Subametralladora',
         ];
     }
@@ -606,6 +649,11 @@ class WeaponController extends Controller
         ];
     }
 
+    private function normalizeExportFormat(mixed $format): string
+    {
+        return $format === 'csv' ? 'csv' : 'xlsx';
+    }
+
     private function buildIndexQuery(Request $request): Builder
     {
         $query = Weapon::query();
@@ -617,6 +665,53 @@ class WeaponController extends Controller
         $this->applyFilters($query, $filters);
 
         return $query;
+    }
+
+    private function buildExportQuery(Request $request): Builder
+    {
+        $query = Weapon::query();
+        $filters = $this->filtersFromRequest($request);
+
+        if (!$this->hasExplicitExportFilters($request)) {
+            $filters['inventory_scope'] = 'all';
+        }
+
+        $this->applyInventoryScope($query, $filters['inventory_scope']);
+        $this->applyRoleScope($query, $request->user());
+        $this->applySearch($query, trim((string) $request->input('q', '')));
+        $this->applyFilters($query, $filters);
+
+        return $query;
+    }
+
+    private function hasExplicitExportFilters(Request $request): bool
+    {
+        $filters = $this->filtersFromRequest($request);
+
+        if (trim((string) $request->input('q', '')) !== '') {
+            return true;
+        }
+
+        if (($filters['inventory_scope'] ?? 'operational') !== 'operational') {
+            return true;
+        }
+
+        foreach ([
+            'client_id',
+            'responsible_user_id',
+            'weapon_type',
+            'incident_type_id',
+            'incident_status',
+            'permit_expires_from',
+            'permit_expires_to',
+            'destination',
+        ] as $key) {
+            if (!empty($filters[$key])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function applyInventoryScope(Builder $query, string $scope): void
@@ -806,7 +901,16 @@ class WeaponController extends Controller
         return [$clients, $responsibles];
     }
 
-    private function streamWeaponsExport(iterable $weapons, string $filename): StreamedResponse
+    private function streamWeaponsExport(iterable $weapons, string $filename, string $format): StreamedResponse
+    {
+        if ($format === 'csv') {
+            return $this->streamWeaponsCsvExport($weapons, $filename . '.csv');
+        }
+
+        return $this->streamWeaponsXlsxExport($weapons, $filename . '.xlsx');
+    }
+
+    private function streamWeaponsCsvExport(iterable $weapons, string $filename): StreamedResponse
     {
         $headers = [
             'Cliente',
@@ -816,31 +920,258 @@ class WeaponController extends Controller
             'Calibre',
             'Capacidad',
             'Tipo de permiso',
-            'N° de permiso',
+            "N\u{00B0} de permiso",
             'Vence',
             'Estado',
             'Novedad activa',
-            'Cant. munición',
+            "Cant. munici\u{00F3}n",
             'Cant. proveedor',
             'Responsable',
             'Puesto o trabajador',
-            'Cédula',
+            "C\u{00E9}dula",
             'Impronta',
         ];
 
         return response()->streamDownload(function () use ($weapons, $headers) {
-            $output = fopen('php://output', 'w');
-            fwrite($output, "\xEF\xBB\xBF");
-            fputcsv($output, $headers);
+            $output = fopen('php://output', 'wb');
+            fwrite($output, "\xFF\xFE");
+            $this->writeExcelCsvLine($output, ['sep=;']);
+            $this->writeExcelCsvLine($output, $headers);
 
             foreach ($weapons as $weapon) {
-                fputcsv($output, $this->weaponExportRow($weapon));
+                $this->writeExcelCsvLine($output, $this->weaponExportRow($weapon));
             }
 
             fclose($output);
         }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'text/csv; charset=UTF-16LE',
         ]);
+    }
+
+    private function streamWeaponsXlsxExport(iterable $weapons, string $filename): StreamedResponse
+    {
+        $headers = [
+            'Cliente',
+            'Tipo',
+            'Marca',
+            'Serie',
+            'Calibre',
+            'Capacidad',
+            'Tipo de permiso',
+            "N\u{00B0} de permiso",
+            'Vence',
+            'Estado',
+            'Novedad activa',
+            "Cant. munici\u{00F3}n",
+            'Cant. proveedor',
+            'Responsable',
+            'Puesto o trabajador',
+            "C\u{00E9}dula",
+            'Impronta',
+        ];
+
+        $rows = [];
+        foreach ($weapons as $weapon) {
+            $rows[] = $this->weaponExportRow($weapon);
+        }
+
+        return response()->streamDownload(function () use ($headers, $rows) {
+            $temporaryPath = tempnam(sys_get_temp_dir(), 'weapons-export-');
+            $zip = new \ZipArchive();
+            $zip->open($temporaryPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+            $zip->addFromString('[Content_Types].xml', $this->xlsxContentTypesXml());
+            $zip->addFromString('_rels/.rels', $this->xlsxRootRelsXml());
+            $zip->addFromString('xl/workbook.xml', $this->xlsxWorkbookXml());
+            $zip->addFromString('xl/_rels/workbook.xml.rels', $this->xlsxWorkbookRelsXml());
+            $zip->addFromString('xl/styles.xml', $this->xlsxStylesXml());
+            $zip->addFromString('xl/worksheets/sheet1.xml', $this->xlsxWorksheetXml($headers, $rows));
+            $zip->close();
+
+            $handle = fopen($temporaryPath, 'rb');
+            fpassthru($handle);
+            fclose($handle);
+            @unlink($temporaryPath);
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    private function writeExcelCsvLine($output, array $fields): void
+    {
+        $line = collect($fields)
+            ->map(function ($value) {
+                $text = (string) ($value ?? '');
+                $escaped = str_replace('"', '""', $text);
+
+                return '"' . $escaped . '"';
+            })
+            ->implode(';') . "\r\n";
+
+        fwrite($output, mb_convert_encoding($line, 'UTF-16LE', 'UTF-8'));
+    }
+
+    private function xlsxContentTypesXml(): string
+    {
+        return <<<'XML'
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+    <Default Extension="xml" ContentType="application/xml"/>
+    <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+    <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+    <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>
+XML;
+    }
+
+    private function xlsxRootRelsXml(): string
+    {
+        return <<<'XML'
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>
+XML;
+    }
+
+    private function xlsxWorkbookXml(): string
+    {
+        return <<<'XML'
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+    <sheets>
+        <sheet name="Armamento" sheetId="1" r:id="rId1"/>
+    </sheets>
+</workbook>
+XML;
+    }
+
+    private function xlsxWorkbookRelsXml(): string
+    {
+        return <<<'XML'
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+    <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>
+XML;
+    }
+
+    private function xlsxStylesXml(): string
+    {
+        return <<<'XML'
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+    <fonts count="2">
+        <font>
+            <sz val="11"/>
+            <name val="Aptos"/>
+            <family val="2"/>
+        </font>
+        <font>
+            <b/>
+            <sz val="11"/>
+            <color rgb="FFFFFFFF"/>
+            <name val="Aptos"/>
+            <family val="2"/>
+        </font>
+    </fonts>
+    <fills count="3">
+        <fill><patternFill patternType="none"/></fill>
+        <fill><patternFill patternType="gray125"/></fill>
+        <fill>
+            <patternFill patternType="solid">
+                <fgColor rgb="FF162457"/>
+                <bgColor indexed="64"/>
+            </patternFill>
+        </fill>
+    </fills>
+    <borders count="1">
+        <border>
+            <left/><right/><top/><bottom/><diagonal/>
+        </border>
+    </borders>
+    <cellStyleXfs count="1">
+        <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+    </cellStyleXfs>
+    <cellXfs count="2">
+        <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+        <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
+            <alignment horizontal="center" vertical="center"/>
+        </xf>
+    </cellXfs>
+</styleSheet>
+XML;
+    }
+
+    private function xlsxWorksheetXml(array $headers, array $rows): string
+    {
+        $allRows = array_merge([$headers], $rows);
+        $columnWidths = [22, 18, 18, 18, 14, 12, 18, 18, 14, 24, 24, 14, 14, 22, 22, 18, 14];
+        $lastColumn = $this->xlsxColumnName(count($headers));
+        $sheetRows = [];
+
+        foreach ($allRows as $rowIndex => $row) {
+            $cells = [];
+            $style = $rowIndex === 0 ? ' s="1"' : '';
+
+            foreach ($row as $columnIndex => $value) {
+                $reference = $this->xlsxColumnName($columnIndex + 1) . ($rowIndex + 1);
+                $escaped = $this->xlsxEscape((string) ($value ?? ''));
+                $cells[] = '<c r="' . $reference . '" t="inlineStr"' . $style . '><is><t>' . $escaped . '</t></is></c>';
+            }
+
+            $sheetRows[] = '<row r="' . ($rowIndex + 1) . '">' . implode('', $cells) . '</row>';
+        }
+
+        $columnsXml = [];
+        foreach ($columnWidths as $index => $width) {
+            $column = $index + 1;
+            $columnsXml[] = '<col min="' . $column . '" max="' . $column . '" width="' . $width . '" customWidth="1"/>';
+        }
+
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+            . '<sheetFormatPr defaultRowHeight="15"/>'
+            . '<cols>' . implode('', $columnsXml) . '</cols>'
+            . '<sheetData>' . implode('', $sheetRows) . '</sheetData>'
+            . '<autoFilter ref="A1:' . $lastColumn . '1"/>'
+            . '</worksheet>';
+    }
+
+    private function xlsxColumnName(int $columnIndex): string
+    {
+        $name = '';
+
+        while ($columnIndex > 0) {
+            $columnIndex--;
+            $name = chr(65 + ($columnIndex % 26)) . $name;
+            $columnIndex = intdiv($columnIndex, 26);
+        }
+
+        return $name;
+    }
+
+    private function xlsxEscape(string $value): string
+    {
+        $clean = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u', '', $value) ?? '';
+
+        return htmlspecialchars($clean, ENT_XML1 | ENT_COMPAT, 'UTF-8');
+    }
+    private function weaponPreviewRow(Weapon $weapon): array
+    {
+        return [
+            'id' => $weapon->id,
+            'client' => $weapon->activeClientAssignment?->client?->name ?? 'Sin destino',
+            'type' => $weapon->weapon_type,
+            'brand' => $weapon->brand,
+            'serial' => $weapon->serial_number,
+            'caliber' => $weapon->caliber,
+            'permit_type' => $weapon->permit_type ? Str::ucfirst($weapon->permit_type) : '-',
+            'permit_number' => $weapon->permit_number ?? '-',
+            'expires_at' => $weapon->permit_expires_at?->format('Y-m-d') ?? '-',
+        ];
     }
 
     private function weaponExportRow(Weapon $weapon): array

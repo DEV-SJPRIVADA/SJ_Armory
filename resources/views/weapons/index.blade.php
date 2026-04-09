@@ -249,6 +249,69 @@
                 </div>
             </div>
 
+            <div
+                id="weapons-export-modal"
+                class="weapon-export-modal hidden"
+                aria-hidden="true"
+            >
+                <div class="weapon-export-modal__backdrop"></div>
+                <div class="weapon-export-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="weapons-export-modal-title">
+                    <div class="weapon-export-modal__header">
+                        <div>
+                            <h3 id="weapons-export-modal-title" class="weapon-export-modal__title">{{ __('Confirmar exportación') }}</h3>
+                            <p id="weapons-export-modal-description" class="weapon-export-modal__description"></p>
+                        </div>
+                        <button type="button" id="weapons-export-modal-close" class="weapon-export-modal__close" aria-label="{{ __('Cerrar') }}">
+                            &times;
+                        </button>
+                    </div>
+
+                    <div id="weapons-export-modal-warning" class="weapon-export-modal__warning hidden"></div>
+
+                    <div class="weapon-export-modal__format">
+                        <span class="weapon-export-modal__format-label">{{ __('Formato de archivo') }}</span>
+                        <label class="weapon-export-modal__format-option">
+                            <input type="radio" name="weapon_export_format" value="xlsx" checked>
+                            <span>{{ __('Excel (.xlsx)') }}</span>
+                        </label>
+                        <label class="weapon-export-modal__format-option">
+                            <input type="radio" name="weapon_export_format" value="csv">
+                            <span>{{ __('CSV (.csv)') }}</span>
+                        </label>
+                    </div>
+
+                    <div id="weapons-export-modal-table-shell" class="weapon-export-modal__table-shell hidden">
+                        <table class="weapon-export-modal__table">
+                            <thead>
+                                <tr>
+                                    <th>{{ __('Cliente') }}</th>
+                                    <th>{{ __('Tipo') }}</th>
+                                    <th>{{ __('Marca') }}</th>
+                                    <th>{{ __('Serie') }}</th>
+                                    <th>{{ __('Calibre') }}</th>
+                                    <th>{{ __('Tipo de permiso') }}</th>
+                                    <th>{{ __('Número de permiso') }}</th>
+                                    <th>{{ __('Vence') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="weapons-export-modal-tbody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="weapon-export-modal__footer">
+                        <button type="button" id="weapons-export-modal-cancel" class="weapon-export-modal__button weapon-export-modal__button--ghost">
+                            {{ __('Cancelar') }}
+                        </button>
+                        <button type="button" id="weapons-export-modal-edit" class="weapon-export-modal__button weapon-export-modal__button--secondary">
+                            {{ __('Editar selección') }}
+                        </button>
+                        <button type="button" id="weapons-export-modal-confirm" class="weapon-export-modal__button weapon-export-modal__button--primary">
+                            {{ __('Aceptar y descargar') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -420,6 +483,197 @@
         box-shadow: inset 0 0 0 9999px rgba(219, 234, 254, 0.62);
     }
 
+    .weapon-export-modal {
+        inset: 0;
+        position: fixed;
+        z-index: 180;
+    }
+
+    .weapon-export-modal.hidden {
+        display: none;
+    }
+
+    .weapon-export-modal__backdrop {
+        background: rgba(15, 23, 42, 0.48);
+        inset: 0;
+        position: absolute;
+    }
+
+    .weapon-export-modal__dialog {
+        background: #fff;
+        border: 1px solid rgb(226 232 240);
+        border-radius: 1.25rem;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+        inset: 50% auto auto 50%;
+        max-height: min(80vh, 52rem);
+        overflow: hidden;
+        position: absolute;
+        transform: translate(-50%, -50%);
+        width: min(92vw, 96rem);
+    }
+
+    .weapon-export-modal__header {
+        align-items: flex-start;
+        border-bottom: 1px solid rgb(226 232 240);
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+        padding: 1.25rem 1.5rem 1rem;
+    }
+
+    .weapon-export-modal__title {
+        color: rgb(15 23 42);
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .weapon-export-modal__description {
+        color: rgb(71 85 105);
+        font-size: 0.95rem;
+        margin: 0.35rem 0 0;
+    }
+
+    .weapon-export-modal__close {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        border-radius: 9999px;
+        color: rgb(100 116 139);
+        cursor: pointer;
+        display: inline-flex;
+        font-size: 1.75rem;
+        height: 2.25rem;
+        justify-content: center;
+        line-height: 1;
+        width: 2.25rem;
+    }
+
+    .weapon-export-modal__warning {
+        background: rgb(255 247 237);
+        border-bottom: 1px solid rgb(254 215 170);
+        color: rgb(154 52 18);
+        font-size: 0.95rem;
+        margin: 0;
+        padding: 1rem 1.5rem;
+    }
+
+    .weapon-export-modal__format {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.85rem;
+        padding: 1rem 1.5rem 0.25rem;
+    }
+
+    .weapon-export-modal__format-label {
+        color: rgb(51 65 85);
+        font-size: 0.9rem;
+        font-weight: 700;
+    }
+
+    .weapon-export-modal__format-option {
+        align-items: center;
+        background: rgb(248 250 252);
+        border: 1px solid rgb(203 213 225);
+        border-radius: 9999px;
+        color: rgb(30 41 59);
+        cursor: pointer;
+        display: inline-flex;
+        font-size: 0.9rem;
+        font-weight: 600;
+        gap: 0.5rem;
+        padding: 0.55rem 0.95rem;
+    }
+
+    .weapon-export-modal__format-option input {
+        accent-color: rgb(37 99 235);
+        margin: 0;
+    }
+
+    .weapon-export-modal__table-shell {
+        max-height: 28rem;
+        overflow: auto;
+    }
+
+    .weapon-export-modal__table {
+        border-collapse: separate;
+        border-spacing: 0;
+        min-width: 100%;
+        width: 100%;
+    }
+
+    .weapon-export-modal__table thead th {
+        background: linear-gradient(180deg, #223469 0%, #162457 100%);
+        color: rgb(239 246 255);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        padding: 0.85rem 1rem;
+        position: sticky;
+        text-align: left;
+        text-transform: uppercase;
+        top: 0;
+        white-space: nowrap;
+        z-index: 1;
+    }
+
+    .weapon-export-modal__table tbody td {
+        border-bottom: 1px solid rgb(226 232 240);
+        color: rgb(30 41 59);
+        font-size: 0.9rem;
+        padding: 0.85rem 1rem;
+        vertical-align: top;
+    }
+
+    .weapon-export-modal__table tbody tr:nth-child(even) td {
+        background: rgb(248 250 252);
+    }
+
+    .weapon-export-modal__footer {
+        align-items: center;
+        border-top: 1px solid rgb(226 232 240);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: flex-end;
+        padding: 1rem 1.5rem 1.25rem;
+    }
+
+    .weapon-export-modal__button {
+        align-items: center;
+        border-radius: 0.9rem;
+        display: inline-flex;
+        font-size: 0.95rem;
+        font-weight: 600;
+        height: 2.75rem;
+        justify-content: center;
+        padding: 0 1.15rem;
+        transition: 160ms ease;
+    }
+
+    .weapon-export-modal__button--ghost,
+    .weapon-export-modal__button--secondary {
+        background: #fff;
+        border: 1px solid rgb(203 213 225);
+        color: rgb(51 65 85);
+    }
+
+    .weapon-export-modal__button--ghost:hover,
+    .weapon-export-modal__button--secondary:hover {
+        background: rgb(248 250 252);
+    }
+
+    .weapon-export-modal__button--primary {
+        background: rgb(15 23 42);
+        border: 1px solid rgb(15 23 42);
+        color: #fff;
+    }
+
+    .weapon-export-modal__button--primary:hover {
+        background: rgb(30 41 59);
+    }
+
     @media (max-width: 1100px) {
         .weapon-header__row {
             align-items: stretch;
@@ -433,6 +687,24 @@
         .weapon-header__actions,
         .weapon-header__tools {
             justify-content: flex-start;
+        }
+
+        .weapon-export-modal__dialog {
+            max-height: 86vh;
+            width: min(96vw, 96rem);
+        }
+
+        .weapon-export-modal__format {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .weapon-export-modal__footer {
+            justify-content: stretch;
+        }
+
+        .weapon-export-modal__button {
+            width: 100%;
         }
     }
 </style>
@@ -506,14 +778,29 @@
         const exportSelectedInputs = document.getElementById('weapons-export-selected-inputs');
         const exportSelectedButton = document.getElementById('weapons-export-selected-button');
         const exportMenu = document.getElementById('weapons-export-menu');
+        const exportPreviewUrl = @json(route('weapons.export.preview'));
+        const exportModal = document.getElementById('weapons-export-modal');
+        const exportModalTitle = document.getElementById('weapons-export-modal-title');
+        const exportModalDescription = document.getElementById('weapons-export-modal-description');
+        const exportModalWarning = document.getElementById('weapons-export-modal-warning');
+        const exportModalTableShell = document.getElementById('weapons-export-modal-table-shell');
+        const exportModalTbody = document.getElementById('weapons-export-modal-tbody');
+        const exportModalConfirm = document.getElementById('weapons-export-modal-confirm');
+        const exportModalCancel = document.getElementById('weapons-export-modal-cancel');
+        const exportModalEdit = document.getElementById('weapons-export-modal-edit');
+        const exportModalClose = document.getElementById('weapons-export-modal-close');
+        const exportModalBackdrop = exportModal?.querySelector('.weapon-export-modal__backdrop');
+        const exportFormatInputs = Array.from(document.querySelectorAll('input[name="weapon_export_format"]'));
 
-        if (!input || !tbody || !pagination || !filtersForm || !filtersPanel || !filtersToggle || !filtersReset || !viewAction || !selectedCount || !exportFilteredForm || !exportFilteredInputs || !exportSelectedForm || !exportSelectedInputs || !exportSelectedButton) {
+        if (!input || !tbody || !pagination || !filtersForm || !filtersPanel || !filtersToggle || !filtersReset || !viewAction || !selectedCount || !exportFilteredForm || !exportFilteredInputs || !exportSelectedForm || !exportSelectedInputs || !exportSelectedButton || !exportMenu || !exportModal || !exportModalTitle || !exportModalDescription || !exportModalWarning || !exportModalTableShell || !exportModalTbody || !exportModalConfirm || !exportModalCancel || !exportModalEdit || !exportModalClose || !exportModalBackdrop || exportFormatInputs.length === 0) {
             return;
         }
 
         const filterFieldNames = ['inventory_scope', 'client_id', 'responsible_user_id', 'weapon_type', 'destination', 'permit_expires_from', 'permit_expires_to'];
         const exportSelection = new Set();
+        const exportSelectionData = new Map();
         let selectedWeaponId = null;
+        let pendingExportForm = null;
 
         const setDisabledState = (element, disabled) => {
             if (!element) {
@@ -531,6 +818,13 @@
                 element.removeAttribute('tabindex');
             }
         };
+
+        const escapeHtml = (value) => String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
 
         const highlight = (term) => {
             const cells = tbody.querySelectorAll('td:not([data-searchable="false"])');
@@ -556,6 +850,18 @@
             });
         };
 
+        const extractWeaponSummary = (row) => ({
+            id: row.dataset.weaponId,
+            client: row.dataset.exportClient || '{{ __('Sin destino') }}',
+            type: row.dataset.exportType || '-',
+            brand: row.dataset.exportBrand || '-',
+            serial: row.dataset.exportSerial || '-',
+            caliber: row.dataset.exportCaliber || '-',
+            permit_type: row.dataset.exportPermitType || '-',
+            permit_number: row.dataset.exportPermitNumber || '-',
+            expires_at: row.dataset.exportExpiresAt || '-',
+        });
+
         const currentState = () => {
             const data = { q: input.value.trim() };
 
@@ -566,6 +872,8 @@
 
             return data;
         };
+
+        const selectedExportFormat = () => exportFormatInputs.find((input) => input.checked)?.value || 'xlsx';
 
         const applyStateToUrl = (url, { resetPage = false } = {}) => {
             const state = currentState();
@@ -599,6 +907,12 @@
                 exportFilteredInputs.appendChild(filteredInput);
             });
 
+            const filteredFormatInput = document.createElement('input');
+            filteredFormatInput.type = 'hidden';
+            filteredFormatInput.name = 'format';
+            filteredFormatInput.value = selectedExportFormat();
+            exportFilteredInputs.appendChild(filteredFormatInput);
+
             Array.from(exportSelection).forEach((weaponId) => {
                 const selectedInput = document.createElement('input');
                 selectedInput.type = 'hidden';
@@ -607,11 +921,77 @@
                 exportSelectedInputs.appendChild(selectedInput);
             });
 
+            const selectedFormatInput = document.createElement('input');
+            selectedFormatInput.type = 'hidden';
+            selectedFormatInput.name = 'format';
+            selectedFormatInput.value = selectedExportFormat();
+            exportSelectedInputs.appendChild(selectedFormatInput);
+
             const count = exportSelection.size;
             selectedCount.textContent = count === 1
                 ? '{{ __('1 seleccionada') }}'
                 : `${count} {{ __('seleccionadas') }}`;
             exportSelectedButton.disabled = count === 0;
+        };
+
+        const syncSelectionDetailsFromVisibleRows = () => {
+            tbody.querySelectorAll('.weapon-row').forEach((row) => {
+                if (exportSelection.has(row.dataset.weaponId)) {
+                    exportSelectionData.set(row.dataset.weaponId, extractWeaponSummary(row));
+                }
+            });
+        };
+
+        const closeExportModal = () => {
+            exportModal.classList.add('hidden');
+            exportModal.setAttribute('aria-hidden', 'true');
+            pendingExportForm = null;
+        };
+
+        const renderExportPreviewRows = (items) => {
+            exportModalTbody.innerHTML = items.map((item) => `
+                <tr>
+                    <td>${escapeHtml(item.client)}</td>
+                    <td>${escapeHtml(item.type)}</td>
+                    <td>${escapeHtml(item.brand)}</td>
+                    <td>${escapeHtml(item.serial)}</td>
+                    <td>${escapeHtml(item.caliber)}</td>
+                    <td>${escapeHtml(item.permit_type)}</td>
+                    <td>${escapeHtml(item.permit_number)}</td>
+                    <td>${escapeHtml(item.expires_at)}</td>
+                </tr>
+            `).join('');
+        };
+
+        const openExportModal = ({
+            description,
+            items = [],
+            warning = '',
+            editLabel = '{{ __('Editar selección') }}',
+            showEdit = true,
+            submitForm = null,
+            defaultFormat = 'xlsx',
+        }) => {
+            exportModalTitle.textContent = '{{ __('Confirmar exportación') }}';
+            exportModalDescription.textContent = description;
+            exportModalWarning.textContent = warning;
+            exportModalWarning.classList.toggle('hidden', warning === '');
+            exportModalTableShell.classList.toggle('hidden', items.length === 0);
+            exportModalEdit.classList.toggle('hidden', !showEdit);
+            exportModalEdit.textContent = editLabel;
+            exportFormatInputs.forEach((input) => {
+                input.checked = input.value === defaultFormat;
+            });
+
+            if (items.length > 0) {
+                renderExportPreviewRows(items);
+            } else {
+                exportModalTbody.innerHTML = '';
+            }
+
+            pendingExportForm = submitForm;
+            exportModal.classList.remove('hidden');
+            exportModal.setAttribute('aria-hidden', 'false');
         };
 
         const clearSelectedRow = () => {
@@ -624,7 +1004,6 @@
                 editAction.href = '#';
                 setDisabledState(editAction, true);
             }
-
         };
 
         const setSelectedRow = (row) => {
@@ -642,13 +1021,28 @@
                 editAction.href = row.dataset.editUrl;
                 setDisabledState(editAction, row.dataset.canEdit !== '1');
             }
-
         };
 
         const syncExportCheckboxes = () => {
             tbody.querySelectorAll('.weapon-export-checkbox').forEach((checkbox) => {
                 checkbox.checked = exportSelection.has(checkbox.value);
             });
+        };
+
+        const exportPreviewDescription = (count, type, truncated = false) => {
+            const base = type === 'selected'
+                ? (count === 1
+                    ? '{{ __('Se exportará 1 arma seleccionada.') }}'
+                    : `{{ __('Se exportarán') }} ${count} {{ __('armas seleccionadas.') }}`)
+                : (count === 1
+                    ? '{{ __('Se exportará 1 arma filtrada.') }}'
+                    : `{{ __('Se exportarán') }} ${count} {{ __('armas filtradas.') }}`);
+
+            if (!truncated) {
+                return base;
+            }
+
+            return `${base} {{ __('Se muestra una vista previa de las primeras 50.') }}`;
         };
 
         const updateList = async (url) => {
@@ -664,6 +1058,7 @@
             pagination.innerHTML = data.pagination;
             clearSelectedRow();
             syncExportCheckboxes();
+            syncSelectionDetailsFromVisibleRows();
             syncExportForms();
             highlight(input.value.trim());
             window.syncWeaponsHorizontalScrollbar?.();
@@ -706,7 +1101,10 @@
 
         pagination.addEventListener('click', (event) => {
             const link = event.target.closest('a');
-            if (!link) return;
+            if (!link) {
+                return;
+            }
+
             event.preventDefault();
             const url = new URL(link.href);
             applyStateToUrl(url, { resetPage: false });
@@ -735,10 +1133,15 @@
         tbody.addEventListener('change', (event) => {
             const exportCheckbox = event.target.closest('.weapon-export-checkbox');
             if (exportCheckbox) {
+                const row = exportCheckbox.closest('.weapon-row');
                 if (exportCheckbox.checked) {
                     exportSelection.add(exportCheckbox.value);
+                    if (row) {
+                        exportSelectionData.set(exportCheckbox.value, extractWeaponSummary(row));
+                    }
                 } else {
                     exportSelection.delete(exportCheckbox.value);
+                    exportSelectionData.delete(exportCheckbox.value);
                 }
 
                 syncExportForms();
@@ -759,24 +1162,97 @@
             }
         });
 
-        exportFilteredForm.addEventListener('submit', () => {
+        exportFilteredForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
             syncExportForms();
             exportMenu.removeAttribute('open');
+
+            const previewUrl = new URL(exportPreviewUrl, window.location.origin);
+            const state = currentState();
+            Object.entries(state).forEach(([key, value]) => {
+                if (value !== '') {
+                    previewUrl.searchParams.set(key, value);
+                }
+            });
+
+            const response = await fetch(previewUrl.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            if (!response.ok) {
+                return;
+            }
+
+            const data = await response.json();
+
+            if (data.has_filters) {
+                openExportModal({
+                    description: exportPreviewDescription(data.count, 'filtered', data.truncated),
+                    items: Array.isArray(data.items) ? data.items : [],
+                    editLabel: '{{ __('Editar filtros') }}',
+                    submitForm: exportFilteredForm,
+                    defaultFormat: 'xlsx',
+                });
+                return;
+            }
+
+            openExportModal({
+                description: `{{ __('Se descargarán') }} ${data.count} ${data.count === 1 ? '{{ __('arma') }}' : '{{ __('armas') }}'}.`,
+                warning: `{{ __('Vas a exportar todas las armas.') }}`,
+                showEdit: false,
+                submitForm: exportFilteredForm,
+                defaultFormat: 'xlsx',
+            });
         });
 
         exportSelectedForm.addEventListener('submit', (event) => {
+            event.preventDefault();
             syncExportForms();
             if (exportSelection.size === 0) {
-                event.preventDefault();
                 return;
             }
+
+            const items = Array.from(exportSelection)
+                .map((weaponId) => exportSelectionData.get(weaponId))
+                .filter(Boolean);
+
             exportMenu.removeAttribute('open');
+            openExportModal({
+                description: exportPreviewDescription(exportSelection.size, 'selected'),
+                items,
+                editLabel: '{{ __('Editar selección') }}',
+                submitForm: exportSelectedForm,
+                defaultFormat: 'xlsx',
+            });
+        });
+
+        exportModalConfirm.addEventListener('click', () => {
+            if (!pendingExportForm) {
+                return;
+            }
+
+            const formToSubmit = pendingExportForm;
+            syncExportForms();
+            closeExportModal();
+            HTMLFormElement.prototype.submit.call(formToSubmit);
+        });
+
+        exportModalCancel.addEventListener('click', closeExportModal);
+        exportModalEdit.addEventListener('click', closeExportModal);
+        exportModalClose.addEventListener('click', closeExportModal);
+        exportModalBackdrop.addEventListener('click', closeExportModal);
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !exportModal.classList.contains('hidden')) {
+                closeExportModal();
+            }
         });
 
         if (input.value.trim() !== '') {
             highlight(input.value.trim());
         }
 
+        syncSelectionDetailsFromVisibleRows();
         syncExportForms();
         clearSelectedRow();
         syncExportCheckboxes();
