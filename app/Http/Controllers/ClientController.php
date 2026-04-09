@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\WeaponClientAssignment;
 use App\Services\GeocodingService;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ClientController extends Controller
 {
@@ -15,17 +16,42 @@ class ClientController extends Controller
         $this->authorizeResource(Client::class, 'client');
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $user = request()->user();
+        $user = $request->user();
+        $search = trim((string) $request->input('q', ''));
 
         if ($user->isResponsible() && !$user->isAdmin()) {
-            $clients = $user->clients()->orderBy('name')->paginate(15);
+            $query = $user->clients();
         } else {
-            $clients = Client::orderBy('name')->paginate(15);
+            $query = Client::query();
         }
 
-        return view('clients.index', compact('clients'));
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder
+                    ->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('nit', 'like', '%' . $search . '%')
+                    ->orWhere('contact_name', 'like', '%' . $search . '%')
+                    ->orWhere('email', 'like', '%' . $search . '%')
+                    ->orWhere('city', 'like', '%' . $search . '%')
+                    ->orWhere('department', 'like', '%' . $search . '%');
+            });
+        }
+
+        $clients = $query
+            ->orderBy('name')
+            ->paginate(15)
+            ->withQueryString();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'results' => view('clients.partials.index_results', compact('clients', 'search'))->render(),
+                'countLabel' => $this->clientCountLabel($clients),
+            ]);
+        }
+
+        return view('clients.index', compact('clients', 'search'));
     }
 
     public function create()
@@ -168,5 +194,13 @@ class ClientController extends Controller
         $client->delete();
 
         return redirect()->route('clients.index')->with('status', 'Cliente eliminado.');
+    }
+
+    private function clientCountLabel(LengthAwarePaginator $clients): string
+    {
+        $total = $clients->total();
+        $label = $total === 1 ? 'cliente' : 'clientes';
+
+        return number_format($total) . ' ' . $label;
     }
 }

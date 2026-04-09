@@ -118,9 +118,6 @@
 
 @vite('resources/js/location-picker.js')
 
-
-
-
 <div id="location-map-modal" class="fixed inset-0 z-[3000] hidden items-center justify-center bg-black/50 p-4">
     <div class="w-full max-w-4xl rounded-lg bg-white p-4 shadow-lg">
         <div class="flex items-center justify-between">
