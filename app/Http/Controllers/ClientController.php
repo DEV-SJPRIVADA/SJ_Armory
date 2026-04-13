@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ClientChanged;
+use App\Events\MapDataChanged;
 use App\Models\Client;
 use App\Models\AuditLog;
 use App\Models\WeaponClientAssignment;
@@ -106,6 +108,9 @@ class ClientController extends Controller
             'after' => $client->only(['name', 'nit', 'city', 'department']),
         ]);
 
+        event(new ClientChanged('created', $client->id));
+        event(new MapDataChanged('updated', $client->id));
+
         return redirect()->route('clients.index')->with('status', 'Cliente creado.');
     }
 
@@ -166,6 +171,9 @@ class ClientController extends Controller
             'after' => $client->only(['name', 'nit', 'city', 'department', 'email', 'contact_name']),
         ]);
 
+        event(new ClientChanged('updated', $client->id));
+        event(new MapDataChanged('updated', $client->id));
+
         return redirect()->route('clients.index')->with('status', 'Cliente actualizado.');
     }
 
@@ -190,6 +198,11 @@ class ClientController extends Controller
             'before' => $client->only(['name', 'nit', 'city', 'department']),
             'after' => null,
         ]);
+
+        $clientId = $client->id;
+
+        event(new ClientChanged('deleted', $clientId));
+        event(new MapDataChanged('deleted', $clientId));
 
         $client->delete();
 

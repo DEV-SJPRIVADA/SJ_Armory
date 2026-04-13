@@ -5,6 +5,7 @@ window.dashboardMonitor = ({ initialData, dataUrl }) => ({
     currentTime: null,
     clockTimer: null,
     refreshTimer: null,
+    realtimeDebounceTimer: null,
     isRefreshing: false,
 
     init() {
@@ -16,18 +17,52 @@ window.dashboardMonitor = ({ initialData, dataUrl }) => ({
             }
         }, 1000);
 
-        this.refreshTimer = window.setInterval(() => {
-            if (document.visibilityState === 'hidden') {
-                return;
-            }
+        this.bindDashboardRealtime();
 
-            this.refreshMetrics();
-        }, 15000);
+        // Polling desactivado - Migrado a Realtime (ver bindDashboardRealtime)
 
         window.addEventListener('beforeunload', () => {
             window.clearInterval(this.clockTimer);
             window.clearInterval(this.refreshTimer);
+            if (this.realtimeDebounceTimer) {
+                window.clearTimeout(this.realtimeDebounceTimer);
+            }
         }, { once: true });
+    },
+
+    bindDashboardRealtime() {
+        if (!window.Echo) {
+            return;
+        }
+
+        const pairs = [
+            ['weapons.updates', 'WeaponChanged'],
+            ['clients.updates', 'ClientChanged'],
+            ['transfers.updates', 'TransferChanged'],
+            ['assignments.updates', 'AssignmentChanged'],
+            ['maps.updates', 'MapDataChanged'],
+        ];
+
+        const scheduleRefresh = () => {
+            if (document.visibilityState === 'hidden') {
+                return;
+            }
+            if (this.realtimeDebounceTimer) {
+                window.clearTimeout(this.realtimeDebounceTimer);
+            }
+            this.realtimeDebounceTimer = window.setTimeout(() => {
+                this.realtimeDebounceTimer = null;
+                this.refreshMetrics();
+            }, 400);
+        };
+
+        pairs.forEach(([channel, eventName]) => {
+            try {
+                window.Echo.private(channel).listen(eventName, scheduleRefresh);
+            } catch (error) {
+                console.warn('No se pudo suscribir al canal en tiempo real.', channel, error);
+            }
+        });
     },
 
     async refreshMetrics() {
@@ -89,11 +124,16 @@ window.dashboardMonitor = ({ initialData, dataUrl }) => ({
         return Math.max(min, Math.round((value / max) * 100));
     },
 
-    columnHeight(value, max) {
-        if (!value || !max) {
+    columnHeight(value, max, minVisible = 11) {
+        const numericValue = Number(value ?? 0);
+        const numericMax = Number(max ?? 0);
+
+        if (!numericValue || !numericMax) {
             return 0;
         }
 
-        return Math.max(1, Math.round((value / max) * 100));
+        const proportionalHeight = (numericValue / numericMax) * 100;
+
+        return Math.max(minVisible, Math.min(100, Number(proportionalHeight.toFixed(2))));
     },
 });

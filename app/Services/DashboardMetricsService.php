@@ -42,6 +42,12 @@ class DashboardMetricsService
 
         $weaponIds = $weapons->pluck('id');
 
+        // Crear un mapa de armas con incidentes bloqueantes
+        $weaponsWithBlockingIncidents = $weapons
+            ->filter(fn (Weapon $weapon) => $weapon->operationalBlockingIncidents->isNotEmpty())
+            ->pluck('id')
+            ->toArray();
+
         $renewalDocuments = $this->renewalDocumentsQuery($user, $weaponIds)
             ->orderByDesc('id')
             ->get()
@@ -104,14 +110,25 @@ class DashboardMetricsService
             ))
             ->groupBy(fn (WeaponDocument $document) => $document->valid_until->format('Y-m'))
             ->sortKeys()
-            ->map(function (Collection $group, string $monthKey) {
+            ->map(function (Collection $group, string $monthKey) use ($weaponsWithBlockingIncidents) {
                 $month = Carbon::createFromFormat('Y-m-d', $monthKey . '-01')
                     ->locale(app()->getLocale());
+
+                // Contar documentos con y sin novedad
+                $sinNovedad = $group->filter(fn (WeaponDocument $document) => 
+                    !in_array($document->weapon_id, $weaponsWithBlockingIncidents)
+                )->count();
+                
+                $conNovedad = $group->filter(fn (WeaponDocument $document) => 
+                    in_array($document->weapon_id, $weaponsWithBlockingIncidents)
+                )->count();
 
                 return [
                     'key' => $monthKey,
                     'label' => ucfirst($month->translatedFormat('M y')),
                     'value' => $group->count(),
+                    'sin_novedad' => $sinNovedad,
+                    'con_novedad' => $conNovedad,
                 ];
             })
             ->values();
@@ -436,5 +453,4 @@ class DashboardMetricsService
         return $user->isResponsible() && ! $user->isAdmin() && ! $user->isAuditor();
     }
 }
-
 

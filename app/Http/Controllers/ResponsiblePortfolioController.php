@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\PortfolioAssignmentsChanged;
+use App\Events\UserChanged;
 use App\Models\AuditLog;
 use App\Models\Client;
 use App\Models\User;
@@ -24,6 +26,7 @@ class ResponsiblePortfolioController extends Controller
             ->where('is_active', true);
 
         $responsibles = User::query()
+            ->select('users.*')
             ->whereIn('role', ['RESPONSABLE', 'ADMIN'])
             ->withCount('clients')
             ->addSelect(['active_weapons_count' => $activeWeaponCount])
@@ -132,6 +135,12 @@ class ResponsiblePortfolioController extends Controller
             'after' => ['client_ids' => $after],
         ]);
 
+        $afterIds = array_values($after);
+        app()->terminating(function () use ($user, $afterIds): void {
+            event(new UserChanged('updated', $user->id, ['client_ids' => $afterIds]));
+            event(new PortfolioAssignmentsChanged('updated', $user->id, ['client_ids' => $afterIds]));
+        });
+
         return redirect()->route('portfolios.index')->with('status', 'Asignaciones actualizadas.');
     }
 
@@ -218,6 +227,16 @@ class ResponsiblePortfolioController extends Controller
                     'client_ids' => $clientIds,
                 ],
             ]);
+        });
+
+        app()->terminating(function () use ($user, $toUser, $clientIds): void {
+            event(new UserChanged('updated', $user->id, ['client_ids' => $clientIds]));
+            event(new UserChanged('updated', $toUser->id, ['client_ids' => $clientIds]));
+            event(new PortfolioAssignmentsChanged('transferred', $user->id, [
+                'from_user_id' => $user->id,
+                'to_user_id' => $toUser->id,
+                'client_ids' => $clientIds,
+            ]));
         });
 
         return redirect()->route('portfolios.index')->with('status', 'Asignaciones transferidas.');

@@ -122,6 +122,16 @@
                             <div>
                                 <div class="sj-form-section__title">Planeación</div>
                                 <h2 class="sj-panel__title">Renovaciones por mes</h2>
+                                <div class="sj-renewal-legend" aria-label="Leyenda de renovaciones">
+                                    <span class="sj-renewal-legend__item">
+                                        <span class="sj-renewal-legend__swatch sj-renewal-legend__swatch--sin-novedad"></span>
+                                        <span class="sj-renewal-legend__text">Sin novedad</span>
+                                    </span>
+                                    <span class="sj-renewal-legend__item">
+                                        <span class="sj-renewal-legend__swatch sj-renewal-legend__swatch--con-novedad"></span>
+                                        <span class="sj-renewal-legend__text">Con novedad</span>
+                                    </span>
+                                </div>
                             </div>
 
                             <template x-if="dashboard.renewal_chart.years.length">
@@ -151,10 +161,30 @@
                                         <div class="sj-column-chart__item">
                                             <div class="sj-column-chart__value" x-text="formatNumber(item.value)"></div>
                                             <div class="sj-column-chart__track">
+                                                <!-- Barra azul: sin novedad -->
                                                 <div
-                                                    class="sj-column-chart__bar"
-                                                    :style="`height: ${columnHeight(item.value, dashboard.renewal_chart.max)}%`"
-                                                ></div>
+                                                    class="sj-column-chart__bar sj-column-chart__bar--sin-novedad"
+                                                    :style="`height: ${columnHeight(item.sin_novedad, dashboard.renewal_chart.max)}%`"
+                                                    :title="`Sin novedad: ${formatNumber(item.sin_novedad)}`"
+                                                >
+                                                    <div
+                                                        class="sj-column-chart__bar-value sj-column-chart__bar-value--sin-novedad"
+                                                        x-show="item.sin_novedad > 0"
+                                                        x-text="formatNumber(item.sin_novedad)"
+                                                    ></div>
+                                                </div>
+                                                <!-- Barra roja: con novedad (lado a lado) -->
+                                                <div
+                                                    class="sj-column-chart__bar sj-column-chart__bar--con-novedad"
+                                                    :style="`height: ${columnHeight(item.con_novedad, dashboard.renewal_chart.max)}%`"
+                                                    :title="`Con novedad: ${formatNumber(item.con_novedad)}`"
+                                                >
+                                                    <div
+                                                        class="sj-column-chart__bar-value sj-column-chart__bar-value--con-novedad"
+                                                        x-show="item.con_novedad > 0"
+                                                        x-text="formatNumber(item.con_novedad)"
+                                                    ></div>
+                                                </div>
                                             </div>
                                             <div class="sj-column-chart__label" x-text="item.label"></div>
                                         </div>
@@ -178,7 +208,7 @@
 
                         <div class="sj-stat-list sj-stat-list--compact">
                             <template x-for="item in dashboard.incident_chart.items" :key="item.label">
-                                <a class="sj-stat-list__item block hover:bg-slate-50" :href="item.url">
+                                <a class="sj-stat-list__item hover:bg-slate-50" :href="item.url">
                                     <div class="sj-stat-list__meta">
                                         <span class="sj-stat-list__dot" :style="`background:${item.color}`"></span>
                                         <span class="sj-stat-list__label" x-text="item.label"></span>

@@ -983,6 +983,10 @@
         gap: 0.75rem;
     }
 
+    .sj-dashboard-grid--secondary {
+        align-items: stretch;
+    }
+
     .sj-dashboard-grid--secondary > .sj-panel {
         padding: 1rem 1rem 1.05rem;
     }
@@ -995,6 +999,14 @@
     .sj-panel--incidents {
         display: flex;
         flex-direction: column;
+    }
+
+    .sj-panel--renewal-chart {
+        padding: 0.95rem 1rem 1rem;
+    }
+
+    .sj-panel--incidents {
+        padding: 0.95rem 1rem 1rem;
     }
 
     .sj-panel__title {
@@ -1597,6 +1609,39 @@
         width: 1.65rem;
     }
 
+    .sj-panel--renewal-chart .sj-column-chart__track {
+        align-items: flex-end;
+        background: transparent;
+        border-radius: 0;
+        box-shadow: none;
+        display: flex;
+        flex-direction: row;
+        gap: 0.28rem;
+        height: 100%;
+        justify-content: center;
+        overflow: visible;
+        padding: 0 0.16rem 0.16rem;
+        width: 3.25rem;
+    }
+
+    .sj-column-chart__bar-value {
+        color: #ffffff;
+        font-size: 0.6rem;
+        font-weight: 900;
+        line-height: 1;
+        text-align: center;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        white-space: nowrap;
+        padding: 0.1rem 0;
+        width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sj-panel--renewal-chart .sj-column-chart__value {
+        display: none;
+    }
+
     .sj-column-chart__track::before {
         content: none;
     }
@@ -1614,6 +1659,48 @@
         right: 0.08rem;
     }
 
+    .sj-panel--renewal-chart .sj-column-chart__bar {
+        align-self: flex-end;
+        bottom: 0;
+        display: flex;
+        flex: 1 1 0;
+        flex-direction: column;
+        justify-content: flex-end;
+        left: auto;
+        min-height: 0;
+        overflow: visible;
+        position: relative;
+        right: auto;
+    }
+
+    .sj-panel--renewal-chart .sj-column-chart__track::after {
+        background: linear-gradient(90deg, rgba(203, 213, 225, 0.95) 0%, rgba(226, 232, 240, 0.95) 100%);
+        border-radius: 999px;
+        bottom: 0;
+        content: '';
+        height: 0.18rem;
+        left: 0;
+        position: absolute;
+        right: 0;
+        z-index: 0;
+    }
+
+    .sj-column-chart__bar--sin-novedad {
+        background: linear-gradient(180deg, #3b82f6 0%, #2563eb 42%, #1d4ed8 100%);
+        box-shadow:
+            inset 0 1px 2px rgba(255, 255, 255, 0.28),
+            inset 0 -5px 8px rgba(30, 64, 175, 0.26);
+        z-index: 1;
+    }
+
+    .sj-column-chart__bar--con-novedad {
+        background: linear-gradient(180deg, #ef4444 0%, #dc2626 42%, #b91c1c 100%);
+        box-shadow:
+            inset 0 1px 2px rgba(255, 255, 255, 0.28),
+            inset 0 -5px 8px rgba(153, 27, 27, 0.26);
+        z-index: 2;
+    }
+
     .sj-column-chart__label {
         color: #64748b;
         font-size: 0.74rem;
@@ -1626,19 +1713,99 @@
     .sj-panel--renewal-chart .sj-column-chart-wrap {
         display: flex;
         flex: 1 1 auto;
-        min-height: 0;
+        min-height: 12.2rem;
         overflow-x: auto;
         overflow-y: hidden;
+        padding-top: 0.1rem;
     }
 
     .sj-panel--renewal-chart .sj-column-chart {
         align-items: stretch;
+        gap: 0.7rem;
+        grid-auto-columns: minmax(3.8rem, 1fr);
+        height: 100%;
         min-width: 100%;
         width: 100%;
     }
 
     .sj-panel--renewal-chart .sj-column-chart__item {
+        align-items: end;
         height: 100%;
+        gap: 0.25rem;
+        grid-template-rows: minmax(0, 1fr) minmax(1.2rem, auto);
+    }
+
+    .sj-panel--renewal-chart .sj-column-chart__bar-value {
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid #d6dfeb;
+        border-radius: 999px;
+        box-shadow: 0 3px 8px rgba(15, 23, 42, 0.08);
+        color: #0f172a;
+        font-size: 0.68rem;
+        font-weight: 800;
+        left: 50%;
+        line-height: 1;
+        min-width: 1.85rem;
+        overflow: visible;
+        padding: 0.2rem 0.35rem;
+        position: absolute;
+        text-overflow: clip;
+        text-shadow: none;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        width: auto;
+        z-index: 3;
+    }
+
+    .sj-panel--renewal-chart .sj-column-chart__bar-value--sin-novedad {
+        bottom: calc(100% + 0.08rem);
+        color: #1d4ed8;
+    }
+
+    .sj-panel--renewal-chart .sj-column-chart__bar-value--con-novedad {
+        bottom: calc(100% + 0.08rem);
+        color: #b91c1c;
+    }
+
+    .sj-panel--renewal-chart .sj-column-chart__label {
+        max-width: 3.8rem;
+        min-height: 1.2rem;
+    }
+
+    .sj-renewal-legend {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem 0.8rem;
+        margin-top: 0.55rem;
+    }
+
+    .sj-renewal-legend__item {
+        align-items: center;
+        display: inline-flex;
+        gap: 0.4rem;
+    }
+
+    .sj-renewal-legend__swatch {
+        border-radius: 999px;
+        display: inline-flex;
+        flex: 0 0 auto;
+        height: 0.62rem;
+        width: 0.62rem;
+    }
+
+    .sj-renewal-legend__swatch--sin-novedad {
+        background: #2563eb;
+    }
+
+    .sj-renewal-legend__swatch--con-novedad {
+        background: #dc2626;
+    }
+
+    .sj-renewal-legend__text {
+        color: #52637a;
+        font-size: 0.78rem;
+        font-weight: 700;
     }
 
     .sj-stat-list {
@@ -1648,7 +1815,7 @@
 
     .sj-dashboard-grid--secondary .sj-stat-list {
         flex: 1 1 auto;
-        gap: 0.55rem;
+        gap: 0.4rem;
     }
 
     .sj-stat-list__item {
@@ -1662,14 +1829,23 @@
     }
 
     .sj-dashboard-grid--secondary .sj-stat-list__item {
+        align-items: center;
         border-radius: 0.85rem;
-        padding: 0.62rem 0.8rem;
+        display: flex;
+        justify-content: space-between;
+        min-height: 0;
+        padding: 0.46rem 0.72rem;
     }
 
     .sj-stat-list__meta {
         align-items: center;
         display: flex;
         gap: 0.65rem;
+        min-width: 0;
+    }
+
+    .sj-dashboard-grid--secondary .sj-stat-list__meta {
+        flex: 1 1 auto;
         min-width: 0;
     }
 
@@ -1688,7 +1864,7 @@
     }
 
     .sj-dashboard-grid--secondary .sj-stat-list__label {
-        font-size: 0.9rem;
+        font-size: 0.86rem;
     }
 
     .sj-stat-list__value {
@@ -1696,6 +1872,13 @@
         font-size: 1rem;
         font-weight: 800;
         white-space: nowrap;
+    }
+
+    .sj-dashboard-grid--secondary .sj-stat-list__value {
+        font-size: 0.92rem;
+        line-height: 1;
+        margin-left: 0.75rem;
+        text-align: right;
     }
 
     .sj-report-hero {

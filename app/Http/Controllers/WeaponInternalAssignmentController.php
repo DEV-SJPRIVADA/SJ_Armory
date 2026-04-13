@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\AssignmentChanged;
+use App\Models\AuditLog;
 use App\Models\Post;
 use App\Models\Weapon;
-use App\Models\AuditLog;
 use App\Models\WeaponPostAssignment;
 use App\Models\WeaponWorkerAssignment;
 use App\Models\Worker;
@@ -114,7 +115,15 @@ class WeaponInternalAssignmentController extends Controller
             ]);
         });
 
-        return redirect()->route('weapons.show', $weapon)->with('status', 'Asignacion interna actualizada.');
+        app()->terminating(function () use ($weapon, $activeClientAssignment, $postId, $workerId): void {
+            event(new AssignmentChanged('assigned', $weapon->id, [
+                'client_id' => $activeClientAssignment->client_id,
+                'post_id' => $postId,
+                'worker_id' => $workerId,
+            ]));
+        });
+
+        return redirect()->route('weapons.show', $weapon)->with('status', 'Asignación interna actualizada.');
     }
 
     public function retire(Request $request, Weapon $weapon)
@@ -135,7 +144,7 @@ class WeaponInternalAssignmentController extends Controller
         $closed = $this->closeActiveAssignments($weapon);
 
         if (!$closed) {
-            return redirect()->route('weapons.show', $weapon)->with('status', 'El arma no tiene asignacion interna activa.');
+            return redirect()->route('weapons.show', $weapon)->with('status', 'El arma no tiene asignación interna activa.');
         }
 
         $this->logInternalAssignment($user, $weapon, 'internal_assignment_retired', $before, [
@@ -143,7 +152,13 @@ class WeaponInternalAssignmentController extends Controller
             'worker_id' => null,
         ]);
 
-        return redirect()->route('weapons.show', $weapon)->with('status', 'Asignacion interna retirada.');
+        app()->terminating(function () use ($weapon, $activeClientAssignment): void {
+            event(new AssignmentChanged('unassigned', $weapon->id, [
+                'client_id' => $activeClientAssignment?->client_id,
+            ]));
+        });
+
+        return redirect()->route('weapons.show', $weapon)->with('status', 'Asignación interna retirada.');
     }
 
     private function authorizeInternalAssignment(Weapon $weapon, $user, ?int $responsibleUserId): void

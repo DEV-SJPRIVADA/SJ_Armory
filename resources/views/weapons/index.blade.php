@@ -759,7 +759,6 @@
         syncMetrics();
     })();
 </script>
-
 <script>
     (() => {
         const input = document.getElementById('weapons-search');
@@ -1280,9 +1279,3 @@
         window.syncWeaponsHorizontalScrollbar?.();
     })();
 </script>
-
-
-
-
-
-

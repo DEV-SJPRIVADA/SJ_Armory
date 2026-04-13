@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\AssignmentChanged;
+use App\Events\TransferChanged;
 use App\Models\AuditLog;
 use App\Models\Client;
 use App\Models\Post;
@@ -210,7 +212,9 @@ class WeaponTransferController extends Controller
             }
         }
 
-        DB::transaction(function () use ($weapons, $user, $toUser, $data, $clientId, $postId) {
+        $dispatchedTransfers = [];
+
+        DB::transaction(function () use ($weapons, $user, $toUser, $data, $clientId, $postId, &$dispatchedTransfers) {
             foreach ($weapons as $weapon) {
                 $activeAssignment = $weapon->activeClientAssignment;
                 $this->closeInternalAssignments($weapon, $user);
@@ -243,8 +247,17 @@ class WeaponTransferController extends Controller
                         'post_id' => $postId,
                     ],
                 ]);
+
+                $dispatchedTransfers[] = [
+                    'transfer_id' => $transfer->id,
+                    'weapon_id' => $weapon->id,
+                ];
             }
         });
+
+        foreach ($dispatchedTransfers as $row) {
+            event(new TransferChanged('requested', $row['transfer_id'], ['weapon_id' => $row['weapon_id']]));
+        }
 
         return redirect()->route('transfers.index')->with('status', 'Transferencias enviadas.');
     }
@@ -334,6 +347,9 @@ class WeaponTransferController extends Controller
             ]);
         });
 
+        event(new TransferChanged('accepted', $transfer->id, ['weapon_id' => $weapon->id]));
+        event(new AssignmentChanged('updated', $weapon->id, ['transfer_id' => $transfer->id]));
+
         return redirect()->route('transfers.index')->with('status', 'Transferencia aceptada.');
     }
 
@@ -369,6 +385,8 @@ class WeaponTransferController extends Controller
             'before' => ['status' => WeaponTransfer::STATUS_PENDING],
             'after' => ['status' => WeaponTransfer::STATUS_REJECTED],
         ]);
+
+        event(new TransferChanged('rejected', $transfer->id, ['weapon_id' => $transfer->weapon_id]));
 
         return redirect()->route('transfers.index')->with('status', 'Transferencia rechazada.');
     }

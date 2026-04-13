@@ -1,14 +1,31 @@
-<div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-    <div class="p-6 text-gray-900">
+<div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
+    <div class="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200 px-6 py-5">
         <div class="flex items-center justify-between">
-            <h3 class="text-lg font-semibold">{{ __('Fotos') }}</h3>
+            <div>
+                <h3 class="text-xl font-bold text-gray-900 flex items-center gap-3">
+                    <div class="bg-blue-100 p-2 rounded-lg">
+                        <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    {{ __('Fotos') }}
+                </h3>
+                <p class="mt-1 text-sm text-gray-600">{{ __('Fotografías del arma y permisos asociados') }}</p>
+            </div>
             @can('update', $weapon)
-                <label class="flex items-center gap-2 text-sm text-gray-600">
-                    <input id="photo_edit_toggle" type="checkbox" class="rounded">
-                    <span class="text-gray-800">{{ __('Editar') }}</span>
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                    <div class="relative">
+                        <input id="photo_edit_toggle" type="checkbox" class="sr-only">
+                        <div class="block bg-gray-300 w-10 h-6 rounded-full transition-colors"></div>
+                        <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200"></div>
+                    </div>
+                    <span class="text-gray-700 font-medium">{{ __('Modo edición') }}</span>
                 </label>
             @endcan
         </div>
+    </div>
+    
+    <div class="p-6">
 
         @if ($errors->has('photo'))
             <div class="mt-2 text-sm text-red-600">{{ $errors->first('photo') }}</div>
@@ -26,17 +43,21 @@
                     $photoUrl = $photo?->file ? Storage::disk($photo->file->disk)->url($photo->file->path) : null;
                 @endphp
                 <div
-                    class="border rounded-lg p-3 weapon-photo-card"
+                    class="relative border rounded-lg p-3 weapon-photo-card"
                     data-photo-type="weapon"
                     data-photo-id="{{ $photo?->id }}"
                     data-photo-description="{{ $description }}"
                     data-photo-src="{{ $photoUrl ?? '' }}"
                     data-photo-empty="{{ $photo ? '0' : '1' }}"
+                    data-drop-zone
+                    tabindex="0"
+                    title="{{ __('Haz clic, arrastra o pega una imagen') }}"
                 >
+                    <div class="sj-paste-proxy" data-paste-proxy contenteditable="true" spellcheck="false"></div>
                     @if ($photoUrl)
-                        <img src="{{ $photoUrl }}" alt="{{ $label }}" class="h-40 w-full rounded object-contain bg-gray-50">
+                        <img src="{{ $photoUrl }}" alt="{{ $label }}" class="h-40 w-full rounded object-contain bg-gray-50" data-drop-surface>
                     @else
-                        <div class="flex h-40 w-full items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400">
+                        <div class="flex h-40 w-full items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400 transition" data-drop-surface>
                             <div>
                                 <div class="font-medium">{{ __('Foto pendiente') }}</div>
                                 <div class="mt-1 text-xs text-gray-400">{{ $label }}</div>
@@ -67,11 +88,12 @@
                 </div>
             @endforeach
 
-            <div class="border rounded-lg p-3 weapon-photo-card" data-photo-type="permit" data-photo-src="{{ $weapon->permitFile ? route('weapons.permit', $weapon) : '' }}" data-photo-empty="{{ $weapon->permitFile ? '0' : '1' }}">
+            <div class="relative border rounded-lg p-3 weapon-photo-card" data-photo-type="permit" data-photo-src="{{ $weapon->permitFile ? route('weapons.permit', $weapon) : '' }}" data-photo-empty="{{ $weapon->permitFile ? '0' : '1' }}" data-drop-zone tabindex="0" title="{{ __('Haz clic, arrastra o pega una imagen') }}">
+                <div class="sj-paste-proxy" data-paste-proxy contenteditable="true" spellcheck="false"></div>
                 @if ($weapon->permitFile)
-                    <img src="{{ route('weapons.permit', $weapon) }}" alt="Permiso" class="h-40 w-full rounded object-contain bg-gray-50">
+                    <img src="{{ route('weapons.permit', $weapon) }}" alt="Permiso" class="h-40 w-full rounded object-contain bg-gray-50" data-drop-surface>
                 @else
-                    <div class="flex h-40 w-full items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400">
+                    <div class="flex h-40 w-full items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400 transition" data-drop-surface>
                         <div>
                             <div class="font-medium">{{ __('Foto pendiente') }}</div>
                             <div class="mt-1 text-xs text-gray-400">{{ __('Permiso') }}</div>
@@ -157,6 +179,31 @@
         @once
             @push('styles')
                 <link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css">
+                <style>
+                    .sj-paste-proxy {
+                        position: absolute;
+                        inset: 0;
+                        z-index: 20;
+                        background: transparent;
+                        border: 0;
+                        color: transparent;
+                        caret-color: transparent;
+                        opacity: 0;
+                        font-size: 1px;
+                        line-height: 1;
+                        padding: 0;
+                        margin: 0;
+                        outline: none;
+                        user-select: none;
+                        -webkit-user-select: none;
+                        white-space: pre-wrap;
+                        word-break: break-word;
+                    }
+
+                    .sj-paste-proxy::selection {
+                        background: transparent;
+                    }
+                </style>
             @endpush
         @endonce
         @push('scripts')
@@ -165,6 +212,7 @@
             const photoEditToggle = document.getElementById('photo_edit_toggle');
             const photoGrid = document.getElementById('weapon-photo-grid');
             const photoCards = Array.from(document.querySelectorAll('.weapon-photo-card'));
+            const dropZones = Array.from(document.querySelectorAll('[data-drop-zone]'));
             const actionModal = document.getElementById('photo_action_modal');
             const actionCrop = document.getElementById('photo_action_crop');
             const actionChange = document.getElementById('photo_action_change');
@@ -190,6 +238,7 @@
             let cropper = null;
             let editorRotation = 0;
             let editorFineRotation = 0;
+            let hoveredPasteZone = null;
 
             const csrfToken = @json(csrf_token());
             const storeUrl = @json(route('weapons.photos.store', $weapon));
@@ -204,6 +253,64 @@
                     card.classList.toggle('ring-2', enabled);
                     card.classList.toggle('ring-indigo-300', enabled);
                 });
+            };
+
+            const setDropZoneActive = (zone, active) => {
+                const surface = zone?.querySelector('[data-drop-surface]');
+                if (!surface) {
+                    return;
+                }
+
+                surface.classList.toggle('border-indigo-400', active);
+                surface.classList.toggle('bg-indigo-50', active);
+                surface.classList.toggle('ring-2', active);
+                surface.classList.toggle('ring-indigo-200', active);
+            };
+
+            const getClipboardImage = (clipboardData) => {
+                const items = Array.from(clipboardData?.items || []);
+                const imageItem = items.find((item) => item.kind === 'file' && item.type.startsWith('image/'));
+
+                return imageItem ? imageItem.getAsFile() : null;
+            };
+
+            const setActivePhotoFromCard = (card) => {
+                activePhotoId = card.dataset.photoId || null;
+                activePhotoSrc = card.dataset.photoSrc || null;
+                activePhotoType = card.dataset.photoType || 'weapon';
+                activePhotoDescription = card.dataset.photoDescription || null;
+            };
+
+            const openEditorFromFile = (card, file) => {
+                if (!isEditing || !card || !file) {
+                    return;
+                }
+
+                if (!file.type.startsWith('image/')) {
+                    alert(@json(__('Solo puede usar archivos de imagen.')));
+                    return;
+                }
+
+                setActivePhotoFromCard(card);
+                closeActionModal();
+
+                const url = URL.createObjectURL(file);
+                openEditor(url, true);
+            };
+
+            const activateCard = (card) => {
+                if (!isEditing || !card) {
+                    return;
+                }
+
+                setActivePhotoFromCard(card);
+
+                if (card.dataset.photoEmpty === '1') {
+                    replaceInput?.click();
+                    return;
+                }
+
+                openActionModal();
             };
 
             const openActionModal = () => {
@@ -356,22 +463,149 @@
 
             photoCards.forEach((card) => {
                 card.addEventListener('click', () => {
+                    activateCard(card);
+                });
+            });
+
+            dropZones.forEach((zone) => {
+                const pasteProxy = zone.querySelector('[data-paste-proxy]');
+
+                ['dragenter', 'dragover'].forEach((eventName) => {
+                    zone.addEventListener(eventName, (event) => {
+                        if (!isEditing) {
+                            return;
+                        }
+
+                        event.preventDefault();
+                        event.stopPropagation();
+                        hoveredPasteZone = zone;
+                        setDropZoneActive(zone, true);
+                    });
+                });
+
+                ['dragleave', 'dragend'].forEach((eventName) => {
+                    zone.addEventListener(eventName, (event) => {
+                        if (!isEditing) {
+                            return;
+                        }
+
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (event.target === zone || !zone.contains(event.relatedTarget)) {
+                            setDropZoneActive(zone, false);
+                        }
+                    });
+                });
+
+                zone.addEventListener('drop', (event) => {
                     if (!isEditing) {
                         return;
                     }
 
-                    activePhotoId = card.dataset.photoId || null;
-                    activePhotoSrc = card.dataset.photoSrc || null;
-                    activePhotoType = card.dataset.photoType || 'weapon';
-                    activePhotoDescription = card.dataset.photoDescription || null;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    hoveredPasteZone = zone;
+                    setDropZoneActive(zone, false);
 
-                    if (card.dataset.photoEmpty === '1') {
-                        replaceInput?.click();
+                    const file = event.dataTransfer?.files?.[0];
+                    if (!file) {
                         return;
                     }
 
-                    openActionModal();
+                    openEditorFromFile(zone, file);
                 });
+
+                zone.addEventListener('keydown', (event) => {
+                    if (!isEditing) {
+                        return;
+                    }
+
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        activateCard(zone);
+                    }
+                });
+
+                if (pasteProxy) {
+                    zone.addEventListener('mouseenter', () => {
+                        hoveredPasteZone = zone;
+                    });
+
+                    zone.addEventListener('mouseleave', () => {
+                        if (hoveredPasteZone === zone) {
+                            hoveredPasteZone = null;
+                        }
+                    });
+
+                    pasteProxy.addEventListener('mousedown', (event) => {
+                        if (!isEditing) {
+                            return;
+                        }
+
+                        if (event.button === 0) {
+                            event.preventDefault();
+                            activateCard(zone);
+                        }
+                    });
+
+                    pasteProxy.addEventListener('focus', () => {
+                        if (!isEditing) {
+                            return;
+                        }
+
+                        hoveredPasteZone = zone;
+                        pasteProxy.textContent = '';
+                    });
+
+                    pasteProxy.addEventListener('contextmenu', () => {
+                        if (!isEditing) {
+                            return;
+                        }
+
+                        hoveredPasteZone = zone;
+                        pasteProxy.focus({ preventScroll: true });
+                    });
+
+                    pasteProxy.addEventListener('paste', (event) => {
+                        if (!isEditing) {
+                            return;
+                        }
+
+                        const file = getClipboardImage(event.clipboardData);
+                        if (!file) {
+                            return;
+                        }
+
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openEditorFromFile(zone, file);
+                        pasteProxy.textContent = '';
+                    });
+
+                    pasteProxy.addEventListener('blur', () => {
+                        pasteProxy.textContent = '';
+                    });
+                }
+            });
+
+            document.addEventListener('paste', (event) => {
+                if (!isEditing) {
+                    return;
+                }
+
+                const file = getClipboardImage(event.clipboardData);
+                if (!file) {
+                    return;
+                }
+
+                const zone = hoveredPasteZone;
+                if (!zone) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                openEditorFromFile(zone, file);
             });
 
             actionCancel?.addEventListener('click', closeActionModal);

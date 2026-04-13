@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\WeaponChanged;
 use App\Models\AuditLog;
 use App\Models\Client;
 use App\Models\File;
@@ -297,6 +298,8 @@ class WeaponController extends Controller
             'after' => $weapon->only(['internal_code', 'serial_number', 'weapon_type', 'caliber', 'brand', 'capacity']),
         ]);
 
+        event(new WeaponChanged('created', $weapon->id));
+
         return redirect()->route('weapons.show', $weapon)->with('status', 'Arma creada.');
     }
 
@@ -445,6 +448,8 @@ class WeaponController extends Controller
 
         $documentService->syncPermitDocument($weapon);
         $documentService->syncRenewalDocument($weapon);
+
+        event(new WeaponChanged('updated', $weapon->id));
 
         return response()->json(['ok' => true]);
     }
@@ -600,6 +605,8 @@ class WeaponController extends Controller
                 'permit_expires_at',
             ]),
         ]);
+
+        event(new WeaponChanged('updated', $weapon->id));
 
         return redirect()->route('weapons.show', $weapon)->with('status', 'Arma actualizada.');
     }
@@ -1256,6 +1263,8 @@ XML;
                 'imprint_received_at' => null,
             ]);
         }
+
+        event(new WeaponChanged('updated', $weapon->id));
 
         return back();
     }

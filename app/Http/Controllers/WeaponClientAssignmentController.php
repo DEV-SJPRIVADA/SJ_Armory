@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\AssignmentChanged;
 use App\Models\AuditLog;
 use App\Models\User;
 use App\Models\Weapon;
@@ -67,6 +68,13 @@ class WeaponClientAssignmentController extends Controller
             now()->toDateString(),
             $data['reason'] ?? null
         );
+
+        app()->terminating(function () use ($weapon, $clientId, $responsibleUser): void {
+            event(new AssignmentChanged('assigned', $weapon->id, [
+                'client_id' => $clientId,
+                'responsible_user_id' => $responsibleUser->id,
+            ]));
+        });
 
         return redirect()->route('weapons.show', $weapon)->with('status', 'Destino operativo actualizado.');
     }
