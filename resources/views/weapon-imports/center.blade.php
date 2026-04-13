@@ -17,150 +17,6 @@
     </style>
 @endpush
 
-<x-app-layout>
-    <x-slot name="header">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div class="min-w-0">
-                <h2 class="text-xl font-semibold leading-tight text-gray-800">Centro de cargas masivas</h2>
-                <p class="mt-1 text-sm text-gray-500">Carga y procesa informacion en lote</p>
-            </div>
-            <div class="flex flex-col gap-2 sm:flex-row lg:justify-end">
-                <button type="button" data-import-trigger data-import-type="weapon" x-data="" x-on:click.prevent="$dispatch('open-modal', 'mass-import-upload')" class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
-                    Subir armas
-                </button>
-                <button type="button" data-import-trigger data-import-type="client" x-data="" x-on:click.prevent="$dispatch('open-modal', 'mass-import-upload')" class="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                    Subir clientes
-                </button>
-            </div>
-        </div>
-    </x-slot>
-
-    @php
-        $selectedType = old('type', \App\Models\WeaponImportBatch::TYPE_WEAPON);
-    @endphp
-
-    <div class="py-8">
-        <div class="w-full px-4 pb-20 sm:px-6 lg:px-8">
-            @if (session('status'))
-                <div class="mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">{{ session('status') }}</div>
-            @endif
-
-            @if ($errors->has('batch'))
-                <div class="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $errors->first('batch') }}</div>
-            @endif
-
-            <section>
-                <div class="mb-4 flex items-end justify-between gap-3">
-                    <div>
-                        <div class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Historial</div>
-                        <h3 class="text-lg font-semibold text-gray-800">Lotes ejecutados</h3>
-                    </div>
-                    <div class="text-sm text-gray-500">{{ $batches->count() }} lote(s)</div>
-                </div>
-
-                @if ($batches->isNotEmpty())
-                    <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                        @foreach ($batches as $batch)
-                            <a href="{{ route('weapon-imports.show', $batch) }}" class="block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md">
-                                <div class="flex items-start justify-between gap-3">
-                                    <div class="min-w-0">
-                                        <div class="truncate text-base font-semibold text-gray-800">{{ $batch->source_name }}</div>
-                                        <div class="mt-1 text-sm text-gray-500">{{ $batch->created_at?->format('d/m/Y H:i') }}</div>
-                                    </div>
-                                    <div class="flex flex-col items-end gap-2">
-                                        <span class="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">Ejecutado</span>
-                                        <span class="rounded-full {{ $batch->isClientImport() ? 'bg-slate-100 text-slate-700' : 'bg-indigo-100 text-indigo-700' }} px-2.5 py-1 text-xs font-semibold">{{ $batch->typeLabel() }}</span>
-                                    </div>
-                                </div>
-                                <div class="mt-4 grid grid-cols-2 gap-3 text-sm text-gray-600">
-                                    <div><div class="text-xs font-semibold uppercase tracking-wide text-gray-400">Total</div><div class="mt-1 font-semibold text-gray-800">{{ $batch->total_rows }}</div></div>
-                                    <div><div class="text-xs font-semibold uppercase tracking-wide text-gray-400">Errores</div><div class="mt-1 font-semibold text-gray-800">{{ $batch->error_count }}</div></div>
-                                    <div><div class="text-xs font-semibold uppercase tracking-wide text-gray-400">Crear</div><div class="mt-1 font-semibold text-blue-700">{{ $batch->create_count }}</div></div>
-                                    <div><div class="text-xs font-semibold uppercase tracking-wide text-gray-400">Actualizar</div><div class="mt-1 font-semibold text-amber-700">{{ $batch->update_count }}</div></div>
-                                </div>
-                            </a>
-                        @endforeach
-                    </div>
-                @else
-                    <div class="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center text-gray-500 shadow-sm">Aun no hay lotes ejecutados. Sube tu primer archivo para revisar y ejecutar cambios masivos.</div>
-                @endif
-            </section>
-        </div>
-    </div>
-
-    <x-modal name="mass-import-upload" :show="$errors->has('document')" maxWidth="2xl" focusable>
-        <div id="mass-import-upload-modal" class="p-6">
-            <div class="flex items-start justify-between gap-4">
-                <div>
-                    <h3 id="mass-import-title" class="text-lg font-semibold text-gray-800">Subir documento de armas</h3>
-                    <p id="mass-import-copy" class="mt-1 text-sm text-gray-500">Carga masiva con validacion previa antes de crear o actualizar armas.</p>
-                </div>
-                <button type="button" x-data="" x-on:click.prevent="$dispatch('close-modal', 'mass-import-upload')" class="rounded-md px-2 py-1 text-sm text-gray-500 transition hover:bg-gray-100 hover:text-gray-700">
-                    Cerrar
-                </button>
-            </div>
-
-            <form id="mass-import-upload-form" method="POST" action="{{ route('weapon-imports.preview') }}" enctype="multipart/form-data" class="mt-6 space-y-4">
-                @csrf
-                <input id="mass-import-type" type="hidden" name="type" value="{{ $selectedType }}">
-                <input id="mass-import-document" type="file" name="document" accept=".xlsx,.csv,.txt" class="hidden" required>
-
-                <label for="mass-import-document" id="mass-import-dropzone" class="flex min-h-[15rem] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40">
-                    <div class="rounded-full bg-white p-4 text-indigo-600 shadow-sm">
-                        <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-                            <path d="M12 16V4" />
-                            <path d="M8 8l4-4 4 4" />
-                            <path d="M4 16.5v1.5A2 2 0 006 20h12a2 2 0 002-2v-1.5" />
-                        </svg>
-                    </div>
-                    <div id="mass-import-dropzone-title" class="mt-4 text-base font-semibold text-gray-800">Arrastra el documento aqui</div>
-                    <div class="mt-2 text-sm text-gray-500">Tambien puedes pegar el archivo con Ctrl + V o seleccionarlo manualmente.</div>
-                    <div class="mt-5 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm">
-                        Seleccionar de este equipo
-                    </div>
-                    <div id="mass-import-file-name" class="mt-4 text-sm font-medium text-indigo-700"></div>
-                </label>
-
-                <div id="mass-import-upload-error" class="hidden rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700"></div>
-
-                <div id="mass-import-upload-progress" class="mass-import-progress" aria-live="polite">
-                    <div class="mass-import-progress__top">
-                        <div id="mass-import-upload-progress-title" class="mass-import-progress__title">Subiendo archivo...</div>
-                        <div id="mass-import-upload-progress-meta" class="mass-import-progress__meta">0%</div>
-                    </div>
-                    <div class="mass-import-progress__bar">
-                        <div id="mass-import-upload-progress-fill" class="mass-import-progress__fill"></div>
-                    </div>
-                    <div class="mass-import-progress__details">
-                        <span id="mass-import-upload-progress-detail-left">Esperando archivo</span>
-                        <span id="mass-import-upload-progress-detail-right"></span>
-                    </div>
-                </div>
-
-                <x-input-error :messages="$errors->get('document')" class="mt-2" />
-
-                <div id="mass-import-client-format" class="hidden rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                    <div class="font-semibold text-slate-800">Formato minimo para clientes</div>
-                    <div class="mt-2 grid gap-2 sm:grid-cols-2">
-                        <span>NIT./CC</span>
-                        <span>RAZON SOCIAL</span>
-                        <span>NOMBRE REP. LEGAL</span>
-                        <span>DIRECCION PRINCIPAL</span>
-                        <span>CIUDAD</span>
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-end gap-3">
-                    <button type="button" x-data="" x-on:click.prevent="$dispatch('close-modal', 'mass-import-upload')" class="rounded-md px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-100 hover:text-gray-800">
-                        Cancelar
-                    </button>
-                    <x-primary-button id="mass-import-submit" disabled>Subir</x-primary-button>
-                </div>
-            </form>
-        </div>
-    </x-modal>
-</x-app-layout>
-
 @push('scripts')
 <script>
 (() => {
@@ -365,3 +221,147 @@
 })();
 </script>
 @endpush
+
+<x-app-layout>
+    <x-slot name="header">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="min-w-0">
+                <h2 class="text-xl font-semibold leading-tight text-gray-800">Centro de cargas masivas</h2>
+                <p class="mt-1 text-sm text-gray-500">Carga y procesa informacion en lote</p>
+            </div>
+            <div class="flex flex-col gap-2 sm:flex-row lg:justify-end">
+                <button type="button" data-import-trigger data-import-type="weapon" x-data="" x-on:click.prevent="$dispatch('open-modal', 'mass-import-upload')" class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                    Subir armas
+                </button>
+                <button type="button" data-import-trigger data-import-type="client" x-data="" x-on:click.prevent="$dispatch('open-modal', 'mass-import-upload')" class="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
+                    Subir clientes
+                </button>
+            </div>
+        </div>
+    </x-slot>
+
+    @php
+        $selectedType = old('type', \App\Models\WeaponImportBatch::TYPE_WEAPON);
+    @endphp
+
+    <div class="py-8">
+        <div class="w-full px-4 pb-20 sm:px-6 lg:px-8">
+            @if (session('status'))
+                <div class="mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">{{ session('status') }}</div>
+            @endif
+
+            @if ($errors->has('batch'))
+                <div class="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $errors->first('batch') }}</div>
+            @endif
+
+            <section>
+                <div class="mb-4 flex items-end justify-between gap-3">
+                    <div>
+                        <div class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Historial</div>
+                        <h3 class="text-lg font-semibold text-gray-800">Lotes ejecutados</h3>
+                    </div>
+                    <div class="text-sm text-gray-500">{{ $batches->count() }} lote(s)</div>
+                </div>
+
+                @if ($batches->isNotEmpty())
+                    <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                        @foreach ($batches as $batch)
+                            <a href="{{ route('weapon-imports.show', $batch) }}" class="block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <div class="truncate text-base font-semibold text-gray-800">{{ $batch->source_name }}</div>
+                                        <div class="mt-1 text-sm text-gray-500">{{ $batch->created_at?->format('d/m/Y H:i') }}</div>
+                                    </div>
+                                    <div class="flex flex-col items-end gap-2">
+                                        <span class="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">Ejecutado</span>
+                                        <span class="rounded-full {{ $batch->isClientImport() ? 'bg-slate-100 text-slate-700' : 'bg-indigo-100 text-indigo-700' }} px-2.5 py-1 text-xs font-semibold">{{ $batch->typeLabel() }}</span>
+                                    </div>
+                                </div>
+                                <div class="mt-4 grid grid-cols-2 gap-3 text-sm text-gray-600">
+                                    <div><div class="text-xs font-semibold uppercase tracking-wide text-gray-400">Total</div><div class="mt-1 font-semibold text-gray-800">{{ $batch->total_rows }}</div></div>
+                                    <div><div class="text-xs font-semibold uppercase tracking-wide text-gray-400">Errores</div><div class="mt-1 font-semibold text-gray-800">{{ $batch->error_count }}</div></div>
+                                    <div><div class="text-xs font-semibold uppercase tracking-wide text-gray-400">Crear</div><div class="mt-1 font-semibold text-blue-700">{{ $batch->create_count }}</div></div>
+                                    <div><div class="text-xs font-semibold uppercase tracking-wide text-gray-400">Actualizar</div><div class="mt-1 font-semibold text-amber-700">{{ $batch->update_count }}</div></div>
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center text-gray-500 shadow-sm">Aun no hay lotes ejecutados. Sube tu primer archivo para revisar y ejecutar cambios masivos.</div>
+                @endif
+            </section>
+        </div>
+    </div>
+
+    <x-modal name="mass-import-upload" :show="$errors->has('document')" maxWidth="2xl" focusable>
+        <div id="mass-import-upload-modal" class="p-6">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h3 id="mass-import-title" class="text-lg font-semibold text-gray-800">Subir documento de armas</h3>
+                    <p id="mass-import-copy" class="mt-1 text-sm text-gray-500">Carga masiva con validacion previa antes de crear o actualizar armas.</p>
+                </div>
+                <button type="button" x-data="" x-on:click.prevent="$dispatch('close-modal', 'mass-import-upload')" class="rounded-md px-2 py-1 text-sm text-gray-500 transition hover:bg-gray-100 hover:text-gray-700">
+                    Cerrar
+                </button>
+            </div>
+
+            <form id="mass-import-upload-form" method="POST" action="{{ route('weapon-imports.preview') }}" enctype="multipart/form-data" class="mt-6 space-y-4">
+                @csrf
+                <input id="mass-import-type" type="hidden" name="type" value="{{ $selectedType }}">
+                <input id="mass-import-document" type="file" name="document" accept=".xlsx,.csv,.txt" class="hidden" required>
+
+                <label for="mass-import-document" id="mass-import-dropzone" class="flex min-h-[15rem] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40">
+                    <div class="rounded-full bg-white p-4 text-indigo-600 shadow-sm">
+                        <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                            <path d="M12 16V4" />
+                            <path d="M8 8l4-4 4 4" />
+                            <path d="M4 16.5v1.5A2 2 0 006 20h12a2 2 0 002-2v-1.5" />
+                        </svg>
+                    </div>
+                    <div id="mass-import-dropzone-title" class="mt-4 text-base font-semibold text-gray-800">Arrastra el documento aqui</div>
+                    <div class="mt-2 text-sm text-gray-500">Tambien puedes pegar el archivo con Ctrl + V o seleccionarlo manualmente.</div>
+                    <div class="mt-5 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm">
+                        Seleccionar de este equipo
+                    </div>
+                    <div id="mass-import-file-name" class="mt-4 text-sm font-medium text-indigo-700"></div>
+                </label>
+
+                <div id="mass-import-upload-error" class="hidden rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700"></div>
+
+                <div id="mass-import-upload-progress" class="mass-import-progress" aria-live="polite">
+                    <div class="mass-import-progress__top">
+                        <div id="mass-import-upload-progress-title" class="mass-import-progress__title">Subiendo archivo...</div>
+                        <div id="mass-import-upload-progress-meta" class="mass-import-progress__meta">0%</div>
+                    </div>
+                    <div class="mass-import-progress__bar">
+                        <div id="mass-import-upload-progress-fill" class="mass-import-progress__fill"></div>
+                    </div>
+                    <div class="mass-import-progress__details">
+                        <span id="mass-import-upload-progress-detail-left">Esperando archivo</span>
+                        <span id="mass-import-upload-progress-detail-right"></span>
+                    </div>
+                </div>
+
+                <x-input-error :messages="$errors->get('document')" class="mt-2" />
+
+                <div id="mass-import-client-format" class="hidden rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                    <div class="font-semibold text-slate-800">Formato minimo para clientes</div>
+                    <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                        <span>NIT./CC</span>
+                        <span>RAZON SOCIAL</span>
+                        <span>NOMBRE REP. LEGAL</span>
+                        <span>DIRECCION PRINCIPAL</span>
+                        <span>CIUDAD</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-3">
+                    <button type="button" x-data="" x-on:click.prevent="$dispatch('close-modal', 'mass-import-upload')" class="rounded-md px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-100 hover:text-gray-800">
+                        Cancelar
+                    </button>
+                    <x-primary-button id="mass-import-submit" disabled>Subir</x-primary-button>
+                </div>
+            </form>
+        </div>
+    </x-modal>
+</x-app-layout>

@@ -2,9 +2,9 @@
     <x-slot name="header">
         <div class="flex items-start justify-between gap-4">
             <div>
-                <div class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Cargas masivas · {{ $selectedBatch->typeLabel() }}</div>
+                <div class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Cargas masivas - {{ $selectedBatch->typeLabel() }}</div>
                 <h2 class="mt-1 text-xl font-semibold leading-tight text-gray-800">Detalle del lote</h2>
-                <p class="mt-1 text-sm text-gray-500">Revisa el resultado del lote y ejecuta o descarta cambios según el estado actual.</p>
+                <p class="mt-1 text-sm text-gray-500">Revisa el resultado del lote y ejecuta o descarta cambios segun el estado actual.</p>
             </div>
             <a href="{{ route('weapon-imports.index') }}" class="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">Volver a lotes</a>
         </div>
@@ -14,7 +14,7 @@
         $selectedBatchBadge = $selectedBatch->isExecuted()
             ? ['classes' => 'bg-green-100 text-green-700', 'label' => 'Lote ejecutado']
             : ($selectedBatch->isProcessing()
-                ? ['classes' => 'bg-blue-100 text-blue-700', 'label' => 'Lote en ejecución']
+                ? ['classes' => 'bg-blue-100 text-blue-700', 'label' => 'Lote en ejecucion']
                 : ($selectedBatch->isFailed()
                     ? ['classes' => 'bg-rose-100 text-rose-700', 'label' => 'Lote con fallo']
                     : ['classes' => 'bg-amber-100 text-amber-700', 'label' => 'Lote pendiente']));
@@ -69,9 +69,9 @@
                 </div>
 
                 @if ($selectedBatch->isProcessing())
-                    <div class="mt-5 rounded-lg border border-blue-100 bg-blue-50 px-4 py-5 text-sm text-blue-800">El lote se está ejecutando. Puedes seguir el avance en el panel de progreso.</div>
+                    <div class="mt-5 rounded-lg border border-blue-100 bg-blue-50 px-4 py-5 text-sm text-blue-800">El lote se esta ejecutando. Puedes seguir el avance en el panel de progreso.</div>
                 @elseif ($selectedBatch->isFailed())
-                    <div class="mt-5 rounded-lg border border-rose-100 bg-rose-50 px-4 py-5 text-sm text-rose-700">{{ $selectedBatch->last_error ?: 'La ejecución del lote falló.' }}</div>
+                    <div class="mt-5 rounded-lg border border-rose-100 bg-rose-50 px-4 py-5 text-sm text-rose-700">{{ $selectedBatch->last_error ?: 'La ejecucion del lote fallo.' }}</div>
                 @endif
 
                 @if ($openPreview || $selectedBatch->isExecuted() || $selectedBatch->isFailed() || $selectedBatch->isDraft())
@@ -81,13 +81,13 @@
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th class="px-3 py-2 text-left font-medium text-gray-600">Fila</th>
-                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Acción</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Accion</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-600">NIT./CC</th>
-                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Razón social</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Razon social</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-600">Representante legal</th>
-                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Dirección principal</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Direccion principal</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-600">Ciudad</th>
-                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Observación</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Observacion</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200">
@@ -119,7 +119,7 @@
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th class="px-3 py-2 text-left font-medium text-gray-600">Fila</th>
-                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Acción</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Accion</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-600">Tipo</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-600">Marca</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-600">Serie</th>
@@ -128,7 +128,7 @@
                                         <th class="px-3 py-2 text-left font-medium text-gray-600">Tipo de permiso</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-600">No. de permiso</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-600">Fecha de vencimiento</th>
-                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Observación</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Observacion</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200">
@@ -198,11 +198,18 @@
 
     if (!page || !panel || !fill || !left || !right || !processed || !successful || !failed || !message) return;
 
+    const requestHeaders = {
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': csrfToken,
+    };
+
     const state = {
         running: false,
         statusUrl: page.dataset.selectedBatchStatusUrl || '',
+        processUrl: page.dataset.selectedBatchProcessUrl || '',
         redirectUrl: page.dataset.selectedBatchRedirectUrl || '',
-        sourceName: page.dataset.selectedBatchName || 'Lote'
+        sourceName: page.dataset.selectedBatchName || 'Lote',
     };
 
     const formatDuration = (seconds) => {
@@ -224,7 +231,13 @@
         discardButtons.forEach((button) => button.disabled = running);
     };
 
-    const renderProgress = (progress) => {
+    const updateUrlsFromPayload = (payload = {}) => {
+        if (payload.status_url) state.statusUrl = payload.status_url;
+        if (payload.process_url) state.processUrl = payload.process_url;
+        if (payload.redirect_url) state.redirectUrl = payload.redirect_url;
+    };
+
+    const renderProgress = (progress = {}) => {
         const total = Number(progress.total_rows || 0);
         const processedRows = Number(progress.processed_rows || 0);
         const successfulRows = Number(progress.successful_rows || 0);
@@ -233,40 +246,94 @@
 
         fill.style.width = `${percentage}%`;
         left.textContent = `${processedRows} / ${total} filas`;
-        right.textContent = progress.status === 'processing' ? `ETA ${formatDuration(progress.eta_seconds)}` : (progress.status === 'executed' ? 'Completado' : 'Proceso detenido');
+        right.textContent = progress.status === 'processing'
+            ? `ETA ${formatDuration(progress.eta_seconds)}`
+            : (progress.status === 'executed' ? 'Completado' : 'Proceso detenido');
         processed.textContent = processedRows;
         successful.textContent = successfulRows;
         failed.textContent = failedRows;
         message.textContent = progress.status === 'failed'
-            ? (progress.last_error || 'La ejecución del lote se detuvo.')
-            : (progress.status === 'executed' ? 'Carga completada. Redirigiendo...' : 'El lote se está procesando. Puedes cambiar de pestaña mientras termina.');
+            ? (progress.last_error || 'La ejecucion del lote se detuvo.')
+            : (progress.status === 'executed'
+                ? 'Carga completada. Redirigiendo...'
+                : 'El lote se esta procesando. Puedes cambiar de pestana mientras termina.');
+    };
+
+    const readJson = async (response) => {
+        try {
+            return await response.json();
+        } catch {
+            return {};
+        }
+    };
+
+    const finishIfTerminal = (progress = {}) => {
+        if (progress.status === 'executed') {
+            window.setTimeout(() => { window.location.href = state.redirectUrl; }, 800);
+            return true;
+        }
+
+        if (progress.status === 'failed') {
+            setRunning(false);
+            return true;
+        }
+
+        return false;
     };
 
     const pollStatus = async () => {
         if (!state.statusUrl) return;
 
         try {
-            const response = await fetch(state.statusUrl, {
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': csrfToken,
-                },
-            });
-
-            if (!response.ok) return;
-
-            const payload = await response.json();
-            renderProgress(payload.progress);
-            if (payload.redirect_url) state.redirectUrl = payload.redirect_url;
-
-            if (payload.progress.status === 'executed') {
-                setTimeout(() => { window.location.href = state.redirectUrl; }, 800);
+            const response = await fetch(state.statusUrl, { headers: requestHeaders });
+            if (!response.ok) {
+                window.setTimeout(pollStatus, 2000);
                 return;
             }
 
-            if (payload.progress.status === 'processing') {
-                window.setTimeout(pollStatus, 1500);
+            const payload = await readJson(response);
+            updateUrlsFromPayload(payload);
+            renderProgress(payload.progress);
+
+            if (finishIfTerminal(payload.progress)) return;
+
+            if (payload.progress?.status === 'processing') {
+                window.setTimeout(state.processUrl ? processNextChunk : pollStatus, 800);
+                return;
+            }
+
+            setRunning(false);
+        } catch {
+            window.setTimeout(pollStatus, 2000);
+        }
+    };
+
+    const processNextChunk = async () => {
+        if (!state.processUrl) {
+            pollStatus();
+            return;
+        }
+
+        try {
+            const response = await fetch(state.processUrl, {
+                method: 'POST',
+                headers: requestHeaders,
+            });
+            const payload = await readJson(response);
+
+            if (!response.ok) {
+                message.textContent = payload.message || 'No se pudo continuar la ejecucion del lote.';
+                setRunning(false);
+                return;
+            }
+
+            updateUrlsFromPayload(payload);
+            renderProgress(payload.progress);
+
+            if (finishIfTerminal(payload.progress)) return;
+
+            if (payload.progress?.status === 'processing') {
+                window.setTimeout(processNextChunk, 150);
                 return;
             }
 
@@ -278,29 +345,37 @@
 
     const startExecution = async (form) => {
         setRunning(true);
+        message.textContent = 'Iniciando ejecucion del lote...';
+
         try {
             const response = await fetch(form.dataset.startUrl, {
                 method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': csrfToken,
-                },
+                headers: requestHeaders,
             });
+            const payload = await readJson(response);
 
-            const payload = await response.json();
             if (!response.ok) {
-                message.textContent = payload.message || 'No se pudo iniciar la ejecución del lote.';
+                message.textContent = payload.message || 'No se pudo iniciar la ejecucion del lote.';
                 setRunning(false);
                 return;
             }
 
-            state.statusUrl = payload.status_url || state.statusUrl;
-            state.redirectUrl = payload.redirect_url || state.redirectUrl;
+            updateUrlsFromPayload({
+                ...payload,
+                process_url: form.dataset.processUrl || payload.process_url,
+            });
             renderProgress(payload.progress);
-            pollStatus();
+
+            if (finishIfTerminal(payload.progress)) return;
+
+            if (payload.progress?.status === 'processing') {
+                window.setTimeout(processNextChunk, 150);
+                return;
+            }
+
+            setRunning(false);
         } catch {
-            message.textContent = 'No se pudo iniciar la ejecución del lote.';
+            message.textContent = 'No se pudo iniciar la ejecucion del lote.';
             setRunning(false);
         }
     };
@@ -315,8 +390,7 @@
 
     if (page.dataset.selectedBatchStatus === 'processing') {
         setRunning(true);
-        pollStatus();
+        window.setTimeout(processNextChunk, 150);
     }
 })();
 </script>
-
