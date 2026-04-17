@@ -234,7 +234,7 @@
                 </div>
                 <div class="flex min-w-[18rem] flex-1 flex-wrap items-center gap-2">
                     <span class="text-xs font-medium text-gray-600">{{ __('Ajuste fino') }}</span>
-                    <input id="image_editor_rotate_fine" type="range" min="-5" max="5" step="0.1" value="0" class="h-2 min-w-[10rem] flex-1 cursor-pointer accent-indigo-600">
+                    <input id="image_editor_rotate_fine" type="range" min="-10" max="10" step="0.1" value="0" class="h-2 min-w-[10rem] flex-1 cursor-pointer accent-indigo-600">
                     <span id="image_editor_rotate_value" class="w-14 text-right text-xs font-medium text-gray-600">0.0°</span>
                     <button id="image_editor_rotate_reset" type="button" class="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100">
                         {{ __('Restablecer') }}

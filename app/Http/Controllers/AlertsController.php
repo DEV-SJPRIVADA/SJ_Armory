@@ -21,7 +21,11 @@ class AlertsController extends Controller
         $today = now()->startOfDay();
         $alertWindowEnd = $today->copy()->addDays(120)->endOfDay();
 
-        $documentsQuery = WeaponDocument::with(['weapon.activeClientAssignment.client', 'file'])
+        $documentsQuery = WeaponDocument::with([
+            'weapon.activeClientAssignment.client',
+            'weapon.operationalBlockingIncidents',
+            'file',
+        ])
             ->where('is_renewal', true)
             ->whereNotNull('valid_until');
 

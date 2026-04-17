@@ -30,6 +30,7 @@ Backend:
 - PHP `^8.1`
 - Laravel `^10.10`
 - Laravel Sanctum
+- Laravel Reverb `^1.10` (servidor WebSocket propio para broadcasting)
 - Eloquent ORM
 - PHPUnit 10
 - Laravel Breeze (auth scaffold)
@@ -43,6 +44,8 @@ Frontend:
 - Alpine.js
 - Axios
 - Leaflet + `leaflet.markercluster`
+- Laravel Echo + pusher-js (cliente WebSocket hacia Reverb)
+- Cropper.js (editor de imagenes: recorte, rotacion y ajuste fino)
 
 Servicios externos:
 
@@ -126,7 +129,9 @@ Archivo principal: `app/Http/Controllers/WeaponController.php`
   - pegar imagen desde portapapeles.
 - Antes de aceptar una imagen, el sistema abre un editor para:
   - recortar,
-  - girar,
+  - girar a 90° (izquierda/derecha),
+  - aplicar ajuste fino de rotacion en un rango de -10° a +10° con paso de 0.1°,
+  - restablecer la rotacion,
   - confirmar la version final.
 - Sincronizacion automatica de documentos:
   - Documento de permiso (`is_permit = true`).
@@ -471,6 +476,9 @@ Alertas:
   - seleccionar todo lo visible,
   - ver la relacion consolidada en PDF antes de descargar,
   - descargar la relacion filtrada en `.docx`.
+- Cada modal (vencidos, por vencer y sin alertas) incluye:
+  - un contador dinamico `N armas en la lista` que reacciona a la busqueda y a los filtros,
+  - un toggle `Excluir armas con novedad` que oculta las armas con incidentes bloqueantes activos y las retira automaticamente de la seleccion, vista previa y descarga.
 - La ventana de alerta preventiva opera sobre 120 dias.
 
 ### 5.14 Dashboard operativo
@@ -503,6 +511,7 @@ Comportamiento relevante:
 
 - La cabecera muestra fecha y hora en tiempo real.
 - El dashboard se refresca automaticamente sin recargar la pagina.
+- Eventos de dominio (armas, asignaciones, transferencias, documentos, novedades) se emiten via Laravel Reverb y el frontend escucha con Laravel Echo para sincronizar vistas sin recargar.
 - El grafico `Renovaciones por mes`:
   - muestra solo meses con datos,
   - filtra por anio,
@@ -674,6 +683,7 @@ Rutas usadas por el dominio:
 9. `php artisan storage:link`
 10. `npm run build` (o `npm run dev`)
 11. `php artisan serve`
+12. Levantar el servidor de broadcasting en paralelo (ver `12.3 Broadcasting en tiempo real`)
 
 ### 12.1 Acceso por red local con Laragon/Apache
 
@@ -754,6 +764,28 @@ Observacion operativa:
   - `http://172.16.23.36`
 - Si tambien quieres servirlo por otra IP o hostname, debes agregar ese valor tanto en el `VirtualHost` como en `SANCTUM_STATEFUL_DOMAINS`.
 
+### 12.3 Broadcasting en tiempo real (Laravel Reverb)
+
+El sistema usa Laravel Reverb como servidor WebSocket propio. Reverb debe correr en paralelo a Apache/Nginx/`artisan serve`. Si no esta levantado, los eventos de dominio que implementan `ShouldBroadcast`/`ShouldBroadcastNow` fallaran con un `BroadcastException` (por ejemplo `cURL error 7: Failed to connect to 127.0.0.1:8080`).
+
+Arranque tipico en Windows/Laragon:
+
+```powershell
+& "C:\laragon\bin\php\php-8.2.29-Win32-vs16-x64\php.exe" artisan reverb:start --host=0.0.0.0 --port=8080
+```
+
+Alternativa multiplataforma:
+
+```bash
+php artisan reverb:start --host=0.0.0.0 --port=8080
+```
+
+Consideraciones:
+
+- `REVERB_HOST` debe coincidir con el host que el navegador puede resolver. Si el sistema se usa por LAN con IP (por ejemplo `172.16.16.90`), configurar `REVERB_HOST=172.16.16.90` y recompilar assets con Vite para que `VITE_REVERB_HOST` se actualice.
+- El puerto del servidor (`REVERB_SERVER_PORT`) debe estar permitido en el firewall para equipos cliente.
+- Si temporalmente no se requiere tiempo real, se puede forzar `BROADCAST_CONNECTION=null` (o `log`) y limpiar cache con `php artisan config:clear`.
+
 ## 13. Variables de entorno relevantes
 
 Base:
@@ -783,6 +815,18 @@ Operacion:
 - `SANCTUM_STATEFUL_DOMAINS`
   - lista de hosts/IP autorizados para cookies de sesion y autenticacion stateful
   - debe incluir hostname, alias local y/o IP real usada para acceder al sistema
+
+Broadcasting (tiempo real, Laravel Reverb):
+
+- `BROADCAST_CONNECTION=reverb`
+- `REVERB_APP_ID`, `REVERB_APP_KEY`, `REVERB_APP_SECRET`
+  - credenciales del servidor Reverb usadas tanto por el cliente como por el servidor
+- `REVERB_HOST`, `REVERB_PORT`, `REVERB_SCHEME`
+  - host y puerto visible para el cliente (el navegador se conecta aqui)
+- `REVERB_SERVER_HOST`, `REVERB_SERVER_PORT`
+  - bind real del proceso `reverb:start`
+- `VITE_REVERB_APP_KEY`, `VITE_REVERB_HOST`, `VITE_REVERB_PORT`, `VITE_REVERB_SCHEME`
+  - variables expuestas a Vite para configurar Laravel Echo en el frontend
 
 Importante para entorno real:
 

@@ -53,6 +53,8 @@
         .alerts-modal-panel__body { flex: 1 1 auto; overflow: auto; padding: 1rem 1.15rem 1.2rem; }
         .alerts-modal-panel__toggle { display: inline-flex; align-items: center; gap: .55rem; color: #334155; font-size: .92rem; font-weight: 600; }
         .alerts-modal-panel__toggle input { width: 1rem; height: 1rem; border-radius: .25rem; }
+        .alerts-modal-panel__toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1.25rem; margin-top: .5rem; }
+        .alerts-modal-panel__count { font-size: .92rem; font-weight: 700; color: #334155; }
         @media (max-width: 1180px) {
             .alerts-toolbar__top { grid-template-columns: 1fr; justify-items: center; row-gap: .9rem; }
             .alerts-toolbar__title, .alerts-toolbar__back { justify-self: center; }
@@ -94,7 +96,7 @@
                             >
                                 <img src="{{ asset('images/Ojo.webp') }}" alt="" aria-hidden="true">
                             </button>
-                            <button id="alerts-download-button" type="submit" form="alerts-download-form" class="alerts-toolbar__download" disabled>{{ __('Descargar relacion') }}</button>
+                            <button id="alerts-download-button" type="submit" form="alerts-download-form" class="alerts-toolbar__download" disabled>{{ __('Descargar relación') }}</button>
                         </form>
                     </div>
                     <a href="{{ route('reports.index') }}" class="alerts-toolbar__back">{{ __('Volver') }}</a>
@@ -147,6 +149,13 @@
                                 <div>
                                     <h3 id="alerts-modal-title-expired" class="alerts-modal-panel__title">{{ $summaryCards['expired']['label'] }}</h3>
                                     <div class="alerts-modal-panel__subtitle">{{ $summaryCards['expired']['subtitle'] }}</div>
+                                    <div class="alerts-modal-panel__toolbar">
+                                        <span id="expired-visible-count" class="alerts-modal-panel__count" data-alerts-visible-count data-target-body="expired-alerts-body">0 {{ __('armas en la lista') }}</span>
+                                        <label class="alerts-modal-panel__toggle">
+                                            <input type="checkbox" class="alerts-exclude-novedades" data-target-body="expired-alerts-body">
+                                            <span>{{ __('Excluir armas con novedad') }}</span>
+                                        </label>
+                                    </div>
                                 </div>
                                 <div class="alerts-modal-panel__header-actions">
                                     <label class="alerts-modal-panel__toggle">
@@ -172,7 +181,8 @@
                                         <tbody id="expired-alerts-body" class="divide-y divide-gray-200">
                                             @forelse ($expired as $doc)
                                                 @php($alert = \App\Support\WeaponDocumentAlert::forComplianceDocument($doc))
-                                                <tr class="alert-document-row {{ $alert['row_class'] }}" data-alert-search="{{ strtolower(trim(($doc->weapon?->activeClientAssignment?->client?->name ?? 'Sin cliente') . ' ' . ($doc->weapon?->weapon_type ?? '') . ' ' . ($doc->weapon?->serial_number ?? '') . ' ' . ($doc->valid_until?->format('Y-m-d') ?? '') . ' ' . ($alert['state'] ?? '') . ' ' . ($alert['observation'] ?? ''))) }}">
+                                                @php($hasBlockingNovedad = $doc->weapon?->operationalBlockingIncidents?->isNotEmpty() ?? false)
+                                                <tr class="alert-document-row {{ $alert['row_class'] }}" data-blocking-novedad="{{ $hasBlockingNovedad ? '1' : '0' }}" data-alert-search="{{ strtolower(trim(($doc->weapon?->activeClientAssignment?->client?->name ?? 'Sin cliente') . ' ' . ($doc->weapon?->weapon_type ?? '') . ' ' . ($doc->weapon?->serial_number ?? '') . ' ' . ($doc->valid_until?->format('Y-m-d') ?? '') . ' ' . ($alert['state'] ?? '') . ' ' . ($alert['observation'] ?? ''))) }}">
                                                     <td class="px-3 py-2">
                                                         <label class="inline-flex items-center gap-2">
                                                             <input type="checkbox" name="weapon_ids[]" value="{{ $doc->weapon_id }}" class="alert-weapon-checkbox rounded border-gray-300 text-indigo-600">
@@ -188,7 +198,7 @@
                                             @empty
                                                 <tr class="alerts-empty-row"><td colspan="6" class="px-3 py-6 text-center text-gray-500">{{ $summaryCards['expired']['empty'] }}</td></tr>
                                             @endforelse
-                                            <tr id="expired-alerts-no-results" class="hidden"><td colspan="6" class="px-3 py-6 text-center text-gray-500">{{ __('No hay resultados para la busqueda actual.') }}</td></tr>
+                                            <tr id="expired-alerts-no-results" class="hidden"><td colspan="6" class="px-3 py-6 text-center text-gray-500">{{ __('No hay resultados con los filtros actuales.') }}</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -200,6 +210,13 @@
                                 <div>
                                     <h3 id="alerts-modal-title-expiring" class="alerts-modal-panel__title">{{ $summaryCards['expiring']['label'] }}</h3>
                                     <div class="alerts-modal-panel__subtitle">{{ $summaryCards['expiring']['subtitle'] }}</div>
+                                    <div class="alerts-modal-panel__toolbar">
+                                        <span id="expiring-visible-count" class="alerts-modal-panel__count" data-alerts-visible-count data-target-body="expiring-alerts-body">0 {{ __('armas en la lista') }}</span>
+                                        <label class="alerts-modal-panel__toggle">
+                                            <input type="checkbox" class="alerts-exclude-novedades" data-target-body="expiring-alerts-body">
+                                            <span>{{ __('Excluir armas con novedad') }}</span>
+                                        </label>
+                                    </div>
                                 </div>
                                 <div class="alerts-modal-panel__header-actions">
                                     <label class="alerts-modal-panel__toggle">
@@ -225,7 +242,8 @@
                                         <tbody id="expiring-alerts-body" class="divide-y divide-gray-200">
                                             @forelse ($expiring as $doc)
                                                 @php($alert = \App\Support\WeaponDocumentAlert::forComplianceDocument($doc))
-                                                <tr class="alert-document-row {{ $alert['row_class'] }}" data-alert-search="{{ strtolower(trim(($doc->weapon?->activeClientAssignment?->client?->name ?? 'Sin cliente') . ' ' . ($doc->weapon?->weapon_type ?? '') . ' ' . ($doc->weapon?->serial_number ?? '') . ' ' . ($doc->valid_until?->format('Y-m-d') ?? '') . ' ' . ($alert['state'] ?? '') . ' ' . ($alert['observation'] ?? ''))) }}">
+                                                @php($hasBlockingNovedad = $doc->weapon?->operationalBlockingIncidents?->isNotEmpty() ?? false)
+                                                <tr class="alert-document-row {{ $alert['row_class'] }}" data-blocking-novedad="{{ $hasBlockingNovedad ? '1' : '0' }}" data-alert-search="{{ strtolower(trim(($doc->weapon?->activeClientAssignment?->client?->name ?? 'Sin cliente') . ' ' . ($doc->weapon?->weapon_type ?? '') . ' ' . ($doc->weapon?->serial_number ?? '') . ' ' . ($doc->valid_until?->format('Y-m-d') ?? '') . ' ' . ($alert['state'] ?? '') . ' ' . ($alert['observation'] ?? ''))) }}">
                                                     <td class="px-3 py-2">
                                                         <label class="inline-flex items-center gap-2">
                                                             <input type="checkbox" name="weapon_ids[]" value="{{ $doc->weapon_id }}" class="alert-weapon-checkbox rounded border-gray-300 text-indigo-600">
@@ -241,7 +259,7 @@
                                             @empty
                                                 <tr class="alerts-empty-row"><td colspan="6" class="px-3 py-6 text-center text-gray-500">{{ $summaryCards['expiring']['empty'] }}</td></tr>
                                             @endforelse
-                                            <tr id="expiring-alerts-no-results" class="hidden"><td colspan="6" class="px-3 py-6 text-center text-gray-500">{{ __('No hay resultados para la busqueda actual.') }}</td></tr>
+                                            <tr id="expiring-alerts-no-results" class="hidden"><td colspan="6" class="px-3 py-6 text-center text-gray-500">{{ __('No hay resultados con los filtros actuales.') }}</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -253,6 +271,13 @@
                                 <div>
                                     <h3 id="alerts-modal-title-no-alerts" class="alerts-modal-panel__title">{{ $summaryCards['no_alerts']['label'] }}</h3>
                                     <div class="alerts-modal-panel__subtitle">{{ $summaryCards['no_alerts']['subtitle'] }}</div>
+                                    <div class="alerts-modal-panel__toolbar">
+                                        <span id="no-alerts-visible-count" class="alerts-modal-panel__count" data-alerts-visible-count data-target-body="no-alerts-body">0 {{ __('armas en la lista') }}</span>
+                                        <label class="alerts-modal-panel__toggle">
+                                            <input type="checkbox" class="alerts-exclude-novedades" data-target-body="no-alerts-body">
+                                            <span>{{ __('Excluir armas con novedad') }}</span>
+                                        </label>
+                                    </div>
                                 </div>
                                 <div class="alerts-modal-panel__header-actions">
                                     <label class="alerts-modal-panel__toggle">
@@ -277,8 +302,9 @@
                                         </thead>
                                         <tbody id="no-alerts-body" class="divide-y divide-gray-200">
                                             @forelse ($noAlerts as $doc)
-                                                @php($searchText = strtolower(trim(($doc->weapon?->activeClientAssignment?->client?->name ?? 'Sin cliente') . ' ' . ($doc->weapon?->weapon_type ?? '') . ' ' . ($doc->weapon?->serial_number ?? '') . ' ' . ($doc->valid_until?->format('Y-m-d') ?? '') . ' sin alerta fuera de la ventana de 120 dias')))
-                                                <tr class="alert-document-row" data-alert-search="{{ $searchText }}">
+                                                @php($hasBlockingNovedad = $doc->weapon?->operationalBlockingIncidents?->isNotEmpty() ?? false)
+                                                @php($searchText = strtolower(trim(($doc->weapon?->activeClientAssignment?->client?->name ?? 'Sin cliente') . ' ' . ($doc->weapon?->weapon_type ?? '') . ' ' . ($doc->weapon?->serial_number ?? '') . ' ' . ($doc->valid_until?->format('Y-m-d') ?? '') . ' sin alerta fuera de la ventana de 120 días')))
+                                                <tr class="alert-document-row" data-blocking-novedad="{{ $hasBlockingNovedad ? '1' : '0' }}" data-alert-search="{{ $searchText }}">
                                                     <td class="px-3 py-2">
                                                         <label class="inline-flex items-center gap-2">
                                                             <input type="checkbox" name="weapon_ids[]" value="{{ $doc->weapon_id }}" class="alert-weapon-checkbox rounded border-gray-300 text-indigo-600">
@@ -289,12 +315,12 @@
                                                     <td class="px-3 py-2">{{ $doc->weapon?->serial_number ?? '-' }}</td>
                                                     <td class="px-3 py-2">{{ $doc->valid_until?->format('Y-m-d') }}</td>
                                                     <td class="px-3 py-2 text-green-700">{{ __('Sin alerta') }}</td>
-                                                    <td class="px-3 py-2 text-gray-700">{{ __('Fuera de la ventana de 120 dias') }}</td>
+                                                    <td class="px-3 py-2 text-gray-700">{{ __('Fuera de la ventana de 120 días') }}</td>
                                                 </tr>
                                             @empty
                                                 <tr class="alerts-empty-row"><td colspan="6" class="px-3 py-6 text-center text-gray-500">{{ $summaryCards['no_alerts']['empty'] }}</td></tr>
                                             @endforelse
-                                            <tr id="no-alerts-no-results" class="hidden"><td colspan="6" class="px-3 py-6 text-center text-gray-500">{{ __('No hay resultados para la busqueda actual.') }}</td></tr>
+                                            <tr id="no-alerts-no-results" class="hidden"><td colspan="6" class="px-3 py-6 text-center text-gray-500">{{ __('No hay resultados con los filtros actuales.') }}</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -318,17 +344,22 @@
         const closeButtons = Array.from(document.querySelectorAll('[data-close-modal]'));
         let activeModal = null;
 
+        const txtArmaEnLista = @json(__('arma en la lista'));
+        const txtArmasEnLista = @json(__('armas en la lista'));
+        const txtDescargarRelacion = @json(__('Descargar relación'));
+        const txtSeleccionadas = @json(__('seleccionadas'));
+
         const sections = [
-            { bodyId: 'expired-alerts-body', rows: () => Array.from(document.querySelectorAll('#expired-alerts-body .alert-document-row')), noResults: document.getElementById('expired-alerts-no-results'), emptyRows: () => Array.from(document.querySelectorAll('#expired-alerts-body .alerts-empty-row')), selectAll: document.querySelector('.alert-select-all-toggle[data-target-body="expired-alerts-body"]') },
-            { bodyId: 'expiring-alerts-body', rows: () => Array.from(document.querySelectorAll('#expiring-alerts-body .alert-document-row')), noResults: document.getElementById('expiring-alerts-no-results'), emptyRows: () => Array.from(document.querySelectorAll('#expiring-alerts-body .alerts-empty-row')), selectAll: document.querySelector('.alert-select-all-toggle[data-target-body="expiring-alerts-body"]') },
-            { bodyId: 'no-alerts-body', rows: () => Array.from(document.querySelectorAll('#no-alerts-body .alert-document-row')), noResults: document.getElementById('no-alerts-no-results'), emptyRows: () => Array.from(document.querySelectorAll('#no-alerts-body .alerts-empty-row')), selectAll: document.querySelector('.alert-select-all-toggle[data-target-body="no-alerts-body"]') },
+            { bodyId: 'expired-alerts-body', rows: () => Array.from(document.querySelectorAll('#expired-alerts-body .alert-document-row')), noResults: document.getElementById('expired-alerts-no-results'), emptyRows: () => Array.from(document.querySelectorAll('#expired-alerts-body .alerts-empty-row')), selectAll: document.querySelector('.alert-select-all-toggle[data-target-body="expired-alerts-body"]'), excludeToggle: document.querySelector('.alerts-exclude-novedades[data-target-body="expired-alerts-body"]'), visibleCountEl: document.getElementById('expired-visible-count') },
+            { bodyId: 'expiring-alerts-body', rows: () => Array.from(document.querySelectorAll('#expiring-alerts-body .alert-document-row')), noResults: document.getElementById('expiring-alerts-no-results'), emptyRows: () => Array.from(document.querySelectorAll('#expiring-alerts-body .alerts-empty-row')), selectAll: document.querySelector('.alert-select-all-toggle[data-target-body="expiring-alerts-body"]'), excludeToggle: document.querySelector('.alerts-exclude-novedades[data-target-body="expiring-alerts-body"]'), visibleCountEl: document.getElementById('expiring-visible-count') },
+            { bodyId: 'no-alerts-body', rows: () => Array.from(document.querySelectorAll('#no-alerts-body .alert-document-row')), noResults: document.getElementById('no-alerts-no-results'), emptyRows: () => Array.from(document.querySelectorAll('#no-alerts-body .alerts-empty-row')), selectAll: document.querySelector('.alert-select-all-toggle[data-target-body="no-alerts-body"]'), excludeToggle: document.querySelector('.alerts-exclude-novedades[data-target-body="no-alerts-body"]'), visibleCountEl: document.getElementById('no-alerts-visible-count') },
         ];
 
         const checkboxes = () => Array.from(document.querySelectorAll('.alert-weapon-checkbox'));
         const visibleRows = (section) => section.rows().filter((row) => !row.classList.contains('hidden'));
         const visibleCheckboxes = (section) => visibleRows(section)
             .map((row) => row.querySelector('.alert-weapon-checkbox'))
-            .filter(Boolean);
+            .filter((checkbox) => checkbox && !checkbox.disabled);
 
         const updateSelectAllState = (section) => {
             if (!section?.selectAll) return;
@@ -352,11 +383,11 @@
         };
 
         const updateSelectionCount = () => {
-            const selected = checkboxes().filter((checkbox) => checkbox.checked).length;
-            if (countBadge) countBadge.textContent = `${selected} seleccionadas`;
+            const selected = checkboxes().filter((checkbox) => checkbox.checked && !checkbox.disabled).length;
+            if (countBadge) countBadge.textContent = `${selected} ${txtSeleccionadas}`;
             if (downloadButton) {
                 downloadButton.disabled = selected === 0;
-                downloadButton.textContent = selected > 0 ? `Descargar relacion (${selected})` : 'Descargar relacion';
+                downloadButton.textContent = selected > 0 ? `${txtDescargarRelacion} (${selected})` : txtDescargarRelacion;
                 downloadButton.classList.toggle('is-ready', selected > 0);
             }
             if (previewButton) {
@@ -368,21 +399,46 @@
             updateAllSelectAllStates();
         };
 
-        const updateSearch = () => {
+        const applyFilters = () => {
             const term = (searchInput?.value || '').trim().toLowerCase();
             sections.forEach((section) => {
+                const excludeNovedad = section.excludeToggle?.checked ?? false;
                 const rows = section.rows();
                 let visibleCount = 0;
+                const hasActiveFilter = term !== '' || excludeNovedad;
+
                 rows.forEach((row) => {
                     const haystack = row.dataset.alertSearch || row.textContent.toLowerCase();
-                    const matches = term === '' || haystack.includes(term);
-                    row.classList.toggle('hidden', !matches);
-                    if (matches) visibleCount += 1;
+                    const matchesSearch = term === '' || haystack.includes(term);
+                    const blocking = row.dataset.blockingNovedad === '1';
+                    const matchesNovedad = !excludeNovedad || !blocking;
+                    const visible = matchesSearch && matchesNovedad;
+
+                    row.classList.toggle('hidden', !visible);
+                    if (visible) visibleCount += 1;
+
+                    const checkbox = row.querySelector('.alert-weapon-checkbox');
+                    if (checkbox) {
+                        if (!visible) {
+                            checkbox.checked = false;
+                            checkbox.disabled = true;
+                        } else {
+                            checkbox.disabled = false;
+                        }
+                    }
                 });
+
                 section.emptyRows().forEach((row) => row.classList.toggle('hidden', visibleCount > 0 || term !== ''));
-                if (section.noResults) section.noResults.classList.toggle('hidden', term === '' || visibleCount > 0 || rows.length === 0);
+                if (section.noResults) {
+                    const showNoResults = rows.length > 0 && visibleCount === 0 && hasActiveFilter;
+                    section.noResults.classList.toggle('hidden', !showNoResults);
+                }
+                if (section.visibleCountEl) {
+                    section.visibleCountEl.textContent = `${visibleCount} ${visibleCount === 1 ? txtArmaEnLista : txtArmasEnLista}`;
+                }
                 updateSelectAllState(section);
             });
+            updateSelectionCount();
         };
 
         const openModal = (key) => {
@@ -413,7 +469,7 @@
 
         openButtons.forEach((button) => button.addEventListener('click', () => openModal(button.dataset.openModal)));
         closeButtons.forEach((button) => button.addEventListener('click', closeModal));
-        searchInput?.addEventListener('input', updateSearch);
+        searchInput?.addEventListener('input', applyFilters);
         document.addEventListener('change', (event) => {
             if (event.target.closest('.alert-weapon-checkbox')) {
                 updateSelectionCount();
@@ -423,14 +479,17 @@
             if (event.target.closest('.alert-select-all-toggle')) {
                 toggleSectionSelection(event.target.dataset.targetBody, event.target.checked);
             }
+
+            if (event.target.classList?.contains('alerts-exclude-novedades')) {
+                applyFilters();
+            }
         });
         document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && activeModal) closeModal(); });
         window.addEventListener('resize', syncModalOffset);
         window.addEventListener('scroll', () => { if (activeModal) syncModalOffset(); }, { passive: true });
 
             syncModalOffset();
-            updateSearch();
-            updateSelectionCount();
+            applyFilters();
         })();
         </script>
     @endpush
