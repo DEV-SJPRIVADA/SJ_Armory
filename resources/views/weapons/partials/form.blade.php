@@ -7,25 +7,25 @@
         'escopeta' => [
             'lado_derecho' => asset('images/weapon-guides/Escopeta lado derecho-09.svg'),
             'lado_izquierdo' => asset('images/weapon-guides/Escopeta lado izquierdo-10.svg'),
-            'canon_disparador_marca' => asset('images/weapon-guides/Escopeta cañon-11.svg'),
+            'canon_disparador_marca' => asset('images/weapon-guides/Escopeta canon-11.svg'),
             'serie' => asset('images/weapon-guides/Escopeta serie.svg'),
         ],
         'pistola' => [
             'lado_derecho' => asset('images/weapon-guides/Pistola lado derecho-01.svg'),
             'lado_izquierdo' => asset('images/weapon-guides/Pistola lado izquierdo-02.svg'),
-            'canon_disparador_marca' => asset('images/weapon-guides/Pistola cañon-03.svg'),
+            'canon_disparador_marca' => asset('images/weapon-guides/Pistola canon-03.svg'),
             'serie' => asset('images/weapon-guides/Pistola serie-04.svg'),
         ],
         'revolver' => [
             'lado_derecho' => asset('images/weapon-guides/Revolver lado derecho-05.svg'),
             'lado_izquierdo' => asset('images/weapon-guides/Revolver lado izquierdo-06.svg'),
-            'canon_disparador_marca' => asset('images/weapon-guides/Revolver cañon-07.svg'),
-            'serie' => asset('images/weapon-guides/Revolver Serie-08.svg'),
+            'canon_disparador_marca' => asset('images/weapon-guides/Revolver canon-07.svg'),
+            'serie' => asset('images/weapon-guides/Revolver serie-08.svg'),
         ],
         'subametralladora' => [
             'lado_derecho' => asset('images/weapon-guides/Uzi lado derecho-13.svg'),
             'lado_izquierdo' => asset('images/weapon-guides/Uzi lado izquierdo-14.svg'),
-            'canon_disparador_marca' => asset('images/weapon-guides/Uzi cañon-15.svg'),
+            'canon_disparador_marca' => asset('images/weapon-guides/Uzi canon-15.svg'),
             'serie' => asset('images/weapon-guides/Uzi serie-16.svg'),
         ],
     ];
