@@ -179,6 +179,32 @@
         background: rgba(255, 255, 255, 0.16);
     }
 
+    /* Campana: @tailwindcss/forms y color heredado de .sj-nav anulan utilidades Tailwind */
+    .sj-nav .sj-nav-notify-btn {
+        background-color: transparent !important;
+        border-width: 0 !important;
+        border-style: none !important;
+        box-shadow: none !important;
+        color: #fbbf24 !important;
+    }
+
+    .sj-nav .sj-nav-notify-btn:hover {
+        color: #fcd34d !important;
+    }
+
+    .sj-nav .sj-nav-notify-btn:focus {
+        outline: none !important;
+    }
+
+    .sj-nav .sj-nav-notify-btn svg {
+        color: inherit !important;
+        stroke: currentColor !important;
+    }
+
+    .sj-nav .sj-nav-notify-badge {
+        z-index: 2;
+    }
+
     .sj-mobile-menu {
         background: var(--sj-navy);
         max-height: calc(100svh - 4rem);

@@ -13,6 +13,7 @@ use App\Events\WeaponChanged;
 use App\Events\WorkerChanged;
 use App\Models\User;
 use App\Models\Weapon;
+use App\Models\WeaponClientAssignment;
 use App\Models\WeaponTransfer;
 use App\Notifications\DomainActivityNotification;
 
@@ -309,13 +310,28 @@ class DomainActivityNotificationService
 
         $responsibleIds = collect();
         if ($clientIds !== []) {
-            $responsibleIds = User::query()
+            $fromPortfolio = User::query()
                 ->where('role', 'RESPONSABLE')
                 ->where('is_active', true)
                 ->whereHas('clients', function ($q) use ($clientIds): void {
                     $q->whereIn('clients.id', $clientIds);
                 })
                 ->pluck('id');
+
+            $fromAssignments = WeaponClientAssignment::query()
+                ->where('is_active', true)
+                ->whereIn('client_id', $clientIds)
+                ->whereNotNull('responsible_user_id')
+                ->distinct()
+                ->pluck('responsible_user_id');
+
+            $validResponsibleIds = User::query()
+                ->where('is_active', true)
+                ->whereIn('role', ['RESPONSABLE', 'ADMIN'])
+                ->whereIn('id', $fromAssignments->all())
+                ->pluck('id');
+
+            $responsibleIds = $fromPortfolio->merge($validResponsibleIds)->unique()->values();
         }
 
         $merged = $adminIds->merge($responsibleIds)->unique()->values();

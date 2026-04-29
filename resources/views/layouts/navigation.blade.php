@@ -265,7 +265,7 @@
                         <button
                             type="button"
                             @click="openNotificationsModal()"
-                            class="relative inline-flex items-center justify-center rounded p-1 text-amber-400 hover:text-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
+                            class="sj-nav-notify-btn relative inline-flex items-center justify-center rounded p-1 focus-visible:ring-2 focus-visible:ring-amber-400/60"
                             aria-label="{{ __('Notificaciones') }}"
                         >
                             <svg class="h-6 w-6 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
@@ -274,7 +274,7 @@
                             <span
                                 x-show="notificationUnread > 0"
                                 x-text="notificationUnread > 99 ? '99+' : notificationUnread"
-                                class="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white shadow-sm"
+                                class="sj-nav-notify-badge absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white shadow-sm ring-1 ring-white/30"
                             ></span>
                         </button>
                     @endif
@@ -332,7 +332,7 @@
                     <button
                         type="button"
                         @click="openNotificationsModal()"
-                        class="relative inline-flex items-center justify-center rounded p-1 text-amber-400 hover:text-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
+                        class="sj-nav-notify-btn relative inline-flex items-center justify-center rounded p-1 focus-visible:ring-2 focus-visible:ring-amber-400/60"
                         aria-label="{{ __('Notificaciones') }}"
                     >
                         <svg class="h-6 w-6 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
@@ -341,7 +341,7 @@
                         <span
                             x-show="notificationUnread > 0"
                             x-text="notificationUnread > 99 ? '99+' : notificationUnread"
-                            class="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white shadow-sm"
+                            class="sj-nav-notify-badge absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white shadow-sm ring-1 ring-white/30"
                         ></span>
                     </button>
                 @endif
