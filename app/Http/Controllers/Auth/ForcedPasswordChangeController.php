@@ -5,19 +5,26 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Providers\RouteServiceProvider;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\View\View;
 
-class PasswordController extends Controller
+final class ForcedPasswordChangeController extends Controller
 {
-    /**
-     * Update the user's password.
-     */
+    public function edit(Request $request): View
+    {
+        return view('auth.force-password-change');
+    }
+
     public function update(Request $request): RedirectResponse
     {
-        $validated = $request->validateWithBag('updatePassword', [
-            'current_password' => ['required', 'current_password'],
+        if (!$request->user()->must_change_password) {
+            return redirect()->intended(RouteServiceProvider::HOME);
+        }
+
+        $validated = $request->validate([
             'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 
@@ -35,7 +42,6 @@ class PasswordController extends Controller
             'after' => null,
         ]);
 
-        return back()->with('status', 'password-updated');
+        return redirect()->intended(RouteServiceProvider::HOME);
     }
 }
-

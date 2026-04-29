@@ -7,7 +7,8 @@
 
     <div class="py-8">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg"
+                 x-data="{ generateTemp: {{ old('generate_temporary_password') ? 'true' : 'false' }} }">
                 <div class="p-6 text-gray-900">
                     <form method="POST" action="{{ route('users.update', $user) }}" class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         @csrf
@@ -68,15 +69,39 @@
                             <x-input-error :messages="$errors->get('is_active')" class="mt-2" />
                         </div>
 
-                        <div>
-                            <x-input-label for="password" :value="__('Contraseña (opcional)')" />
-                            <x-text-input id="password" name="password" type="password" class="mt-1 block w-full" />
-                            <x-input-error :messages="$errors->get('password')" class="mt-2" />
+                        <div class="md:col-span-2 rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="generate_temporary_password"
+                                    value="1"
+                                    class="mt-1 rounded border-gray-300"
+                                    x-model="generateTemp"
+                                />
+                                <span class="text-sm text-gray-700">
+                                    {{ __('Generar nueva contraseña temporal y exigir que el usuario la cambie al iniciar sesión') }}
+                                </span>
+                            </label>
                         </div>
 
-                        <div>
-                            <x-input-label for="password_confirmation" :value="__('Confirmar contraseña')" />
-                            <x-text-input id="password_confirmation" name="password_confirmation" type="password" class="mt-1 block w-full" />
+                        <div class="md:col-span-2 text-xs text-gray-500" x-show="generateTemp" x-transition>
+                            {{ __('Si marca esta opción, las contraseñas escritas abajo se ignoran. Recibirá la nueva clave para copiar en la siguiente pantalla.') }}
+                        </div>
+
+                        <div class="md:col-span-2 grid grid-cols-1 gap-4 md:grid-cols-2" x-bind:class="generateTemp ? 'opacity-50 pointer-events-none' : ''">
+                            <x-password-reveal-input
+                                label="{{ __('Contraseña (opcional)') }}"
+                                name="password"
+                                id="password"
+                                autocomplete="new-password"
+                            />
+
+                            <x-password-reveal-input
+                                label="{{ __('Confirmar contraseña') }}"
+                                name="password_confirmation"
+                                id="password_confirmation"
+                                autocomplete="new-password"
+                            />
                         </div>
 
                         <div class="md:col-span-2 flex justify-end gap-2">

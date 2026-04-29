@@ -6,13 +6,14 @@ use App\Models\AuditLog;
 use App\Models\Position;
 use App\Models\ResponsibilityLevel;
 use App\Models\User;
+use App\Services\UserTemporaryPasswordGenerator;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
-    public function __construct()
-    {
+    public function __construct(
+        private readonly UserTemporaryPasswordGenerator $temporaryPasswordGenerator
+    ) {
         $this->middleware(function ($request, $next) {
             if (!$request->user()?->isAdmin()) {
                 abort(403);
@@ -47,7 +48,6 @@ class UserController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role' => ['required', 'in:' . implode(',', array_keys($this->roleOptions()))],
             'position_id' => ['nullable', 'exists:positions,id'],
             'responsibility_level_id' => ['nullable', 'exists:responsibility_levels,id'],
@@ -61,7 +61,9 @@ class UserController extends Controller
                 ->withInput();
         }
 
-        $data['password'] = Hash::make($data['password']);
+        $plainPassword = $this->temporaryPasswordGenerator->generate();
+        $data['password'] = $plainPassword;
+        $data['must_change_password'] = true;
 
         $user = User::create($data);
 
@@ -74,7 +76,10 @@ class UserController extends Controller
             'after' => $user->only(['name', 'email', 'role', 'position_id', 'responsibility_level_id', 'is_active']),
         ]);
 
-        return redirect()->route('users.index')->with('status', 'Usuario creado.');
+        return redirect()
+            ->route('users.index')
+            ->with('status', 'Usuario creado. Guarde la contraseña temporal; no se volverá a mostrar.')
+            ->with('generated_temporary_password', $plainPassword);
     }
 
     public function edit(User $user)
@@ -91,6 +96,7 @@ class UserController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'generate_temporary_password' => ['sometimes', 'boolean'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'role' => ['required', 'in:' . implode(',', array_keys($this->roleOptions()))],
             'position_id' => ['nullable', 'exists:positions,id'],
@@ -105,10 +111,18 @@ class UserController extends Controller
                 ->withInput();
         }
 
-        if (empty($data['password'])) {
-            unset($data['password']);
-        } else {
-            $data['password'] = Hash::make($data['password']);
+        $generateTemporary = $request->boolean('generate_temporary_password');
+        $passwordInput = (string) ($data['password'] ?? '');
+        unset($data['password'], $data['generate_temporary_password']);
+
+        $plainFlash = null;
+        if ($generateTemporary) {
+            $plainFlash = $this->temporaryPasswordGenerator->generate();
+            $data['password'] = $plainFlash;
+            $data['must_change_password'] = true;
+        } elseif ($passwordInput !== '') {
+            $data['password'] = $passwordInput;
+            $data['must_change_password'] = false;
         }
 
         $before = $user->only(['name', 'email', 'role', 'position_id', 'responsibility_level_id', 'is_active']);
@@ -123,7 +137,14 @@ class UserController extends Controller
             'after' => $user->only(['name', 'email', 'role', 'position_id', 'responsibility_level_id', 'is_active']),
         ]);
 
-        return redirect()->route('users.index')->with('status', 'Usuario actualizado.');
+        $redirect = redirect()->route('users.index')->with('status', 'Usuario actualizado.');
+
+        if ($plainFlash !== null) {
+            $redirect->with('generated_temporary_password', $plainFlash)
+                ->with('status', 'Usuario actualizado. Guarde la contraseña temporal; no se volverá a mostrar.');
+        }
+
+        return $redirect;
     }
 
     public function updateStatus(Request $request, User $user)

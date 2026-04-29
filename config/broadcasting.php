@@ -19,6 +19,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Broadcast feature switch
+    |--------------------------------------------------------------------------
+    |
+    | Set to false to skip all ShouldBroadcast events (avoids HTTP errors when
+    | Pusher/Reverb is misconfigured or unreachable). Use BROADCAST_CONNECTION=log
+    | if you still want payloads in the log without a websocket server.
+    |
+    */
+
+    'enabled' => env('BROADCAST_ENABLED', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | Broadcast Connections
     |--------------------------------------------------------------------------
     |

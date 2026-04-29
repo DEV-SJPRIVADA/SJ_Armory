@@ -15,7 +15,32 @@
 
     <div class="py-8" x-data="{ showClientsModal: false, modalUserName: '', modalClients: [] }">
         <div class="sj-page-shell sj-page-shell--wide space-y-6">
-            @if (session('status'))
+            @if (session('generated_temporary_password'))
+                <div
+                    class="rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 space-y-3"
+                    x-data="{ copied: false }"
+                >
+                    @if (session('status'))
+                        <p class="font-medium">{{ session('status') }}</p>
+                    @endif
+                    <p>{{ __('Contraseña temporal (cópiela ahora; no se volverá a mostrar)') }}</p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <code id="sj-temp-user-password" class="flex-1 min-w-[12rem] rounded bg-white px-3 py-2 text-xs tracking-wide border border-amber-100 break-all">
+                            {{ session('generated_temporary_password') }}
+                        </code>
+                        <button
+                            type="button"
+                            class="rounded-md bg-amber-700 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-800"
+                            @click="
+                                const el = document.getElementById('sj-temp-user-password');
+                                if (el) { navigator.clipboard.writeText(el.textContent.trim()); copied = true; setTimeout(() => copied = false, 2000); }
+                            "
+                        >
+                            <span x-text="copied ? @js(__('Copiado')) : @js(__('Copiar'))"></span>
+                        </button>
+                    </div>
+                </div>
+            @elseif (session('status'))
                 <div class="rounded bg-green-50 p-3 text-sm text-green-700">
                     {{ session('status') }}
                 </div>

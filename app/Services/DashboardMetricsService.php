@@ -353,7 +353,7 @@ class DashboardMetricsService
 
     private function postsQuery(User $user): Builder
     {
-        $query = Post::query();
+        $query = Post::query()->active();
 
         if ($this->limitsToResponsibleScope($user)) {
             $query->whereIn('client_id', $user->clients()->pluck('clients.id'));
@@ -364,7 +364,7 @@ class DashboardMetricsService
 
     private function workersQuery(User $user): Builder
     {
-        $query = Worker::query();
+        $query = Worker::query()->active();
 
         if ($this->limitsToResponsibleScope($user)) {
             $query->whereIn('client_id', $user->clients()->pluck('clients.id'));

@@ -88,6 +88,7 @@
                             <div>
                                 <x-input-label for="notes" :value="__('Notas')" />
                                 <textarea id="notes" name="notes" class="mt-1 block w-full rounded-md border-gray-300 text-sm" rows="3">{{ old('notes') }}</textarea>
+                                <p class="sj-form-help">{{ __('El registro inicial quedará en el historial junto con estas notas si las completa.') }}</p>
                                 <x-input-error :messages="$errors->get('notes')" class="mt-2" />
                             </div>
                         </section>

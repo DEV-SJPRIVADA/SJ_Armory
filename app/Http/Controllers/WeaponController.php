@@ -362,13 +362,14 @@ class WeaponController extends Controller
         $activeClientId = $weapon->activeClientAssignment?->client_id;
         if ($activeClientId) {
             if (request()->user()?->isAdmin()) {
-                $posts = \App\Models\Post::where('client_id', $activeClientId)->orderBy('name')->get();
-                $workers = \App\Models\Worker::where('client_id', $activeClientId)->orderBy('name')->get();
+                $posts = \App\Models\Post::where('client_id', $activeClientId)->active()->orderBy('name')->get();
+                $workers = \App\Models\Worker::where('client_id', $activeClientId)->active()->orderBy('name')->get();
             } elseif (request()->user()?->isResponsible()) {
                 $inPortfolio = request()->user()?->clients()->whereKey($activeClientId)->exists() ?? false;
                 if ($inPortfolio) {
-                    $posts = \App\Models\Post::where('client_id', $activeClientId)->orderBy('name')->get();
+                    $posts = \App\Models\Post::where('client_id', $activeClientId)->active()->orderBy('name')->get();
                     $workers = \App\Models\Worker::where('client_id', $activeClientId)
+                        ->active()
                         ->where('responsible_user_id', request()->user()?->id)
                         ->orderBy('name')
                         ->get();

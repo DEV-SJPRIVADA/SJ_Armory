@@ -21,12 +21,29 @@ import Pusher from 'pusher-js';
 window.Pusher = Pusher;
 
 const reverbScheme = import.meta.env.VITE_REVERB_SCHEME ?? 'http';
-const reverbPort = import.meta.env.VITE_REVERB_PORT ?? '8080';
+const reverbPort = import.meta.env.VITE_REVERB_PORT ?? '6001';
+
+function resolveReverbWsHost() {
+    const fromEnv = import.meta.env.VITE_REVERB_HOST;
+    if (
+        fromEnv &&
+        fromEnv !== '127.0.0.1' &&
+        fromEnv !== 'localhost' &&
+        String(fromEnv).trim() !== ''
+    ) {
+        return fromEnv;
+    }
+    if (typeof window !== 'undefined' && window.location?.hostname) {
+        return window.location.hostname;
+    }
+
+    return fromEnv || '127.0.0.1';
+}
 
 window.Echo = new Echo({
     broadcaster: 'reverb',
     key: import.meta.env.VITE_REVERB_APP_KEY,
-    wsHost: import.meta.env.VITE_REVERB_HOST ?? '127.0.0.1',
+    wsHost: resolveReverbWsHost(),
     wsPort: reverbScheme === 'https' ? 443 : Number(reverbPort),
     wssPort: Number(reverbPort),
     forceTLS: reverbScheme === 'https',

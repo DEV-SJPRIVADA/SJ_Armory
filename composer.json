@@ -49,6 +49,9 @@
         ],
         "post-create-project-cmd": [
             "@php artisan key:generate --ansi"
+        ],
+        "reverb": [
+            "@php artisan reverb:start"
         ]
     },
     "extra": {

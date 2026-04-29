@@ -13,7 +13,7 @@ Sistema web para **gestión de armamento**, **asignaciones operativas**, **trans
   - **Operativa** (arma ↔ cliente/responsable)
   - **Interna** (arma ↔ puesto / trabajador)
 - ✅ **Transferencias**: solicitudes, aceptación / rechazo.
-- ✅ **Clientes / Puestos / Trabajadores / Usuarios**
+- ✅ **Clientes / Puestos / Trabajadores / Usuarios** (puestos y trabajadores: archivo, historial de cambios, políticas por rol)
 - ✅ **Cargas masivas**: validación previa, preview, ejecución por chunks, trazabilidad por lote.
 - ✅ **Dashboard**: KPIs, métricas, gráficos y estado “as of”.
 - ✅ **Alertas**: vencimientos documentales.
@@ -98,11 +98,23 @@ npm run build
 
 ### 5) Levantar Reverb (WebSockets)
 
-En una terminal aparte:
+En una **terminal aparte** (el proceso debe seguir en ejecución mientras usas la app):
 
 ```bash
 php artisan reverb:start
 ```
+
+Atajos definidos en el proyecto:
+
+```bash
+npm run reverb
+```
+
+```bash
+composer reverb
+```
+
+> En **Windows**, el puerto **8080** suele estar reservado (Hyper-V/WSL). El `.env.example` usa **6001** para `REVERB_PORT` / `REVERB_SERVER_PORT`. Abra ese puerto en el firewall si hay clientes en LAN.
 
 ---
 
@@ -171,8 +183,9 @@ php artisan reverb:start
 ### Componentes
 
 - 🧠 Backend: `laravel/reverb` + broadcasting driver `reverb`
-- 🖥️ Frontend: `resources/js/bootstrap.js` inicializa Echo con variables `VITE_REVERB_*`
+- 🖥️ Frontend: `resources/js/bootstrap.js` inicializa Echo con `VITE_REVERB_*`. Si `VITE_REVERB_HOST` es `127.0.0.1` o `localhost`, se usa `window.location.hostname` para que el WebSocket apunte al mismo host con el que se carga la app (útil en LAN con IP).
 - 🔐 Auth de canales: endpoint `/broadcasting/auth` (rutas de broadcasting)
+- 🎚️ Interruptor global: `broadcasting.enabled` / `BROADCAST_ENABLED` (en `DomainBroadcastEvent::broadcastWhen()`). Con `BROADCAST_ENABLED=false` no se intenta publicar por socket (evita `BroadcastException` si Reverb no está disponible). Con `BROADCAST_CONNECTION=log` el driver escribe en log en lugar de Reverb.
 
 ### Canales (definidos en `routes/channels.php`)
 
@@ -220,15 +233,16 @@ php artisan reverb:start
 
 | Variable | Ejemplo | Descripción |
 |---|---|---|
-| `BROADCAST_CONNECTION` | `reverb` | Conexión de broadcasting por defecto |
+| `BROADCAST_CONNECTION` | `reverb` | Conexión de broadcasting por defecto (`reverb`, `log`, `null`, …) |
+| `BROADCAST_ENABLED` | `true` | Si es `false`, los eventos que extienden `DomainBroadcastEvent` no se publican (no llama a Reverb/Pusher) |
 | `REVERB_APP_ID` | `armory` | App ID (Reverb) |
 | `REVERB_APP_KEY` | `armory-key` | App Key |
 | `REVERB_APP_SECRET` | `armory-secret` | App Secret |
-| `REVERB_HOST` | `127.0.0.1` | Host al que apunta el **cliente** (navegador) |
-| `REVERB_PORT` | `8080` | Puerto cliente (WS) |
+| `REVERB_HOST` | `172.16.x.x` | Host/IP que el **navegador** usa para el WS (alinear con `APP_URL` si entras por IP) |
+| `REVERB_PORT` | `6001` | Puerto cliente (WS); en Windows a veces `8080` no es usable |
 | `REVERB_SCHEME` | `http` | `http` / `https` |
-| `REVERB_SERVER_HOST` | `0.0.0.0` | Bind del servidor Reverb |
-| `REVERB_SERVER_PORT` | `8080` | Puerto del servidor Reverb |
+| `REVERB_SERVER_HOST` | `0.0.0.0` | Bind del proceso `reverb:start` |
+| `REVERB_SERVER_PORT` | `6001` | Puerto donde escucha Reverb (igual que `REVERB_PORT` salvo proxies) |
 
 ### ⚡ Vite (variables expuestas al frontend)
 
@@ -280,10 +294,11 @@ Formato de código:
 
 ## 🧯 Troubleshooting rápido
 
-- 🧩 **No conecta Reverb**:
-  - valida que `php artisan reverb:start` esté corriendo
-  - revisa `REVERB_HOST` / `VITE_REVERB_HOST` coincidiendo con el host que usas en el navegador (IP vs dominio)
-  - confirma puerto `8080` libre y accesible en la red
+- 🧩 **No conecta Reverb** / `BroadcastException` (p. ej. HTML en el mensaje):
+  - que **`php artisan reverb:start`** (o `npm run reverb`) esté corriendo sin cortar la salida con pipes
+  - `REVERB_HOST` / `APP_URL` / cómo abres el sitio en el navegador (misma IP o hostname)
+  - puerto **`REVERB_SERVER_PORT`** abierto en firewall (p. ej. `6001`)
+  - mientras depuras backend sin socket: `BROADCAST_ENABLED=false` o `BROADCAST_CONNECTION=log`
 - 🧱 **Cambiaste `VITE_*` y no se refleja**: ejecuta `npm run build` o `npm run dev`.
 
 Tipos de arma permitidos en validacion actual:
@@ -490,9 +505,11 @@ Controlador: `app/Http/Controllers/ClientController.php`
 
 Controlador: `app/Http/Controllers/PostController.php`
 
-- CRUD.
-- `index` para ADMIN/RESPONSABLE/AUDITOR.
-- Crear/editar/borrar solo ADMIN.
+- CRUD operativo con **archivo** en lugar de borrado físico (`archived_at`), y **reactivación**.
+- **Historial** (`post_histories`): entrada en el alta; en cada edición, **nota de cambio obligatoria** que se registra en el historial (además del campo notas del puesto).
+- UI: listado con filtro de estado (activos/archivados); acción **Historial** (modal).
+- `index` para ADMIN/RESPONSABLE/AUDITOR según política.
+- Crear/editar/archivar: según `PostPolicy` (admin y responsable nivel 1 en ámbito de cartera donde aplique).
 - Geocodificacion equivalente a clientes.
 - Si la ubicacion se selecciona en mapa:
   - completa latitud y longitud,
@@ -505,13 +522,11 @@ Controlador: `app/Http/Controllers/PostController.php`
 
 Controlador: `app/Http/Controllers/WorkerController.php`
 
-- CRUD.
-- `index` para ADMIN/RESPONSABLE/AUDITOR.
-- Crear/editar/borrar solo ADMIN.
-- Roles de trabajador:
-  - `ESCOLTA`
-  - `SUPERVISOR`
-- Filtros por cliente, rol, responsable y texto.
+- CRUD con **archivo** / **reactivación** (no eliminación física); al archivar se cierran asignaciones internas activas arma–trabajador.
+- **Historial** (`worker_histories`): misma regla que puestos (registro inicial + nota obligatoria en cada edición).
+- **Responsable nivel 1 (no admin)**: puede gestionar trabajadores solo para **clientes de su cartera**; al crear/editar el **responsable queda fijo en su usuario**. El filtro **Responsable** en el listado se oculta para ese rol.
+- Listado: filtros en una sola fila horizontal; evento `WorkerChanged` en canal `workers.updates` cuando broadcasting está activo.
+- Roles de trabajador: ver `WorkerController::roleOptions()` (p. ej. escolta, supervisor).
 
 ### 5.8 Documentos de arma
 
@@ -677,6 +692,8 @@ Se registran, entre otros:
 - Password update / reset request / reset completed.
 - Profile update / delete.
 - CRUD de clientes, puestos, trabajadores, usuarios, armas.
+- Archivo / reactivación de **puestos** y **trabajadores** (acciones de auditoría asociadas).
+- Alta de usuario con contraseña temporal y marcas `must_change_password` (redirección a cambio obligatorio).
 - Cambio de estado de usuario.
 - Carga/actualizacion de fotos.
 - Carga de documentos.
@@ -690,7 +707,7 @@ Se registran, entre otros:
 
 ### Catalogos y seguridad
 
-- `users`
+- `users` (incluye `must_change_password` y flujo de cambio forzado de contraseña)
 - `positions`
 - `responsibility_levels`
 - `user_clients` (pivot cartera)
@@ -701,8 +718,10 @@ Se registran, entre otros:
 ### Nucleo operativo
 
 - `clients`
-- `posts`
-- `workers`
+- `posts` (incluye `archived_at`)
+- `post_histories`
+- `workers` (incluye `archived_at`)
+- `worker_histories`
 - `weapons`
 - `weapon_client_assignments`
 - `weapon_post_assignments`
@@ -912,25 +931,35 @@ Observacion operativa:
 
 ### 12.3 Broadcasting en tiempo real (Laravel Reverb)
 
-El sistema usa Laravel Reverb como servidor WebSocket propio. Reverb debe correr en paralelo a Apache/Nginx/`artisan serve`. Si no esta levantado, los eventos de dominio que implementan `ShouldBroadcast`/`ShouldBroadcastNow` fallaran con un `BroadcastException` (por ejemplo `cURL error 7: Failed to connect to 127.0.0.1:8080`).
+El sistema usa Laravel Reverb como servidor WebSocket. Reverb debe correr **en paralelo** al servidor web. Si broadcasting está activo (`BROADCAST_ENABLED=true` y `BROADCAST_CONNECTION=reverb`) y Reverb no está levantado o es inalcanzable, las acciones que disparan eventos `ShouldBroadcast` pueden fallar con `BroadcastException`.
 
-Arranque tipico en Windows/Laragon:
-
-```powershell
-& "C:\laragon\bin\php\php-8.2.29-Win32-vs16-x64\php.exe" artisan reverb:start --host=0.0.0.0 --port=8080
-```
-
-Alternativa multiplataforma:
+Arranque (mantener la terminal abierta):
 
 ```bash
-php artisan reverb:start --host=0.0.0.0 --port=8080
+php artisan reverb:start
 ```
 
-Consideraciones:
+Equivalente en este repo:
 
-- `REVERB_HOST` debe coincidir con el host que el navegador puede resolver. Si el sistema se usa por LAN con IP (por ejemplo `172.16.16.90`), configurar `REVERB_HOST=172.16.16.90` y recompilar assets con Vite para que `VITE_REVERB_HOST` se actualice.
-- El puerto del servidor (`REVERB_SERVER_PORT`) debe estar permitido en el firewall para equipos cliente.
-- Si temporalmente no se requiere tiempo real, se puede forzar `BROADCAST_CONNECTION=null` (o `log`) y limpiar cache con `php artisan config:clear`.
+```bash
+npm run reverb
+```
+
+```bash
+composer reverb
+```
+
+Notas operativas:
+
+- **`REVERB_HOST`** debe ser el host o IP con el que los navegadores alcanzan el servidor (p. ej. la misma IP que `APP_URL` si entras por LAN). El frontend resuelve bien el host cuando `VITE_REVERB_HOST` no fuerza `127.0.0.1` en clientes remotos (ver `resources/js/bootstrap.js`).
+- **Puerto**: en Windows el **8080** a veces está reservado; el proyecto documenta **6001** en `.env.example`. Permite el puerto en el firewall para clientes en red.
+- **Sin tiempo real temporalmente**: `BROADCAST_ENABLED=false` o `BROADCAST_CONNECTION=log`, luego `php artisan config:clear`.
+
+Ejemplo explícito de bind (opcional):
+
+```bash
+php artisan reverb:start --host=0.0.0.0 --port=6001
+```
 
 ## 13. Variables de entorno relevantes
 
@@ -964,7 +993,8 @@ Operacion:
 
 Broadcasting (tiempo real, Laravel Reverb):
 
-- `BROADCAST_CONNECTION=reverb`
+- `BROADCAST_CONNECTION=reverb` (u otro driver soportado)
+- `BROADCAST_ENABLED` (`true`/`false`): si es `false`, los eventos basados en `DomainBroadcastEvent` no se publican por WebSocket
 - `REVERB_APP_ID`, `REVERB_APP_KEY`, `REVERB_APP_SECRET`
   - credenciales del servidor Reverb usadas tanto por el cliente como por el servidor
 - `REVERB_HOST`, `REVERB_PORT`, `REVERB_SCHEME`

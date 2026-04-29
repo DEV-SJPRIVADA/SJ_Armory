@@ -14,6 +14,7 @@ use App\Models\Worker;
 use App\Services\WeaponAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class WeaponTransferController extends Controller
 {
@@ -97,14 +98,14 @@ class WeaponTransferController extends Controller
             ->orderBy('name')
             ->get();
         $transferClients = Client::orderBy('name')->get(['id', 'name']);
-        $transferPosts = Post::orderBy('name')->get(['id', 'client_id', 'name']);
+        $transferPosts = Post::active()->orderBy('name')->get(['id', 'client_id', 'name']);
         $acceptClients = $user->isAdmin()
             ? Client::orderBy('name')->get()
             : $user->clients()->orderBy('name')->get();
 
-        $acceptPosts = Post::whereIn('client_id', $acceptClients->pluck('id'))->orderBy('name')->get();
+        $acceptPosts = Post::active()->whereIn('client_id', $acceptClients->pluck('id'))->orderBy('name')->get();
 
-        $acceptWorkersQuery = Worker::whereIn('client_id', $acceptClients->pluck('id'))->orderBy('name');
+        $acceptWorkersQuery = Worker::active()->whereIn('client_id', $acceptClients->pluck('id'))->orderBy('name');
         if (!$user->isAdmin()) {
             $acceptWorkersQuery->where('responsible_user_id', $user->id);
         }
@@ -141,7 +142,10 @@ class WeaponTransferController extends Controller
             'weapon_ids.*' => ['integer', 'exists:weapons,id'],
             'to_user_id' => ['required', 'exists:users,id'],
             'client_id' => ['required', 'exists:clients,id'],
-            'post_id' => ['nullable', 'exists:posts,id'],
+            'post_id' => [
+                'nullable',
+                Rule::exists('posts', 'id')->where(fn ($q) => $q->whereNull('archived_at')),
+            ],
             'note' => ['nullable', 'string'],
         ]);
 
@@ -164,6 +168,11 @@ class WeaponTransferController extends Controller
 
         if ($postId) {
             $post = Post::findOrFail($postId);
+            if ($post->isArchived()) {
+                return back()->withErrors([
+                    'post_id' => 'El puesto está archivado.',
+                ])->withInput();
+            }
             if ($post->client_id !== $clientId) {
                 return back()->withErrors([
                     'post_id' => 'El puesto seleccionado no pertenece al cliente destino.',
@@ -282,8 +291,14 @@ class WeaponTransferController extends Controller
 
         $data = $request->validate([
             'client_id' => ['required', 'exists:clients,id'],
-            'post_id' => ['nullable', 'exists:posts,id'],
-            'worker_id' => ['nullable', 'exists:workers,id'],
+            'post_id' => [
+                'nullable',
+                Rule::exists('posts', 'id')->where(fn ($q) => $q->whereNull('archived_at')),
+            ],
+            'worker_id' => [
+                'nullable',
+                Rule::exists('workers', 'id')->where(fn ($q) => $q->whereNull('archived_at')),
+            ],
         ]);
 
         $postId = $data['post_id'] ?? null;
@@ -302,6 +317,11 @@ class WeaponTransferController extends Controller
 
         if ($postId) {
             $post = Post::findOrFail($postId);
+            if ($post->isArchived()) {
+                return back()->withErrors([
+                    'post_id' => 'El puesto está archivado.',
+                ])->withInput();
+            }
             if ($post->client_id !== $clientId) {
                 abort(422, 'El puesto seleccionado no pertenece al cliente.');
             }
@@ -309,6 +329,11 @@ class WeaponTransferController extends Controller
 
         if ($workerId) {
             $worker = Worker::findOrFail($workerId);
+            if ($worker->isArchived()) {
+                return back()->withErrors([
+                    'worker_id' => 'El trabajador está archivado.',
+                ])->withInput();
+            }
             if ($worker->client_id !== $clientId) {
                 abort(422, 'El trabajador seleccionado no pertenece al cliente.');
             }
@@ -489,6 +514,9 @@ class WeaponTransferController extends Controller
 
         if ($postId) {
             $post = Post::findOrFail($postId);
+            if ($post->isArchived()) {
+                abort(422, 'El puesto está archivado.');
+            }
             if ($post->client_id !== $clientId) {
                 abort(422, 'El puesto seleccionado no pertenece al cliente.');
             }
@@ -516,6 +544,9 @@ class WeaponTransferController extends Controller
         }
 
         $worker = Worker::findOrFail($workerId);
+        if ($worker->isArchived()) {
+            abort(422, 'El trabajador está archivado.');
+        }
         if ($worker->client_id !== $clientId) {
             abort(422, 'El trabajador seleccionado no pertenece al cliente.');
         }

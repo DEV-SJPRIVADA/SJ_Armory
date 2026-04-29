@@ -85,6 +85,16 @@
                         </section>
 
                         <section class="sj-form-section">
+                            <div class="sj-form-section__title">{{ __('Nota del cambio (historial)') }}</div>
+                            <div>
+                                <x-input-label for="change_note" :value="__('Descripción del cambio')" />
+                                <textarea id="change_note" name="change_note" class="mt-1 block w-full rounded-md border-gray-300 text-sm" rows="3" required>{{ old('change_note') }}</textarea>
+                                <p class="sj-form-help">{{ __('Obligatorio. Se guarda en el historial del puesto.') }}</p>
+                                <x-input-error :messages="$errors->get('change_note')" class="mt-2" />
+                            </div>
+                        </section>
+
+                        <section class="sj-form-section">
                             <div class="sj-form-section__title">Notas</div>
                             <div>
                                 <x-input-label for="notes" :value="__('Notas')" />

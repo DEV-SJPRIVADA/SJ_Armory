@@ -11,6 +11,7 @@ use App\Models\WeaponWorkerAssignment;
 use App\Models\Worker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class WeaponInternalAssignmentController extends Controller
 {
@@ -22,8 +23,14 @@ class WeaponInternalAssignmentController extends Controller
         }
 
         $data = $request->validate([
-            'post_id' => ['nullable', 'exists:posts,id'],
-            'worker_id' => ['nullable', 'exists:workers,id'],
+            'post_id' => [
+                'nullable',
+                Rule::exists('posts', 'id')->where(fn ($q) => $q->whereNull('archived_at')),
+            ],
+            'worker_id' => [
+                'nullable',
+                Rule::exists('workers', 'id')->where(fn ($q) => $q->whereNull('archived_at')),
+            ],
             'start_at' => ['nullable', 'date'],
             'reason' => ['nullable', 'string'],
             'ammo_count' => ['nullable', 'integer', 'min:0'],
@@ -68,6 +75,9 @@ class WeaponInternalAssignmentController extends Controller
 
             if ($postId) {
                 $post = Post::findOrFail($postId);
+                if ($post->isArchived()) {
+                    abort(422, 'El puesto está archivado.');
+                }
                 $this->ensureClientMatches($user, $post->client_id, $activeClientAssignment->client_id, $post->name);
 
                 $assignment = WeaponPostAssignment::create([
@@ -91,6 +101,9 @@ class WeaponInternalAssignmentController extends Controller
             }
 
             $worker = Worker::findOrFail($workerId);
+            if ($worker->isArchived()) {
+                abort(422, 'El trabajador está archivado.');
+            }
             $this->ensureClientMatches($user, $worker->client_id, $activeClientAssignment->client_id, $worker->name);
 
             if (!$user->isAdmin() && $worker->responsible_user_id !== $user->id) {

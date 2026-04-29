@@ -59,16 +59,32 @@
 
                                 <div>
                                     <x-input-label for="responsible_user_id" :value="__('Responsable')" />
-                                    <select id="responsible_user_id" name="responsible_user_id" class="mt-1 block w-full rounded-md border-gray-300 text-sm">
-                                        <option value="">{{ __('Sin responsable') }}</option>
-                                        @foreach ($responsibles as $responsible)
-                                            <option value="{{ $responsible->id }}" @selected(old('responsible_user_id', $worker->responsible_user_id) == $responsible->id)>
-                                                {{ $responsible->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <x-input-error :messages="$errors->get('responsible_user_id')" class="mt-2" />
+                                    @if (!empty($lockResponsible))
+                                        <input type="hidden" name="responsible_user_id" value="{{ auth()->id() }}">
+                                        <p class="mt-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800">{{ auth()->user()->name }}</p>
+                                        <p class="sj-form-help">{{ __('No puede reasignar el responsable en su rol.') }}</p>
+                                    @else
+                                        <select id="responsible_user_id" name="responsible_user_id" class="mt-1 block w-full rounded-md border-gray-300 text-sm">
+                                            <option value="">{{ __('Sin responsable') }}</option>
+                                            @foreach ($responsibles as $responsible)
+                                                <option value="{{ $responsible->id }}" @selected(old('responsible_user_id', $worker->responsible_user_id) == $responsible->id)>
+                                                    {{ $responsible->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <x-input-error :messages="$errors->get('responsible_user_id')" class="mt-2" />
+                                    @endif
                                 </div>
+                            </div>
+                        </section>
+
+                        <section class="sj-form-section">
+                            <div class="sj-form-section__title">{{ __('Nota del cambio (historial)') }}</div>
+                            <div>
+                                <x-input-label for="change_note" :value="__('Descripción del cambio')" />
+                                <textarea id="change_note" name="change_note" class="mt-1 block w-full rounded-md border-gray-300 text-sm" rows="3" required>{{ old('change_note') }}</textarea>
+                                <p class="sj-form-help">{{ __('Obligatorio. Se guarda en el historial del trabajador.') }}</p>
+                                <x-input-error :messages="$errors->get('change_note')" class="mt-2" />
                             </div>
                         </section>
 

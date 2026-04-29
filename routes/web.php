@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\ForcedPasswordChangeController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
@@ -59,12 +60,19 @@ Route::post('/locale', function (Request $request) {
 })->name('locale.switch');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/password/change-required', [ForcedPasswordChangeController::class, 'edit'])->name('password.force.edit');
+    Route::put('/password/change-required', [ForcedPasswordChangeController::class, 'update'])->name('password.force.update');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    Route::get('/posts/{post}/histories', [PostController::class, 'histories'])->name('posts.histories');
+    Route::patch('/posts/{post}/restore', [PostController::class, 'restore'])->name('posts.restore');
     Route::resource('clients', ClientController::class)->except(['show']);
     Route::resource('posts', PostController::class)->except(['show']);
+    Route::get('/workers/{worker}/histories', [WorkerController::class, 'histories'])->name('workers.histories');
+    Route::patch('/workers/{worker}/restore', [WorkerController::class, 'restore'])->name('workers.restore');
     Route::resource('workers', WorkerController::class)->except(['show']);
     Route::resource('users', UserController::class)->except(['show']);
     Route::patch('/users/{user}/status', [UserController::class, 'updateStatus'])->name('users.status');

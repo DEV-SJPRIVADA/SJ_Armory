@@ -67,15 +67,8 @@
                             <x-input-error :messages="$errors->get('is_active')" class="mt-2" />
                         </div>
 
-                        <div>
-                            <x-input-label for="password" :value="__('Contraseña')" />
-                            <x-text-input id="password" name="password" type="password" class="mt-1 block w-full" required />
-                            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-                        </div>
-
-                        <div>
-                            <x-input-label for="password_confirmation" :value="__('Confirmar contraseña')" />
-                            <x-text-input id="password_confirmation" name="password_confirmation" type="password" class="mt-1 block w-full" required />
+                        <div class="md:col-span-2 rounded-md border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                            {{ __('Al guardar se generará una contraseña temporal segura. Podrá copiarla en la siguiente pantalla y enviársela al usuario. En el primer inicio de sesión el usuario deberá definir su propia contraseña.') }}
                         </div>
 
                         <div class="md:col-span-2 flex justify-end gap-2">

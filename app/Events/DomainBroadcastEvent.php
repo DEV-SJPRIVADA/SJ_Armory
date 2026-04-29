@@ -19,6 +19,11 @@ abstract class DomainBroadcastEvent
 
     abstract public function broadcastOn(): array;
 
+    public function broadcastWhen(): bool
+    {
+        return (bool) config('broadcasting.enabled', true);
+    }
+
     public function broadcastAs(): string
     {
         return class_basename(static::class);
