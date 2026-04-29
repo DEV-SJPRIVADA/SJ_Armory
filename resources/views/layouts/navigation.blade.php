@@ -126,6 +126,17 @@
         notificationItems: [],
         notificationLoading: false,
         notificationUnread: {{ (int) ($unreadNotificationCount ?? 0) }},
+        init() {
+            window.addEventListener('inbox-updated', (e) => {
+                const n = e.detail?.unread_count;
+                if (typeof n === 'number') {
+                    this.notificationUnread = n;
+                    if (this.notificationsOpen) {
+                        this.loadNotifications();
+                    }
+                }
+            });
+        },
         async loadNotifications() {
             this.notificationLoading = true;
             try {
@@ -254,17 +265,16 @@
                         <button
                             type="button"
                             @click="openNotificationsModal()"
-                            class="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-slate-100 hover:bg-white/15 hover:text-white focus:outline-none"
+                            class="relative inline-flex items-center justify-center rounded p-1 text-amber-400 hover:text-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
                             aria-label="{{ __('Notificaciones') }}"
                         >
-                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <svg class="h-6 w-6 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                             </svg>
                             <span
                                 x-show="notificationUnread > 0"
                                 x-text="notificationUnread > 99 ? '99+' : notificationUnread"
-                                class="absolute -right-0.5 -top-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white"
-                                style="display: none;"
+                                class="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white shadow-sm"
                             ></span>
                         </button>
                     @endif
@@ -322,17 +332,16 @@
                     <button
                         type="button"
                         @click="openNotificationsModal()"
-                        class="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-slate-100 hover:bg-white/15"
+                        class="relative inline-flex items-center justify-center rounded p-1 text-amber-400 hover:text-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
                         aria-label="{{ __('Notificaciones') }}"
                     >
-                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <svg class="h-6 w-6 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                         </svg>
                         <span
                             x-show="notificationUnread > 0"
                             x-text="notificationUnread > 99 ? '99+' : notificationUnread"
-                            class="absolute -right-0.5 -top-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white"
-                            style="display: none;"
+                            class="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white shadow-sm"
                         ></span>
                     </button>
                 @endif
@@ -455,7 +464,6 @@
                             @click="markAllNotificationsRead()"
                             class="text-xs font-medium text-indigo-600 hover:text-indigo-800"
                             x-show="notificationUnread > 0"
-                            style="display: none;"
                         >
                             {{ __('Marcar todas leídas') }}
                         </button>
@@ -464,8 +472,8 @@
                 </div>
                 <div class="min-h-0 flex-1 overflow-y-auto">
                     <div x-show="notificationLoading" class="p-6 text-center text-sm text-gray-500">{{ __('Cargando…') }}</div>
-                    <div x-show="!notificationLoading && notificationItems.length === 0" class="p-6 text-center text-sm text-gray-500" style="display: none;">{{ __('No hay notificaciones.') }}</div>
-                    <div x-show="!notificationLoading && notificationItems.length > 0" class="divide-y divide-gray-100" style="display: none;">
+                    <div x-show="!notificationLoading && notificationItems.length === 0" class="p-6 text-center text-sm text-gray-500">{{ __('No hay notificaciones.') }}</div>
+                    <div x-show="!notificationLoading && notificationItems.length > 0" class="divide-y divide-gray-100">
                         <template x-for="item in notificationItems" :key="item.id">
                             <div>
                                 <button

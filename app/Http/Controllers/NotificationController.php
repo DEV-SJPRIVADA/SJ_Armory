@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\UserInboxUpdated;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -61,9 +62,12 @@ class NotificationController extends Controller
         $notification = $user->notifications()->whereKey($id)->firstOrFail();
         $notification->markAsRead();
 
+        $count = $user->unreadNotifications()->count();
+        broadcast(new UserInboxUpdated((int) $user->id, $count));
+
         return response()->json([
             'ok' => true,
-            'unread_count' => $user->unreadNotifications()->count(),
+            'unread_count' => $count,
         ]);
     }
 
@@ -75,6 +79,8 @@ class NotificationController extends Controller
         }
 
         $user->unreadNotifications()->update(['read_at' => now()]);
+
+        broadcast(new UserInboxUpdated((int) $user->id, 0));
 
         return response()->json([
             'ok' => true,

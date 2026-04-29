@@ -8,11 +8,13 @@ use App\Events\DomainBroadcastEvent;
 use App\Events\PortfolioAssignmentsChanged;
 use App\Events\PostChanged;
 use App\Events\TransferChanged;
+use App\Events\UserInboxUpdated;
 use App\Events\WeaponChanged;
 use App\Events\WorkerChanged;
 use App\Models\User;
 use App\Models\Weapon;
 use App\Models\WeaponTransfer;
+use App\Notifications\DomainActivityNotification;
 
 class DomainActivityNotificationService
 {
@@ -36,6 +38,7 @@ class DomainActivityNotificationService
             }
 
             $user->notify(new DomainActivityNotification($payload));
+            broadcast(new UserInboxUpdated((int) $user->id, $user->unreadNotifications()->count()));
         }
     }
 
