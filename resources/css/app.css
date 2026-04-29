@@ -3801,16 +3801,31 @@
         width: 100%;
     }
 
+    /*
+     * Cursor sobre el mapa: en Chrome/Edge el salto flecha ↔ mano puede dejar un frame sin cursor
+     * si varios niveles (contenedor, pane, img) declaran cursor distinto. Un solo grab en el contenedor
+     * + inherit hacia abajo; controles y marcadores siguen con default/pointer.
+     */
     #weapons-map.leaflet-container {
+        cursor: -webkit-grab;
         cursor: grab;
+        outline: 1px solid transparent;
     }
 
-    #weapons-map .leaflet-grab {
-        cursor: grab;
+    #weapons-map .leaflet-pane,
+    #weapons-map .leaflet-tile-container,
+    #weapons-map .leaflet-layer {
+        cursor: inherit;
     }
 
-    #weapons-map.leaflet-dragging,
-    #weapons-map.leaflet-dragging .leaflet-grab {
+    #weapons-map .leaflet-popup-pane,
+    #weapons-map .leaflet-popup,
+    #weapons-map .leaflet-popup-content-wrapper {
+        cursor: auto;
+    }
+
+    #weapons-map.leaflet-dragging {
+        cursor: -webkit-grabbing !important;
         cursor: grabbing !important;
     }
 
@@ -3819,8 +3834,18 @@
         cursor: pointer;
     }
 
-    #weapons-map .leaflet-popup,
-    #weapons-map .leaflet-popup-content-wrapper {
-        cursor: auto;
+    #weapons-map .leaflet-control-container {
+        cursor: default;
+    }
+
+    #weapons-map .leaflet-control-layers label,
+    #weapons-map .leaflet-control-zoom a {
+        cursor: pointer;
+    }
+
+    #weapons-map img.leaflet-tile {
+        -webkit-user-drag: none;
+        user-select: none;
+        cursor: inherit;
     }
 }

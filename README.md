@@ -309,7 +309,7 @@ Formato de código:
   - puerto **`REVERB_SERVER_PORT`** abierto en firewall (p. ej. `6001`)
   - mientras depuras backend sin socket: `BROADCAST_ENABLED=false` o `BROADCAST_CONNECTION=log`
 - 🧱 **Cambiaste `VITE_*` y no se refleja**: ejecuta `npm run build` (local) o `npm run build:deploy` (artefacto para hosting) o `npm run dev`.
-- 🗺️ **Mapa / selector de ubicación**: comparten capas **Satélite (híbrido)** (Esri: imagen + vías + límites) y **Calles (OpenStreetMap)**. Tras tocar `map.js` o `location-picker.js`, vuelva a compilar y refresque sin caché. El popup del mapa de armas limita la altura de la tabla (~5 filas visibles) con scroll para el resto.
+- 🗺️ **Mapa / selector de ubicación**: comparten capas **Satélite (híbrido)** (Esri: imagen + vías + límites) y **Calles (OpenStreetMap)**. Tras tocar `map.js` o `location-picker.js`, vuelva a compilar y refresque sin caché. El popup del mapa de armas limita la altura de la tabla (~5 filas visibles) con scroll para el resto. Si el **cursor parpadea o desaparece** al mover el ratón sobre el mapa (Chrome/Edge en Windows): la vista `maps/index` evita `overflow-hidden` en el card del mapa y `app.css` unifica el cursor (`grab` solo en el contenedor Leaflet, `inherit` en paneles/teselas); despliegue el CSS compilado actualizado en `public/build`.
 
 Tipos de arma permitidos en validacion actual:
 

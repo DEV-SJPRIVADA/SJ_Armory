@@ -1,7 +1,8 @@
 <x-app-layout>
     <div class="py-8">
         <div class="sj-page-shell sj-page-shell--wide">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+            {{-- overflow-visible: overflow-hidden en el card recorta el repaint del cursor sobre Leaflet (tiles) en Chrome/Edge --}}
+            <div class="bg-white overflow-visible shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <div class="mb-4" id="weapons-map-search-shell">
                         <label for="weapons-map-search" class="mb-1 block text-sm font-medium text-gray-700">
