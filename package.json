@@ -4,6 +4,7 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
+        "build:deploy": "node scripts/check-env-production.mjs && vite build",
         "reverb": "php artisan reverb:start"
     },
     "devDependencies": {
