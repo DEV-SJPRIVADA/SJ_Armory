@@ -105,7 +105,11 @@ class WorkerController extends Controller
             return response()->json([
                 'tbody' => view('workers.partials.index_rows', compact('workers', 'roles'))->render(),
                 'pagination' => view('workers.partials.index_pagination', compact('workers'))->render(),
-            ])->header('Cache-Control', 'private, no-store, must-revalidate');
+            ])
+                ->withHeaders([
+                    'Cache-Control' => 'private, no-store, must-revalidate',
+                    'Vary' => 'Cookie',
+                ]);
         }
 
         return response()
@@ -121,7 +125,10 @@ class WorkerController extends Controller
                 'archiveFilter',
                 'showResponsibleFilter',
             ))
-            ->header('Cache-Control', 'private, no-store, must-revalidate');
+            ->withHeaders([
+                'Cache-Control' => 'private, no-store, must-revalidate',
+                'Vary' => 'Cookie',
+            ]);
     }
 
     private function clientIdValidationRules(Request $request): array

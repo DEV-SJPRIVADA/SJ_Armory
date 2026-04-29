@@ -19,3 +19,12 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# LiteSpeed / LSCache (Hostinger): evitar cachear listados que cambian entre usuarios en tiempo casi real.
+# Sin esto, un GET a /posts puede devolver HTML viejo aunque la BD ya tenga archived_at.
+<IfModule LiteSpeed>
+    RewriteEngine On
+    RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
+    RewriteCond %{REQUEST_URI} ^/(posts|workers)(/|$) [NC]
+    RewriteRule .* - [E=cache-control:no-cache]
+</IfModule>

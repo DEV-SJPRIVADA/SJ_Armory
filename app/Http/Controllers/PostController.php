@@ -88,7 +88,11 @@ class PostController extends Controller
             return response()->json([
                 'tbody' => view('posts.partials.index_rows', compact('posts'))->render(),
                 'pagination' => view('posts.partials.index_pagination', compact('posts'))->render(),
-            ])->header('Cache-Control', 'private, no-store, must-revalidate');
+            ])
+                ->withHeaders([
+                    'Cache-Control' => 'private, no-store, must-revalidate',
+                    'Vary' => 'Cookie',
+                ]);
         }
 
         if ($user?->isResponsible() && !$user?->isAdmin()) {
@@ -99,7 +103,10 @@ class PostController extends Controller
 
         return response()
             ->view('posts.index', compact('posts', 'clients', 'search', 'clientId', 'archiveFilter'))
-            ->header('Cache-Control', 'private, no-store, must-revalidate');
+            ->withHeaders([
+                'Cache-Control' => 'private, no-store, must-revalidate',
+                'Vary' => 'Cookie',
+            ]);
     }
 
     private function clientIdValidationRules(Request $request): array
