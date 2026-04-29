@@ -296,7 +296,7 @@
                 <x-input-error :messages="$errors->get('weapon_ids')" class="mt-2" />
 
                 <div class="space-y-4">
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-end">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div class="sm:col-span-1">
                             <label class="block text-sm font-medium text-gray-700">{{ __('Destinatario') }}</label>
                             <select name="to_user_id" id="bulk-to-user" class="mt-1 block w-full rounded-md border-gray-300 text-sm" required>
