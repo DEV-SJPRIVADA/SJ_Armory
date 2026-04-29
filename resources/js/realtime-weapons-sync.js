@@ -24,8 +24,17 @@ function initRealtimeWeaponsSync() {
     }
 
     const refreshWeaponsList = async () => {
-        const response = await fetch(window.location.href, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        const url = new URL(window.location.href);
+        url.searchParams.set('_rt', String(Date.now()));
+
+        const response = await fetch(url.toString(), {
+            cache: 'no-store',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                Accept: 'application/json',
+                'Cache-Control': 'no-cache',
+                Pragma: 'no-cache',
+            },
         });
 
         if (!response.ok) {

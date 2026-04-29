@@ -961,6 +961,27 @@ Ejemplo explícito de bind (opcional):
 php artisan reverb:start --host=0.0.0.0 --port=6001
 ```
 
+### 12.4 Tiempo real en hosting compartido (Pusher)
+
+En planes tipo Hostinger **no suele poder** mantener `reverb:start` como proceso permanente. Lo habitual es usar **Pusher** (Channels): Laravel publica eventos por HTTPS hacia Pusher y el navegador se conecta a los servidores de Pusher; no hace falta abrir puertos WebSocket propios.
+
+1. Cree una app en [Pusher Channels](https://pusher.com/) (el plan gratuito permite pruebas).
+2. En `.env` del servidor (y al compilar el frontend):
+
+   - `BROADCAST_CONNECTION=pusher`
+   - `BROADCAST_ENABLED=true`
+   - `PUSHER_APP_ID`, `PUSHER_APP_KEY`, `PUSHER_APP_SECRET`, `PUSHER_APP_CLUSTER` (según el panel de Pusher)
+   - `PUSHER_SCHEME=https` en producción si el sitio usa HTTPS
+   - `VITE_BROADCAST_CONNECTION=pusher`
+   - `VITE_PUSHER_APP_KEY` igual que `PUSHER_APP_KEY`
+   - `VITE_PUSHER_APP_CLUSTER` igual que `PUSHER_APP_CLUSTER`
+   - `VITE_PUSHER_SCHEME=https`
+
+3. Regenerar assets: `npm run build` y subir el nuevo `public/build`.
+4. En el servidor: `php artisan config:clear` (o `config:cache`).
+
+`resources/js/bootstrap.js` usa Reverb o Pusher según `VITE_BROADCAST_CONNECTION`. Para **Soketi** u otro servidor compatible, configure `PUSHER_HOST` y `VITE_PUSHER_HOST` además del puerto y el esquema.
+
 ## 13. Variables de entorno relevantes
 
 Base:

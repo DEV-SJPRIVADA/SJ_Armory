@@ -2,6 +2,7 @@ import './bootstrap';
 import './dashboard';
 import './realtime-portfolio-sync';
 import './realtime-weapons-sync';
+import './realtime-posts-workers-sync';
 import './reports-incidents';
 
 import Alpine from 'alpinejs';

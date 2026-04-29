@@ -90,7 +90,7 @@ class WorkerController extends Controller
 
         $workers = $query->orderBy('name')
             ->paginate(15)
-            ->withQueryString();
+            ->appends($request->except(['_rt']));
 
         if ($user?->isResponsible() && !$user?->isAdmin()) {
             $clients = $user->clients()->orderBy('name')->get();
@@ -101,18 +101,27 @@ class WorkerController extends Controller
         }
         $roles = $this->roleOptions();
 
-        return view('workers.index', compact(
-            'workers',
-            'clients',
-            'responsibles',
-            'roles',
-            'search',
-            'clientId',
-            'role',
-            'responsibleId',
-            'archiveFilter',
-            'showResponsibleFilter'
-        ));
+        if ($request->ajax()) {
+            return response()->json([
+                'tbody' => view('workers.partials.index_rows', compact('workers', 'roles'))->render(),
+                'pagination' => view('workers.partials.index_pagination', compact('workers'))->render(),
+            ])->header('Cache-Control', 'private, no-store, must-revalidate');
+        }
+
+        return response()
+            ->view('workers.index', compact(
+                'workers',
+                'clients',
+                'responsibles',
+                'roles',
+                'search',
+                'clientId',
+                'role',
+                'responsibleId',
+                'archiveFilter',
+                'showResponsibleFilter',
+            ))
+            ->header('Cache-Control', 'private, no-store, must-revalidate');
     }
 
     private function clientIdValidationRules(Request $request): array

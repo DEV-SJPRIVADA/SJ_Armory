@@ -82,7 +82,14 @@ class PostController extends Controller
 
         $posts = $query->orderBy('name')
             ->paginate(15)
-            ->withQueryString();
+            ->appends($request->except(['_rt']));
+
+        if ($request->ajax()) {
+            return response()->json([
+                'tbody' => view('posts.partials.index_rows', compact('posts'))->render(),
+                'pagination' => view('posts.partials.index_pagination', compact('posts'))->render(),
+            ])->header('Cache-Control', 'private, no-store, must-revalidate');
+        }
 
         if ($user?->isResponsible() && !$user?->isAdmin()) {
             $clients = $user->clients()->orderBy('name')->get();
@@ -90,7 +97,9 @@ class PostController extends Controller
             $clients = Client::orderBy('name')->get();
         }
 
-        return view('posts.index', compact('posts', 'clients', 'search', 'clientId', 'archiveFilter'));
+        return response()
+            ->view('posts.index', compact('posts', 'clients', 'search', 'clientId', 'archiveFilter'))
+            ->header('Cache-Control', 'private, no-store, must-revalidate');
     }
 
     private function clientIdValidationRules(Request $request): array

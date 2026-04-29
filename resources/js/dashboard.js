@@ -41,6 +41,8 @@ window.dashboardMonitor = ({ initialData, dataUrl }) => ({
             ['transfers.updates', 'TransferChanged'],
             ['assignments.updates', 'AssignmentChanged'],
             ['maps.updates', 'MapDataChanged'],
+            ['posts.updates', 'PostChanged'],
+            ['workers.updates', 'WorkerChanged'],
         ];
 
         const scheduleRefresh = () => {
