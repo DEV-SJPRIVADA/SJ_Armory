@@ -5,12 +5,9 @@ import { dirname, resolve } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-/**
- * Build local: public/build. Variables desde .env + .env.local (+ opcional .env.localbuild).
- * npm run build usa --mode localbuild para no leer .env.production de la raíz (eso es solo build_hosting).
- */
+/** Build para subir al hosting: sale en build_hosting/build (no toca public/build local). Variables: build_hosting/.env.production */
 export default defineConfig({
-    envDir: resolve(__dirname),
+    envDir: resolve(__dirname, 'build_hosting'),
     plugins: [
         laravel({
             input: [
@@ -19,9 +16,9 @@ export default defineConfig({
                 'resources/js/map.js',
                 'resources/js/location-picker.js',
             ],
-            refresh: true,
-            publicDirectory: 'public',
-            hotFile: 'public/hot',
+            refresh: false,
+            publicDirectory: 'build_hosting',
+            hotFile: 'build_hosting/hot',
         }),
     ],
 });

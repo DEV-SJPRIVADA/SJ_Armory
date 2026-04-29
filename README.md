@@ -94,6 +94,15 @@ npm install
 npm run build
 ```
 
+**Dos flujos de compilación (Vite):**
+
+| Comando | Config | Variables `VITE_*` | Salida |
+|--------|--------|--------------------|--------|
+| `npm run build` | `vite.config.js`, modo `localbuild` | `.env`, `.env.local`, opcional `.env.localbuild` (no lee `.env.production` en la raíz) | `public/build/` (desarrollo y LAN con Reverb) |
+| `npm run build:deploy` | `vite.hosting.config.js` | **`build_hosting/.env.production`** (crear según sección final de `.env.example`) | **`build_hosting/build/`** |
+
+En **hosting compartido** (p. ej. Pusher): compile en su PC con `npm run build:deploy` y suba **todo el contenido** de `build_hosting/build/` dentro de **`public/build/`** del servidor (no sobrescriba otros archivos del proyecto salvo el manifest y los assets de Vite).
+
 > 🧩 Si `npm` no está en PATH, usa la terminal integrada de Laragon o exporta la ruta a Node antes de compilar.
 
 ### 5) Levantar Reverb (WebSockets)
@@ -299,7 +308,8 @@ Formato de código:
   - `REVERB_HOST` / `APP_URL` / cómo abres el sitio en el navegador (misma IP o hostname)
   - puerto **`REVERB_SERVER_PORT`** abierto en firewall (p. ej. `6001`)
   - mientras depuras backend sin socket: `BROADCAST_ENABLED=false` o `BROADCAST_CONNECTION=log`
-- 🧱 **Cambiaste `VITE_*` y no se refleja**: ejecuta `npm run build` o `npm run dev`.
+- 🧱 **Cambiaste `VITE_*` y no se refleja**: ejecuta `npm run build` (local) o `npm run build:deploy` (artefacto para hosting) o `npm run dev`.
+- 🗺️ **Mapa / selector de ubicación**: comparten capas **Satélite (híbrido)** (Esri: imagen + vías + límites) y **Calles (OpenStreetMap)**. Tras tocar `map.js` o `location-picker.js`, vuelva a compilar y refresque sin caché. El popup del mapa de armas limita la altura de la tabla (~5 filas visibles) con scroll para el resto.
 
 Tipos de arma permitidos en validacion actual:
 
@@ -790,19 +800,17 @@ Grupos funcionales:
 
 ## 9. Frontend y UX
 
-Entradas Vite (`vite.config.js`):
+Entradas Vite:
 
-- `resources/css/app.css`
-- `resources/js/app.js`
-- `resources/js/map.js`
-- `resources/js/location-picker.js`
+- **`vite.config.js`** (local): `resources/css/app.css`, `resources/js/app.js`, `resources/js/map.js`, `resources/js/location-picker.js`.
+- **`vite.hosting.config.js`** (deploy): mismas entradas; `envDir` = `build_hosting/`, salida bajo `build_hosting/build/` (no modifica `public/build` local).
 
 Caracteristicas:
 
 - Navegacion responsive por rol en `resources/views/layouts/navigation.blade.php`.
 - Idioma con cambio de session (`es`, `en`).
-- Modales de seleccion de ubicacion con mapa y buscador textual.
-- Cluster de mapa con icono personalizado y contador.
+- Modales de seleccion de ubicacion con mapa, buscador textual y control de capas (hibrido / calles).
+- Cluster de mapa con icono personalizado y contador; popup de lista de armas con zona scrolleable.
 - Tailwind escanea vistas, JS y helpers PHP usados para clases dinamicas:
   - `./app/**/*.php`
   - `./resources/views/**/*.blade.php`
@@ -966,7 +974,7 @@ php artisan reverb:start --host=0.0.0.0 --port=6001
 En planes tipo Hostinger **no suele poder** mantener `reverb:start` como proceso permanente. Lo habitual es usar **Pusher** (Channels): Laravel publica eventos por HTTPS hacia Pusher y el navegador se conecta a los servidores de Pusher; no hace falta abrir puertos WebSocket propios.
 
 1. Cree una app en [Pusher Channels](https://pusher.com/) (el plan gratuito permite pruebas).
-2. En `.env` del servidor (y al compilar el frontend):
+2. En `.env` del servidor y en **`build_hosting/.env.production`** (solo para `npm run build:deploy` en tu PC):
 
    - `BROADCAST_CONNECTION=pusher`
    - `BROADCAST_ENABLED=true`
@@ -977,7 +985,7 @@ En planes tipo Hostinger **no suele poder** mantener `reverb:start` como proceso
    - `VITE_PUSHER_APP_CLUSTER` igual que `PUSHER_APP_CLUSTER`
    - `VITE_PUSHER_SCHEME=https`
 
-3. Regenerar assets: `npm run build` y subir el nuevo `public/build`.
+3. Regenerar assets para el hosting sin tocar el build local: `npm run build:deploy` (usa `build_hosting/.env.production`) y suba al servidor el contenido de `build_hosting/build/` dentro de `public/build/`. En local: `npm run build` → `public/build` (modo `localbuild`: toma `VITE_*` de `.env` / `.env.local`, no de `.env.production` en la raíz).
 4. En el servidor: `php artisan config:clear` (o `config:cache`).
 
 `resources/js/bootstrap.js` usa Reverb o Pusher según `VITE_BROADCAST_CONNECTION`. Para **Soketi** u otro servidor compatible, configure `PUSHER_HOST` y `VITE_PUSHER_HOST` además del puerto y el esquema.
@@ -1065,9 +1073,7 @@ Comando:
 
 Configuracion de testing:
 
-- `phpunit.xml` fuerza `DB_CONNECTION=sqlite`
-- `DB_DATABASE=:memory:`
-- `.env.testing` define un entorno aislado para pruebas
+- `phpunit.xml` define variables de entorno para PHPUnit (`APP_ENV=testing`, SQLite en memoria, etc.)
 
 Con esto, `php artisan test` no debe tocar la base real del proyecto.
 
@@ -1079,7 +1085,7 @@ Checklist minimo de produccion:
 
 1. Configurar `.env` de produccion.
 2. `composer install --no-dev --optimize-autoloader`
-3. `npm ci && npm run build`
+3. **Frontend**: en la PC de build, `npm ci` y luego **`npm run build:deploy`** (con `build_hosting/.env.production`); subir el contenido de **`build_hosting/build/`** a **`public/build/`** del servidor. Si compila directamente en el servidor con un solo `.env` que ya incluye los `VITE_*` de produccion, puede usar `npm run build`.
 4. `php artisan migrate --force`
 5. `php artisan storage:link`
 6. `php artisan config:cache`

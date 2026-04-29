@@ -3777,4 +3777,50 @@
     .sj-shell .sj-content {
         padding-top: 0;
     }
+
+    /* Mapa de armas: lista en popup acotada; cursor visible sobre tiles y marcadores */
+    .sj-weapons-map-popup .leaflet-popup-content-wrapper {
+        border-radius: 0.5rem;
+    }
+
+    .sj-weapons-map-popup .leaflet-popup-content {
+        margin: 0.65rem 0.85rem;
+        min-width: 260px;
+    }
+
+    .sj-weapons-map-popup__table-wrap {
+        max-height: 8.75rem;
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;
+        padding-right: 0.15rem;
+        margin-top: 0.125rem;
+    }
+
+    .sj-weapons-map-popup__table-wrap table {
+        width: 100%;
+    }
+
+    #weapons-map.leaflet-container {
+        cursor: grab;
+    }
+
+    #weapons-map .leaflet-grab {
+        cursor: grab;
+    }
+
+    #weapons-map.leaflet-dragging,
+    #weapons-map.leaflet-dragging .leaflet-grab {
+        cursor: grabbing !important;
+    }
+
+    #weapons-map .sj-weapons-cluster-icon,
+    #weapons-map .leaflet-marker-icon {
+        cursor: pointer;
+    }
+
+    #weapons-map .leaflet-popup,
+    #weapons-map .leaflet-popup-content-wrapper {
+        cursor: auto;
+    }
 }

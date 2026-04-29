@@ -34,6 +34,8 @@ const t = {
     manualAddressInvalid: locale === 'en'
         ? 'Address not recognized. You can save it as is or choose the location on the map.'
         : 'Dirección no reconocida. Puedes guardarla así o seleccionar la ubicación en el mapa.',
+    layerHybrid: locale === 'en' ? 'Satellite (hybrid)' : 'Satélite (híbrido)',
+    layerStreets: locale === 'en' ? 'Streets (OpenStreetMap)' : 'Calles (OpenStreetMap)',
 };
 
 const buildOption = (value, label) => {
@@ -544,10 +546,42 @@ const initMapPicker = () => {
 
         if (!mapInstance) {
             mapInstance = L.map(mapElement).setView([4.5709, -74.2973], 6);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 18,
-                attribution: '&copy; OpenStreetMap contributors',
-            }).addTo(mapInstance);
+
+            const esriAttribution =
+                'Tiles &copy; <a href="https://www.esri.com/">Esri</a> — '
+                + 'Earthstar Geographics, Maxar, OpenStreetMap & contributors';
+
+            const osmStreets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            });
+
+            const esriImagery = L.tileLayer(
+                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                { maxZoom: 19, attribution: esriAttribution },
+            );
+            const esriTransport = L.tileLayer(
+                'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
+                { maxZoom: 19, attribution: '&copy; Esri', opacity: 0.9 },
+            );
+            const esriPlaces = L.tileLayer(
+                'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+                { maxZoom: 19, attribution: '&copy; Esri' },
+            );
+            const hybridBase = L.layerGroup([esriImagery, esriTransport, esriPlaces]);
+
+            hybridBase.addTo(mapInstance);
+
+            L.control
+                .layers(
+                    {
+                        [t.layerHybrid]: hybridBase,
+                        [t.layerStreets]: osmStreets,
+                    },
+                    {},
+                    { position: 'topright', collapsed: false },
+                )
+                .addTo(mapInstance);
 
             mapInstance.on('click', (event) => {
                 const { lat, lng } = event.latlng;

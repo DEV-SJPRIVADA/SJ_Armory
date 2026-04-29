@@ -23,9 +23,8 @@ L.Icon.Default.mergeOptions(customIconOptions);
 
 const locale = document.documentElement.lang?.startsWith('en') ? 'en' : 'es';
 const t = {
-    layerMap: locale === 'en' ? 'Map' : 'Mapa',
-    layerSatellite: locale === 'en' ? 'Satellite' : 'Satélite',
-    layerHybrid: locale === 'en' ? 'Hybrid' : 'Híbrida',
+    layerHybrid: locale === 'en' ? 'Satellite (hybrid)' : 'Satélite (híbrido)',
+    layerStreets: locale === 'en' ? 'Streets (OpenStreetMap)' : 'Calles (OpenStreetMap)',
     viewWeapon: locale === 'en' ? 'View weapon' : 'Ver arma',
     weaponCount: locale === 'en' ? 'Weapon count' : 'Cantidad de armas',
     serial: locale === 'en' ? 'Serial' : 'Serie',
@@ -59,31 +58,35 @@ const initMap = () => {
     const endpoint = mapElement.dataset.endpoint;
     const map = L.map(mapElement).setView([4.5709, -74.2973], 5);
 
-    const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const esriAttribution =
+        'Tiles &copy; <a href="https://www.esri.com/">Esri</a> — '
+        + 'Earthstar Geographics, Maxar, OpenStreetMap & contributors';
+
+    const osmStreets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     });
-    const satelliteLayer = L.tileLayer(
+
+    const esriImagery = L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        {
-            maxZoom: 19,
-            attribution: 'Tiles &copy; Esri',
-        }
+        { maxZoom: 19, attribution: esriAttribution },
     );
-    const labelsLayer = L.tileLayer(
-        'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-        {
-            maxZoom: 19,
-            attribution: 'Labels &copy; Esri',
-        }
+    const esriTransport = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 19, attribution: '&copy; Esri', opacity: 0.9 },
     );
+    const esriPlaces = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 19, attribution: '&copy; Esri' },
+    );
+    const hybridBase = L.layerGroup([esriImagery, esriTransport, esriPlaces]);
+
     const baseLayers = {
-        [t.layerMap]: streetLayer,
-        [t.layerSatellite]: satelliteLayer,
-        [t.layerHybrid]: L.layerGroup([satelliteLayer, labelsLayer]),
+        [t.layerHybrid]: hybridBase,
+        [t.layerStreets]: osmStreets,
     };
-    baseLayers[t.layerHybrid].addTo(map);
-    L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
+    hybridBase.addTo(map);
+    L.control.layers(baseLayers, {}, { position: 'topright', collapsed: false }).addTo(map);
 
     let searchIndex = [];
     let searchDebounce = null;
@@ -232,13 +235,21 @@ const initMap = () => {
                                 <span style="position:absolute;right:-6px;top:-6px;background:#1f6fb2;color:#fff;font-size:11px;font-weight:700;line-height:1;padding:4px 6px;border-radius:999px;border:2px solid #fff;box-shadow:0 4px 10px rgba(15,23,42,.25);">${count}</span>
                             </div>
                         `,
-                        className: '',
+                        className: 'sj-weapons-cluster-icon',
                         iconSize: [36, 52],
                         iconAnchor: [18, 52],
                         popupAnchor: [1, -44],
                     });
                 },
             });
+
+            const popupOptions = {
+                className: 'sj-weapons-map-popup',
+                maxWidth: 360,
+                autoPan: true,
+                autoPanPadding: L.point(40, 40),
+                keepInView: false,
+            };
             const bounds = [];
 
             grouped.forEach((groupItems) => {
@@ -250,31 +261,35 @@ const initMap = () => {
                     <tr>
                         <td class="pr-3 py-1">${item.serial_number ?? '-'}</td>
                         <td class="py-1 text-right">
-                            <a href="${item.link}" target="_blank">${t.viewWeapon}</a>
+                            <a href="${item.link}" target="_blank" rel="noopener noreferrer">${t.viewWeapon}</a>
                         </td>
                     </tr>
                 `
                     )
                     .join('');
                 const popup = `
-                    <div class="text-sm">
+                    <div class="text-sm sj-weapons-map-popup-inner">
                         <div class="font-semibold mb-1">${clientName}</div>
                         <div class="mb-2 text-xs text-gray-600">${t.weaponCount}: ${groupItems.length}</div>
                         <table class="w-full text-xs">
                             <thead>
                                 <tr class="text-left text-gray-600">
-                                    <th class="pr-3">${t.serial}</th>
-                                    <th class="text-right">${t.detail}</th>
+                                    <th class="pr-3 pb-1">${t.serial}</th>
+                                    <th class="pb-1 text-right">${t.detail}</th>
                                 </tr>
                             </thead>
-                            <tbody>${rows}</tbody>
                         </table>
+                        <div class="sj-weapons-map-popup__table-wrap">
+                            <table class="w-full text-xs">
+                                <tbody>${rows}</tbody>
+                            </table>
+                        </div>
                     </div>
                 `;
 
                 const marker = L.marker([lat, lng]);
                 marker.setIcon(customMarkerIcon);
-                marker.bindPopup(popup);
+                marker.bindPopup(popup, popupOptions);
                 clusterGroup.addLayer(marker);
                 bounds.push([lat, lng]);
 

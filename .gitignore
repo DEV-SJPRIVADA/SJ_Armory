@@ -8,6 +8,10 @@
 .env
 .env.backup
 .env.production
+/build_hosting/build
+/build_hosting/hot
+/build_hosting/.env.production
+/build_hosting/.env.local
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
