@@ -77,12 +77,16 @@ class WeaponDocumentController extends Controller
         return redirect()->route('weapons.show', $weapon)->with('status', 'Documento cargado.');
     }
 
-    public function download(Weapon $weapon, WeaponDocument $document, WeaponDocumentService $documentService)
+    public function download(Request $request, Weapon $weapon, WeaponDocument $document, WeaponDocumentService $documentService)
     {
         $this->authorize('view', $weapon);
 
         if ($document->weapon_id !== $weapon->id) {
             abort(404);
+        }
+
+        if ($document->is_renewal && !$request->user()?->isAdmin()) {
+            abort(403);
         }
 
         $file = $document->file;

@@ -74,7 +74,9 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
-                    @forelse ($weapon->documents as $document)
+                    @php($isAdmin = Auth::user()?->isAdmin())
+                    @php($visibleDocuments = $weapon->documents->reject(fn ($document) => $document->is_renewal && !$isAdmin))
+                    @forelse ($visibleDocuments as $document)
                         @php($alert = \App\Support\WeaponDocumentAlert::forDocument($document))
                         @php($fileType = $document->file?->original_name ? strtoupper(pathinfo($document->file->original_name, PATHINFO_EXTENSION)) : ($document->file?->mime_type ?? '-'))
                         <tr class="{{ $alert['row_class'] }}">

@@ -561,6 +561,10 @@ Controlador: `app/Http/Controllers/WeaponDocumentController.php`
 - Descarga por ruta protegida.
 - Si es documento de renovacion, se regenera al descargar.
 - Eliminacion de documento + archivo fisico.
+- **Visibilidad y descarga del documento de Revalidación (`is_renewal = true`)**: solo ADMIN.
+  - La fila de **Revalidación** se oculta de la tabla de documentos para responsables y auditores.
+  - El endpoint `weapons.documents.download` valida `is_renewal` y aborta con `403` si el usuario no es ADMIN, aun cuando intente entrar por la URL directa.
+  - Los responsables y auditores siguen viendo y descargando el documento de **Permiso** y los demás documentos manuales.
 
 Observaciones permitidas en carga documental:
 
