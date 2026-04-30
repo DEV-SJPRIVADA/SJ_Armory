@@ -185,6 +185,11 @@ composer reverb
     - RESPONSABLE: ✅ solo si es responsable activo del arma
     - AUDITOR: ✅
   - `assignToClient`: ADMIN o RESPONSABLE Nivel 1 (condicionado al arma)
+  - `update` (información del arma, edición general): solo ADMIN
+  - `updatePhotos` (fotos técnicas + foto del permiso):
+    - ADMIN: ✅
+    - RESPONSABLE Nivel 1: ✅ solo si es responsable activo del arma
+    - RESPONSABLE Nivel 2 / AUDITOR: ❌
   - `delete`: **siempre false** (borrado físico deshabilitado)
 
 - `ClientPolicy`
@@ -578,6 +583,9 @@ Controlador: `app/Http/Controllers/WeaponPhotoController.php`
 - Carga y reemplazo por tipo de foto.
 - Al actualizar o borrar, elimina archivo anterior.
 - Sincroniza renovacion despues de cambios.
+- **Autorización por `WeaponPolicy::updatePhotos`**: ADMIN siempre puede; RESPONSABLE Nivel 1 puede subir/reemplazar/eliminar fotos solo en armas donde es responsable activo. La edición de la información del arma (`update`) sigue siendo exclusiva del ADMIN.
+- La actualización de la **foto del permiso** (`WeaponController::updatePermitPhoto`) usa la misma policy `updatePhotos`, así el responsable Nivel 1 puede mantener actualizada la imagen del permiso desde la grilla de fotos.
+- UI: el toggle **Modo edición** en la tarjeta de fotos aparece para los usuarios autorizados; el switch usa estilos propios (`.sj-toggle*`) embebidos en el partial, sin dependencia de clases Tailwind dinámicas (no requiere recompilar Vite).
 
 Descripciones tecnicas soportadas (`WeaponPhoto::DESCRIPTIONS`):
 

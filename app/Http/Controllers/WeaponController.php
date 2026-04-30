@@ -413,7 +413,7 @@ class WeaponController extends Controller
 
     public function updatePermitPhoto(Request $request, Weapon $weapon, WeaponDocumentService $documentService)
     {
-        $this->authorize('update', $weapon);
+        $this->authorize('updatePhotos', $weapon);
 
         $data = $request->validate([
             'photo' => ['required', 'image', 'max:5120'],

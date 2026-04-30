@@ -12,14 +12,20 @@
                 </h3>
                 <p class="mt-1 text-sm text-gray-600">{{ __('Fotografías del arma y permisos asociados') }}</p>
             </div>
-            @can('update', $weapon)
-                <label class="flex items-center gap-2 text-sm cursor-pointer">
-                    <div class="relative">
-                        <input id="photo_edit_toggle" type="checkbox" class="sr-only">
-                        <div class="block bg-gray-300 w-10 h-6 rounded-full transition-colors"></div>
-                        <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200"></div>
-                    </div>
-                    <span class="text-gray-700 font-medium">{{ __('Modo edición') }}</span>
+            @can('updatePhotos', $weapon)
+                <label class="sj-toggle">
+                    <input id="photo_edit_toggle" type="checkbox" class="sj-toggle-input">
+                    <span class="sj-toggle-track" aria-hidden="true">
+                        <span class="sj-toggle-knob">
+                            <svg class="sj-toggle-icon sj-toggle-icon-off" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                            <svg class="sj-toggle-icon sj-toggle-icon-on" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </span>
+                    </span>
+                    <span class="sj-toggle-label">{{ __('Modo edición') }}</span>
                 </label>
             @endcan
         </div>
@@ -73,7 +79,7 @@
                             </div>
                         </div>
 
-                        @can('update', $weapon)
+                        @can('updatePhotos', $weapon)
                             @if ($photo)
                                 <form method="POST" action="{{ route('weapons.photos.destroy', [$weapon, $photo]) }}" onclick="event.stopPropagation();">
                                     @csrf
@@ -202,6 +208,107 @@
 
                     .sj-paste-proxy::selection {
                         background: transparent;
+                    }
+
+                    .sj-toggle {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 0.625rem;
+                        cursor: pointer;
+                        user-select: none;
+                        font-size: 0.875rem;
+                    }
+
+                    .sj-toggle-input {
+                        position: absolute;
+                        width: 1px;
+                        height: 1px;
+                        padding: 0;
+                        margin: -1px;
+                        overflow: hidden;
+                        clip: rect(0, 0, 0, 0);
+                        white-space: nowrap;
+                        border: 0;
+                    }
+
+                    .sj-toggle-track {
+                        position: relative;
+                        display: inline-block;
+                        width: 50px;
+                        height: 26px;
+                        border-radius: 9999px;
+                        background-color: #ef4444;
+                        background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(0, 0, 0, 0.08));
+                        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.18);
+                        transition: background-color 0.3s ease;
+                        flex-shrink: 0;
+                    }
+
+                    .sj-toggle-knob {
+                        position: absolute;
+                        top: 3px;
+                        left: 3px;
+                        width: 20px;
+                        height: 20px;
+                        border-radius: 9999px;
+                        background-color: #ffffff;
+                        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.15);
+                        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+
+                    .sj-toggle-icon {
+                        width: 12px;
+                        height: 12px;
+                        position: absolute;
+                        transition: opacity 0.2s ease, transform 0.2s ease;
+                    }
+
+                    .sj-toggle-icon-off {
+                        color: #ef4444;
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+
+                    .sj-toggle-icon-on {
+                        color: #10b981;
+                        opacity: 0;
+                        transform: scale(0.6);
+                    }
+
+                    .sj-toggle-label {
+                        color: #374151;
+                        font-weight: 500;
+                    }
+
+                    .sj-toggle-input:checked + .sj-toggle-track {
+                        background-color: #10b981;
+                    }
+
+                    .sj-toggle-input:checked + .sj-toggle-track .sj-toggle-knob {
+                        transform: translateX(24px);
+                    }
+
+                    .sj-toggle-input:checked + .sj-toggle-track .sj-toggle-icon-off {
+                        opacity: 0;
+                        transform: scale(0.6);
+                    }
+
+                    .sj-toggle-input:checked + .sj-toggle-track .sj-toggle-icon-on {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+
+                    .sj-toggle-input:focus-visible + .sj-toggle-track {
+                        outline: 2px solid #6366f1;
+                        outline-offset: 2px;
+                    }
+
+                    .sj-toggle-input:disabled + .sj-toggle-track {
+                        opacity: 0.5;
+                        cursor: not-allowed;
                     }
                 </style>
             @endpush

@@ -17,7 +17,7 @@ class WeaponPhotoController extends Controller
 {
     public function store(Request $request, Weapon $weapon, WeaponDocumentService $documentService)
     {
-        $this->authorize('update', $weapon);
+        $this->authorize('updatePhotos', $weapon);
 
         $descriptions = array_keys(WeaponPhoto::DESCRIPTIONS);
         $data = $request->validate([
@@ -81,7 +81,7 @@ class WeaponPhotoController extends Controller
 
     public function destroy(Weapon $weapon, WeaponPhoto $photo, WeaponDocumentService $documentService)
     {
-        $this->authorize('update', $weapon);
+        $this->authorize('updatePhotos', $weapon);
 
         if ($photo->weapon_id !== $weapon->id) {
             abort(404);
@@ -102,7 +102,7 @@ class WeaponPhotoController extends Controller
 
     public function update(Request $request, Weapon $weapon, WeaponPhoto $photo, WeaponDocumentService $documentService)
     {
-        $this->authorize('update', $weapon);
+        $this->authorize('updatePhotos', $weapon);
 
         if ($photo->weapon_id !== $weapon->id) {
             abort(404);
