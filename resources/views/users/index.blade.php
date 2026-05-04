@@ -13,16 +13,17 @@
         </div>
     </x-slot>
 
-    <div class="py-8" x-data="{
+    {{-- Delimitar x-data con comillas simples: @json() añade " y rompe un atributo x-data="..." --}}
+    <div class="py-8" x-data='{
         showClientsModal: false,
-        modalUserName: '',
+        modalUserName: "",
         modalClients: [],
         showSendCredentialsModal: false,
         sendCredUserId: null,
-        sendCredName: '',
-        sendCredEmail: '',
-        appBaseUrl: @json(rtrim(url('/'), '/')),
-        sendCredUrlTemplate: @json(route('users.send-access-credentials', ['user' => '__ID__'])),
+        sendCredName: "",
+        sendCredEmail: "",
+        appBaseUrl: @json(rtrim(url("/"), "/")),
+        sendCredUrlTemplate: @json(route("users.send-access-credentials", ["user" => "__ID__"])),
         openSendCred(id, name, email) {
             this.sendCredUserId = id;
             this.sendCredName = name;
@@ -32,15 +33,15 @@
         closeSendCred() {
             this.showSendCredentialsModal = false;
             this.sendCredUserId = null;
-            this.sendCredName = '';
-            this.sendCredEmail = '';
+            this.sendCredName = "";
+            this.sendCredEmail = "";
         },
         sendCredAction() {
             return this.sendCredUserId
-                ? this.sendCredUrlTemplate.replace('__ID__', String(this.sendCredUserId))
-                : '#';
+                ? this.sendCredUrlTemplate.replace("__ID__", String(this.sendCredUserId))
+                : "#";
         }
-    }">
+    }'>
         <div class="sj-page-shell sj-page-shell--wide space-y-6">
             @if ($errors->has('email'))
                 <div class="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
