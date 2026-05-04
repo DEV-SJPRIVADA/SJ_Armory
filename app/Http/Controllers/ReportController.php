@@ -108,8 +108,8 @@ class ReportController extends Controller
     {
         $this->authorizeAdmin();
 
-        $days = (int)$request->input('days', 30);
-        if (!in_array($days, [30, 90], true)) {
+        $days = (int) $request->input('days', 30);
+        if (! in_array($days, [30, 90], true)) {
             $days = 30;
         }
 
@@ -124,7 +124,7 @@ class ReportController extends Controller
             'users' => 'Usuarios',
             'portfolios' => 'Asignaciones',
         ];
-        if (!array_key_exists($module, $modules)) {
+        if (! array_key_exists($module, $modules)) {
             $module = 'all';
         }
 
@@ -153,10 +153,10 @@ class ReportController extends Controller
             $types = $filters['types'] ?? [];
             $actions = $filters['actions'] ?? [];
             $logsQuery->where(function ($builder) use ($types, $actions) {
-                if (!empty($types)) {
+                if (! empty($types)) {
                     $builder->whereIn('auditable_type', $types);
                 }
-                if (!empty($actions)) {
+                if (! empty($actions)) {
                     $builder->orWhereIn('action', $actions);
                 }
             });
@@ -204,7 +204,8 @@ class ReportController extends Controller
             'user_updated' => 'Usuario actualizado',
             'user_deleted' => 'Usuario eliminado',
             'user_status_updated' => 'Estado de usuario actualizado',
-            'user_logged_in' => 'Inicio de sesiÃ³n',
+            'user_credentials_emailed' => 'Credenciales de acceso enviadas por correo',
+            'user_logged_in' => 'Inicio de sesión',
             'user_logged_out' => 'Cierre de sesiÃ³n',
             'password_updated' => 'ContraseÃ±a actualizada',
             'password_reset_requested' => 'Solicitud de restablecimiento de contraseÃ±a',
@@ -240,7 +241,7 @@ class ReportController extends Controller
 
     private function authorizeAdmin(): void
     {
-        if (!request()->user()?->isAdmin() && !request()->user()?->isAuditor()) {
+        if (! request()->user()?->isAdmin() && ! request()->user()?->isAuditor()) {
             abort(403);
         }
     }

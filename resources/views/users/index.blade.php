@@ -13,8 +13,34 @@
         </div>
     </x-slot>
 
-    <div class="py-8" x-data="{ showClientsModal: false, modalUserName: '', modalClients: [] }">
+    <div class="py-8" x-data="{
+        showClientsModal: false,
+        modalUserName: '',
+        modalClients: [],
+        showSendCredentialsModal: false,
+        sendCredUserId: null,
+        sendCredName: '',
+        sendCredEmail: '',
+        appBaseUrl: @json(rtrim(url('/'), '/')),
+        openSendCred(id, name, email) {
+            this.sendCredUserId = id;
+            this.sendCredName = name;
+            this.sendCredEmail = email;
+            this.showSendCredentialsModal = true;
+        },
+        closeSendCred() {
+            this.showSendCredentialsModal = false;
+            this.sendCredUserId = null;
+            this.sendCredName = '';
+            this.sendCredEmail = '';
+        }
+    }">
         <div class="sj-page-shell sj-page-shell--wide space-y-6">
+            @if ($errors->has('email'))
+                <div class="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                    {{ $errors->first('email') }}
+                </div>
+            @endif
             @if (session('generated_temporary_password'))
                 <div
                     class="rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 space-y-3"
@@ -94,6 +120,15 @@
                                             <a href="{{ route('users.edit', $user) }}" class="text-indigo-600 hover:text-indigo-900">
                                                 {{ __('Editar') }}
                                             </a>
+                                            @if ($user->is_active)
+                                                <button
+                                                    type="button"
+                                                    class="text-xs font-medium text-green-700 hover:text-green-900"
+                                                    @click="openSendCred({{ $user->id }}, @js($user->name), @js($user->email))"
+                                                >
+                                                    {{ __('Enviar') }}
+                                                </button>
+                                            @endif
                                             <form method="POST" action="{{ route('users.status', $user) }}" class="inline">
                                                 @csrf
                                                 @method('PATCH')
@@ -125,6 +160,60 @@
                     <div class="mt-4">
                         {{ $users->links() }}
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div
+            x-show="showSendCredentialsModal"
+            x-transition.opacity
+            class="fixed inset-0 z-[1400] flex items-center justify-center bg-black/50 p-4"
+            style="display: none;"
+            @click.self="closeSendCred()"
+        >
+            <div class="w-full max-w-lg rounded-lg bg-white shadow-xl">
+                <div class="border-b border-gray-200 px-5 py-4">
+                    <h3 class="text-base font-semibold text-gray-900">{{ __('Confirmar envío de credenciales') }}</h3>
+                    <p class="mt-1 text-sm text-gray-600">
+                        {{ __('Correo destino') }}: <span class="font-medium text-gray-900" x-text="sendCredEmail"></span>
+                    </p>
+                </div>
+                <div class="max-h-[70vh] overflow-y-auto px-5 py-4 space-y-3 text-sm text-gray-700">
+                    <p>{{ __('Se enviará un correo a este usuario con la siguiente información:') }}</p>
+                    <ul class="list-disc space-y-2 pl-5">
+                        <li>
+                            {{ __('Enlace de acceso a la aplicación:') }}
+                            <code class="rounded bg-gray-100 px-1.5 py-0.5 text-xs" x-text="appBaseUrl"></code>
+                        </li>
+                        <li>
+                            {{ __('Usuario (correo electrónico):') }}
+                            <span class="font-medium" x-text="sendCredEmail"></span>
+                        </li>
+                        <li>{{ __('Una contraseña temporal nueva; si el usuario ya tenía una, dejará de ser válida.') }}</li>
+                        <li>{{ __('Instrucciones indicando que al iniciar sesión por primera vez deberá cambiar la contraseña de forma obligatoria.') }}</li>
+                    </ul>
+                    <p class="text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-3 py-2 text-xs">
+                        {{ __('¿Desea continuar?') }}
+                    </p>
+                </div>
+                <div class="flex items-center justify-end gap-2 border-t border-gray-200 px-5 py-4">
+                    <button
+                        type="button"
+                        class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        @click="closeSendCred()"
+                    >
+                        {{ __('Cancelar') }}
+                    </button>
+                    <form
+                        method="POST"
+                        class="inline"
+                        x-bind:action="sendCredUserId ? `${appBaseUrl}/users/${sendCredUserId}/send-access-credentials` : '#'"
+                    >
+                        @csrf
+                        <x-primary-button type="submit" class="text-sm" x-bind:disabled="!sendCredUserId">
+                            {{ __('Enviar correo') }}
+                        </x-primary-button>
+                    </form>
                 </div>
             </div>
         </div>

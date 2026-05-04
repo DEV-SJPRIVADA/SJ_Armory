@@ -84,6 +84,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('workers', WorkerController::class)->except(['show']);
     Route::resource('users', UserController::class)->except(['show']);
     Route::patch('/users/{user}/status', [UserController::class, 'updateStatus'])->name('users.status');
+    Route::post('/users/{user}/send-access-credentials', [UserController::class, 'sendAccessCredentials'])->name('users.send-access-credentials');
     Route::get('/weapons/export-preview', [WeaponController::class, 'exportPreview'])->name('weapons.export.preview');
     Route::get('/weapons/export', [WeaponController::class, 'export'])->name('weapons.export');
     Route::post('/weapons/export-selected', [WeaponController::class, 'exportSelected'])->name('weapons.export.selected');

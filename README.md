@@ -725,6 +725,7 @@ Se registran, entre otros:
 - CRUD de clientes, puestos, trabajadores, usuarios, armas.
 - Archivo / reactivación de **puestos** y **trabajadores** (acciones de auditoría asociadas).
 - Alta de usuario con contraseña temporal y marcas `must_change_password` (redirección a cambio obligatorio).
+- Desde el listado de usuarios, acción **Enviar**: modal de confirmación y `POST users.send-access-credentials` genera contraseña temporal, marca `must_change_password` y envía correo (`UserAccessCredentialsMail`) con enlace (`APP_URL`), usuario (correo) e instrucciones de cambio obligatorio al primer ingreso.
 - Cambio de estado de usuario.
 - Carga/actualizacion de fotos.
 - Carga de documentos.
@@ -794,7 +795,7 @@ Grupos funcionales:
 - Perfil:
   - `profile.edit/update/destroy`.
 - Administracion:
-  - `users.*`, `users.status`.
+  - `users.*`, `users.status`, `users.send-access-credentials` (POST: reenvío de credenciales por correo con contraseña temporal nueva, solo ADMIN desde el listado).
 - Operacion:
   - `weapons.*`
   - `weapon-imports.index`, `weapon-imports.preview`, `weapon-imports.start`, `weapon-imports.process`, `weapon-imports.status`, `weapon-imports.execute`, `weapon-imports.discard` (centro de cargas masivas de armas)

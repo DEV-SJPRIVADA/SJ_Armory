@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\UserAccessCredentialsMail;
 use App\Models\AuditLog;
 use App\Models\Position;
 use App\Models\ResponsibilityLevel;
 use App\Models\User;
 use App\Services\UserTemporaryPasswordGenerator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class UserController extends Controller
 {
@@ -15,7 +18,7 @@ class UserController extends Controller
         private readonly UserTemporaryPasswordGenerator $temporaryPasswordGenerator
     ) {
         $this->middleware(function ($request, $next) {
-            if (!$request->user()?->isAdmin()) {
+            if (! $request->user()?->isAdmin()) {
                 abort(403);
             }
 
@@ -48,7 +51,7 @@ class UserController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'role' => ['required', 'in:' . implode(',', array_keys($this->roleOptions()))],
+            'role' => ['required', 'in:'.implode(',', array_keys($this->roleOptions()))],
             'position_id' => ['nullable', 'exists:positions,id'],
             'responsibility_level_id' => ['nullable', 'exists:responsibility_levels,id'],
             'is_active' => ['required', 'boolean'],
@@ -95,10 +98,10 @@ class UserController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.$user->id],
             'generate_temporary_password' => ['sometimes', 'boolean'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-            'role' => ['required', 'in:' . implode(',', array_keys($this->roleOptions()))],
+            'role' => ['required', 'in:'.implode(',', array_keys($this->roleOptions()))],
             'position_id' => ['nullable', 'exists:positions,id'],
             'responsibility_level_id' => ['nullable', 'exists:responsibility_levels,id'],
             'is_active' => ['required', 'boolean'],
@@ -147,6 +150,60 @@ class UserController extends Controller
         return $redirect;
     }
 
+    public function sendAccessCredentials(Request $request, User $user)
+    {
+        if (! $user->is_active) {
+            return redirect()
+                ->route('users.index')
+                ->withErrors(['email' => __('No se pueden enviar credenciales a un usuario inactivo.')]);
+        }
+
+        $plainPassword = $this->temporaryPasswordGenerator->generate();
+        $user->update([
+            'password' => $plainPassword,
+            'must_change_password' => true,
+        ]);
+
+        $loginUrl = rtrim((string) config('app.url'), '/');
+        $appName = (string) config('app.name');
+
+        try {
+            Mail::to($user->email)->send(new UserAccessCredentialsMail(
+                recipientName: $user->name,
+                loginUrl: $loginUrl,
+                loginEmail: $user->email,
+                temporaryPassword: $plainPassword,
+                appName: $appName,
+            ));
+        } catch (\Throwable $e) {
+            Log::error('sendAccessCredentials mail failed', [
+                'user_id' => $user->id,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return redirect()
+                ->route('users.index')
+                ->withErrors(['email' => __('El correo no pudo enviarse. La contraseña se actualizó; cópiela y compártala manualmente.')])
+                ->with('generated_temporary_password', $plainPassword);
+        }
+
+        AuditLog::create([
+            'user_id' => $request->user()?->id,
+            'action' => 'user_credentials_emailed',
+            'auditable_type' => User::class,
+            'auditable_id' => $user->id,
+            'before' => null,
+            'after' => [
+                'email' => $user->email,
+                'must_change_password' => true,
+            ],
+        ]);
+
+        return redirect()
+            ->route('users.index')
+            ->with('status', __('Se enviaron las credenciales de acceso por correo a :email.', ['email' => $user->email]));
+    }
+
     public function updateStatus(Request $request, User $user)
     {
         $data = $request->validate([
@@ -155,7 +212,7 @@ class UserController extends Controller
 
         $isActive = array_key_exists('is_active', $data)
             ? (bool) $data['is_active']
-            : !$user->is_active;
+            : ! $user->is_active;
 
         $before = ['is_active' => $user->is_active];
         $user->update(['is_active' => $isActive]);
