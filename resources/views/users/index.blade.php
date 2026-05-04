@@ -22,6 +22,7 @@
         sendCredName: '',
         sendCredEmail: '',
         appBaseUrl: @json(rtrim(url('/'), '/')),
+        sendCredUrlTemplate: @json(route('users.send-access-credentials', ['user' => '__ID__'])),
         openSendCred(id, name, email) {
             this.sendCredUserId = id;
             this.sendCredName = name;
@@ -33,6 +34,11 @@
             this.sendCredUserId = null;
             this.sendCredName = '';
             this.sendCredEmail = '';
+        },
+        sendCredAction() {
+            return this.sendCredUserId
+                ? this.sendCredUrlTemplate.replace('__ID__', String(this.sendCredUserId))
+                : '#';
         }
     }">
         <div class="sj-page-shell sj-page-shell--wide space-y-6">
@@ -166,9 +172,9 @@
 
         <div
             x-show="showSendCredentialsModal"
+            x-cloak
             x-transition.opacity
             class="fixed inset-0 z-[1400] flex items-center justify-center bg-black/50 p-4"
-            style="display: none;"
             @click.self="closeSendCred()"
         >
             <div class="w-full max-w-lg rounded-lg bg-white shadow-xl">
@@ -207,7 +213,7 @@
                     <form
                         method="POST"
                         class="inline"
-                        x-bind:action="sendCredUserId ? `${appBaseUrl}/users/${sendCredUserId}/send-access-credentials` : '#'"
+                        x-bind:action="sendCredAction()"
                     >
                         @csrf
                         <x-primary-button type="submit" class="text-sm" x-bind:disabled="!sendCredUserId">
@@ -220,9 +226,9 @@
 
         <div
             x-show="showClientsModal"
+            x-cloak
             x-transition.opacity
             class="fixed inset-0 z-[1300] flex items-center justify-center bg-black/50 p-4"
-            style="display: none;"
             @click.self="showClientsModal = false"
         >
             <div class="w-full max-w-lg rounded-lg bg-white shadow-xl">
