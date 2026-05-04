@@ -320,7 +320,11 @@ Formato de código:
   - puerto **`REVERB_SERVER_PORT`** abierto en firewall (p. ej. `6001`)
   - mientras depuras backend sin socket: `BROADCAST_ENABLED=false` o `BROADCAST_CONNECTION=log`
 - 🧱 **Cambiaste `VITE_*` y no se refleja**: ejecuta `npm run build` (local) o `npm run build:deploy` (artefacto para hosting) o `npm run dev`.
-- ✉️ **No se envía correo** (p. ej. credenciales desde Usuarios): el host `mailpit` en `.env` suele **no resolver** fuera de Docker; en Laragon/Windows use `MAIL_HOST=127.0.0.1`, `MAIL_PORT=1025` y deje `MAIL_USERNAME` / `MAIL_PASSWORD` vacíos si usa Mailpit sin autenticación. Debe tener Mailpit (o similar) escuchando en ese puerto, o bien configure SMTP real de su proveedor. Para probar sin SMTP: `MAIL_MAILER=log` y revise `storage/logs/laravel.log`. Con `APP_DEBUG=true`, el mensaje de error en pantalla puede incluir el detalle del fallo.
+- ✉️ **No se envía correo** (p. ej. credenciales desde Usuarios):
+  - El host `mailpit` en `.env` suele **no resolver** fuera de Docker; en Laragon/Windows use `MAIL_HOST=127.0.0.1`, `MAIL_PORT=1025` y deje `MAIL_USERNAME` / `MAIL_PASSWORD` vacíos si usa Mailpit **sin** autenticación.
+  - Si el error indica **conexión rechazada a `127.0.0.1:1025`**, no hay ningún servicio SMTP escuchando: arranque [Mailpit](https://github.com/axllent/mailpit) (u otro capture SMTP en ese puerto) o cambie a SMTP real de su proveedor.
+  - **Sin servidor local:** use `MAIL_MAILER=log` y revise `storage/logs/laravel.log` (el mensaje se registra, no sale a Internet).
+  - Con `APP_DEBUG=true`, el aviso en pantalla puede incluir el detalle del fallo SMTP (útil en desarrollo; no dejar `APP_DEBUG=true` en producción con datos reales).
 - 🗺️ **Mapa / selector de ubicación**: comparten capas **Satélite (híbrido)** (Esri: imagen + vías + límites) y **Calles (OpenStreetMap)**. Tras tocar `map.js` o `location-picker.js`, vuelva a compilar y refresque sin caché. El popup del mapa de armas limita la altura de la tabla (~5 filas visibles) con scroll para el resto. Si el **cursor parpadea o desaparece** al mover el ratón sobre el mapa (Chrome/Edge en Windows): la vista `maps/index` evita `overflow-hidden` en el card del mapa y `app.css` unifica el cursor (`grab` solo en el contenedor Leaflet, `inherit` en paneles/teselas); despliegue el CSS compilado actualizado en `public/build`.
 
 Tipos de arma permitidos en validacion actual:
@@ -1108,7 +1112,7 @@ Checklist minimo de produccion:
 
 1. Configurar `.env` de produccion.
 2. `composer install --no-dev --optimize-autoloader`
-3. **Frontend**: en la PC de build, `npm ci` y luego **`npm run build:deploy`** (con `build_hosting/.env.production`); subir el contenido de **`build_hosting/build/`** a **`public/build/`** del servidor. Si compila directamente en el servidor con un solo `.env` que ya incluye los `VITE_*` de produccion, puede usar `npm run build`.
+3. **Frontend**: en la PC de build, `npm ci` y luego **`npm run build:deploy`** (requiere **crear** `build_hosting/.env.production`; vea `.env.example`); subir el contenido de **`build_hosting/build/`** a **`public/build/`** del servidor. Si compila directamente en el servidor con un solo `.env` que ya incluye los `VITE_*` de produccion, puede usar `npm run build`. **No hace falta** volver a generar este build si el cambio fue solo backend, README o vistas Blade **sin** tocar `resources/js`, `resources/css` ni variables `VITE_*`.
 4. `php artisan migrate --force`
 5. `php artisan storage:link`
 6. `php artisan config:cache`
