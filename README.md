@@ -320,6 +320,7 @@ Formato de código:
   - puerto **`REVERB_SERVER_PORT`** abierto en firewall (p. ej. `6001`)
   - mientras depuras backend sin socket: `BROADCAST_ENABLED=false` o `BROADCAST_CONNECTION=log`
 - 🧱 **Cambiaste `VITE_*` y no se refleja**: ejecuta `npm run build` (local) o `npm run build:deploy` (artefacto para hosting) o `npm run dev`.
+- ✉️ **No se envía correo** (p. ej. credenciales desde Usuarios): el host `mailpit` en `.env` suele **no resolver** fuera de Docker; en Laragon/Windows use `MAIL_HOST=127.0.0.1`, `MAIL_PORT=1025` y deje `MAIL_USERNAME` / `MAIL_PASSWORD` vacíos si usa Mailpit sin autenticación. Debe tener Mailpit (o similar) escuchando en ese puerto, o bien configure SMTP real de su proveedor. Para probar sin SMTP: `MAIL_MAILER=log` y revise `storage/logs/laravel.log`. Con `APP_DEBUG=true`, el mensaje de error en pantalla puede incluir el detalle del fallo.
 - 🗺️ **Mapa / selector de ubicación**: comparten capas **Satélite (híbrido)** (Esri: imagen + vías + límites) y **Calles (OpenStreetMap)**. Tras tocar `map.js` o `location-picker.js`, vuelva a compilar y refresque sin caché. El popup del mapa de armas limita la altura de la tabla (~5 filas visibles) con scroll para el resto. Si el **cursor parpadea o desaparece** al mover el ratón sobre el mapa (Chrome/Edge en Windows): la vista `maps/index` evita `overflow-hidden` en el card del mapa y `app.css` unifica el cursor (`grab` solo en el contenedor Leaflet, `inherit` en paneles/teselas); despliegue el CSS compilado actualizado en `public/build`.
 
 Tipos de arma permitidos en validacion actual:

@@ -178,12 +178,17 @@ class UserController extends Controller
         } catch (\Throwable $e) {
             Log::error('sendAccessCredentials mail failed', [
                 'user_id' => $user->id,
-                'exception' => $e->getMessage(),
+                'exception' => $e,
             ]);
+
+            $errorMessage = __('El correo no pudo enviarse. La contraseña se actualizó; cópiela y compártala manualmente.');
+            if (config('app.debug')) {
+                $errorMessage .= ' ('.$e->getMessage().')';
+            }
 
             return redirect()
                 ->route('users.index')
-                ->withErrors(['email' => __('El correo no pudo enviarse. La contraseña se actualizó; cópiela y compártala manualmente.')])
+                ->withErrors(['email' => $errorMessage])
                 ->with('generated_temporary_password', $plainPassword);
         }
 
