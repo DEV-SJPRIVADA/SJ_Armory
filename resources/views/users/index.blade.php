@@ -40,6 +40,11 @@
             return this.sendCredUserId
                 ? this.sendCredUrlTemplate.replace("__ID__", String(this.sendCredUserId))
                 : "#";
+        },
+        openClientsModal(name, clients) {
+            this.modalUserName = name;
+            this.modalClients = clients;
+            this.showClientsModal = true;
         }
     }'>
         <div class="sj-page-shell sj-page-shell--wide space-y-6">
@@ -69,7 +74,7 @@
                                 if (el) { navigator.clipboard.writeText(el.textContent.trim()); copied = true; setTimeout(() => copied = false, 2000); }
                             "
                         >
-                            <span x-text="copied ? @js(__('Copiado')) : @js(__('Copiar'))"></span>
+                            <span x-text='copied ? @json(__("Copiado")) : @json(__("Copiar"))'></span>
                         </button>
                     </div>
                 </div>
@@ -109,11 +114,7 @@
                                             <button
                                                 type="button"
                                                 class="text-xs font-medium text-indigo-600 hover:text-indigo-900"
-                                                @click='
-                                                    modalUserName = @js($user->name);
-                                                    modalClients = @js($user->clients->pluck('name')->values());
-                                                    showClientsModal = true;
-                                                '
+                                                @click='openClientsModal(@json($user->name), @json($user->clients->pluck("name")->values()->all()))'
                                             >
                                                 {{ __('Ver clientes') }}
                                             </button>
@@ -131,7 +132,7 @@
                                                 <button
                                                     type="button"
                                                     class="text-xs font-medium text-green-700 hover:text-green-900"
-                                                    @click="openSendCred({{ $user->id }}, @js($user->name), @js($user->email))"
+                                                    @click='openSendCred({{ $user->id }}, @json($user->name), @json($user->email))'
                                                 >
                                                     {{ __('Enviar') }}
                                                 </button>
