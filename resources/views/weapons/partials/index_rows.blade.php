@@ -6,7 +6,7 @@
             ->filter(fn ($doc) => !($doc->is_permit || $doc->is_renewal))
             ->first(fn ($doc) => ($doc->status ?? '') === 'En proceso');
         $openIncident = $weapon->openIncidents->first();
-        $internalAssignment = $weapon->activePostAssignment ?? $weapon->activeWorkerAssignment;
+        $internalAssignment = $weapon->activeWorkerAssignment ?? $weapon->activePostAssignment;
         $imprintChecked = $weapon->imprint_month === now()->format('Y-m');
         $canToggleImprint = auth()->user()?->isAdmin();
         $rowClass = $openIncident ? 'bg-red-50' : ($manualInProcess ? 'bg-red-100' : ($renewalAlert['row_class'] ?? ''));
@@ -28,10 +28,10 @@
                         ? 'notice'
                         : ($weapon->activeClientAssignment || $weapon->activePostAssignment || $weapon->activeWorkerAssignment ? 'ok' : 'neutral')))));
         $destinationLabel = '-';
-        if ($weapon->activePostAssignment) {
-            $destinationLabel = $weapon->activePostAssignment->post?->name ?? '-';
-        } elseif ($weapon->activeWorkerAssignment) {
+        if ($weapon->activeWorkerAssignment) {
             $destinationLabel = $weapon->activeWorkerAssignment->worker?->name ?? '-';
+        } elseif ($weapon->activePostAssignment) {
+            $destinationLabel = $weapon->activePostAssignment->post?->name ?? '-';
         }
     @endphp
     <tr

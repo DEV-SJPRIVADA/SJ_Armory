@@ -11,7 +11,7 @@ Sistema web para **gestión de armamento**, **asignaciones operativas**, **trans
 - ✅ **Armas**: alta/edición, fotos (técnicas y permiso), documentos, exportación, inventario.
 - ✅ **Asignaciones**:
   - **Operativa** (arma ↔ cliente/responsable)
-  - **Interna** (arma ↔ puesto / trabajador)
+  - **Interna** (arma ↔ puesto y/o trabajador; ubicación en mapa prioriza puesto si existe; la columna de destino en el listado refleja principalmente al trabajador cuando hay trabajador activo)
 - ✅ **Transferencias**: solicitudes, aceptación / rechazo.
 - ✅ **Clientes / Puestos / Trabajadores / Usuarios** (puestos y trabajadores: archivo, historial de cambios, políticas por rol)
 - ✅ **Cargas masivas**: validación previa, preview, ejecución por chunks, trazabilidad por lote.
@@ -141,6 +141,7 @@ composer reverb
 | `app/Models` | Dominio / Eloquent (Weapon, Client, Assignments, Transfers, etc.) |
 | `app/Policies` | Autorización por rol/alcance (`WeaponPolicy`, `ClientPolicy`, etc.) |
 | `app/Services` | Lógica de negocio (métricas, importaciones, documentos, geocoding) |
+| `app/Support` | Helpers de dominio (p. ej. comprobación de coordenadas para mapa) |
 | `app/Events` | Eventos broadcast (Realtime) |
 | `resources/views` | UI (Blade) + componentes |
 | `resources/js` | Bootstrap (Echo), dashboard, sincronización realtime |
@@ -467,23 +468,33 @@ Reglas:
 - Para ADMIN:
   - Se selecciona responsable del cliente destino.
 
-### 5.3 Asignacion interna (puesto o trabajador)
+### 5.3 Asignacion interna (puesto y/o trabajador)
 
-Controlador: `app/Http/Controllers/WeaponInternalAssignmentController.php`
+Controlador: `app/Http/Controllers/WeaponInternalAssignmentController.php`  
+Utilidad: `app/Support/MapCoordinates.php` (comprueba latitud/longitud numericas antes de cerrar la asignacion)
 
 Reglas:
 
 - Requiere destino operativo activo (cliente asignado).
-- Solo se puede asignar uno de dos:
-  - `post_id` o `worker_id`.
-- Solo una asignacion interna activa por arma:
-  - puesto activo o trabajador activo.
-- Si ya existe activa y no se marca reemplazo, muestra advertencia.
+- Debe indicarse al menos uno: `post_id` y/o `worker_id`.
+  - **Solo puesto** o **puesto + trabajador**: en el mapa la coordenada se toma del **puesto** (si hay puesto activo).
+  - **Solo trabajador**: en el mapa la coordenada se toma del **cliente** del trabajador.
+- Pueden coexistir **un** registro activo en `weapon_post_assignments` y **un** registro activo en `weapon_worker_assignments` para la misma arma (p. ej. trabajador como titular operativo y puesto para ubicacion).
+- Antes de guardar, si la ubicacion que usaria el mapa **no esta definida**:
+  - con puesto seleccionado: el **puesto** debe tener latitud y longitud; si no, se muestra un **modal** centrado con mensaje, boton **Asignar ubicacion** (edicion del puesto) y **Cancelar** (flash `internal_assignment_location_modal`).
+  - solo trabajador: el **cliente** del trabajador debe tener coordenadas; si no, mismo modal apuntando a la edicion del **cliente** (clientes de carga masiva sin coordenadas quedan bloqueados hasta completar ubicacion).
+- Si ya existe asignacion interna activa y no se marca reemplazo, muestra advertencia (confirmacion en UI + `replace`).
 - Para RESPONSABLE:
   - Debe ser nivel 1 y responsable activo del arma.
   - Debe pertenecer a su cartera.
   - Si es trabajador, debe estar a su cargo.
-- Permite retiro manual de asignacion interna activa.
+- Permite retiro manual de asignacion interna activa (cierra puesto y trabajador activos).
+- Auditoria: ademas de `internal_assigned_post` y `internal_assigned_worker`, existe `internal_assigned_worker_and_post` cuando se guardan ambos.
+
+Listado de armas (`resources/views/weapons/partials/index_rows.blade.php`):
+
+- Columna **Puesto o trabajador**: si hay trabajador activo, muestra el **nombre** del trabajador (tambien cuando hay puesto combinado); si solo hay puesto, el nombre del puesto.
+- Columna **Cedula**: documento del trabajador activo, o `-` si no hay trabajador.
 
 ### 5.4 Transferencias
 
@@ -509,7 +520,7 @@ Flujo:
   - Para RESPONSABLE: los **trabajadores** visibles/seleccionables son solo los que tiene a cargo.
   - Si hay error de validacion/alcance, no se muestra pantalla de excepcion: se redirige a `transfers.index` con una alerta y opciones para reintentar la seleccion o cancelar.
   - Asigna nuevo cliente responsable.
-  - Opcionalmente asigna puesto o trabajador (solo uno).
+  - Opcionalmente asigna **puesto y/o trabajador** (puede elegir ambos; el mapa prioriza el puesto cuando hay puesto). La validacion de coordenadas del puesto o del cliente (solo trabajador) es la misma que en la asignacion interna desde el detalle del arma.
 - Rechazo:
   - Marca estado rechazado.
 
@@ -702,11 +713,9 @@ El dashboard principal ya no es una pantalla de accesos rapidos. Ahora muestra i
   - renovaciones por mes
   - incidencias activas
   - estados del flujo de transferencias
-  - distribucion interna
+  - distribucion interna (Solo puesto / Solo trabajador / Puesto y trabajador / Sin asignacion interna; conteos mutuamente excluyentes)
 
 Comportamiento relevante:
-
-- La cabecera muestra fecha y hora en tiempo real.
 - El dashboard se refresca automaticamente sin recargar la pagina.
 - Eventos de dominio (armas, asignaciones, transferencias, documentos, novedades) se emiten via Laravel Reverb y el frontend escucha con Laravel Echo para sincronizar vistas sin recargar.
 - El grafico `Renovaciones por mes`:
@@ -734,7 +743,7 @@ Se registran, entre otros:
 - Cambio de estado de usuario.
 - Carga/actualizacion de fotos.
 - Carga de documentos.
-- Asignaciones cliente e internas.
+- Asignaciones cliente e internas (incluye combinacion trabajador + puesto y bloqueo sin coordenadas en mapa).
 - Cierres de asignaciones por transferencia/cambio cliente.
 - Solicitud, aceptacion y rechazo de transferencias.
 - Cambios de cartera.

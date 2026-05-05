@@ -1191,7 +1191,7 @@ XML;
             ->filter(fn ($doc) => !($doc->is_permit || $doc->is_renewal))
             ->first(fn ($doc) => ($doc->status ?? '') === 'En proceso');
         $openIncident = $weapon->openIncidents->first();
-        $internalAssignment = $weapon->activePostAssignment ?? $weapon->activeWorkerAssignment;
+        $internalAssignment = $weapon->activeWorkerAssignment ?? $weapon->activePostAssignment;
         $statusText = $manualInProcess
             ? trim(($manualInProcess->document_name ?: 'Documento') . ': ' . ($manualInProcess->observations ?: 'En proceso'))
             : ($renewalAlert['observation'] !== '-'
@@ -1202,10 +1202,10 @@ XML;
             : 'Sin novedades';
 
         $destination = '-';
-        if ($weapon->activePostAssignment) {
-            $destination = $weapon->activePostAssignment->post?->name ?? '-';
-        } elseif ($weapon->activeWorkerAssignment) {
+        if ($weapon->activeWorkerAssignment) {
             $destination = $weapon->activeWorkerAssignment->worker?->name ?? '-';
+        } elseif ($weapon->activePostAssignment) {
+            $destination = $weapon->activePostAssignment->post?->name ?? '-';
         }
 
         return [

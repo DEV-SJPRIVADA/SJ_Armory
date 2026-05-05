@@ -393,7 +393,7 @@
 
                     <div class="md:col-span-3">
                         <p class="text-xs text-gray-500">
-                            {{ __('Seleccione solo un puesto o un trabajador.') }}
+                            {{ __('Puede elegir solo puesto, solo trabajador, o ambos: el trabajador queda asignado al arma y, si hay puesto, la ubicación en mapa sigue las coordenadas del puesto.') }}
                         </p>
                     </div>
                 </div>
@@ -578,20 +578,6 @@
                 }
                 filterDependentOptions(acceptPost, clientId);
                 filterDependentOptions(acceptWorker, clientId);
-            });
-        }
-
-        if (acceptPost && acceptWorker) {
-            acceptPost.addEventListener('change', () => {
-                if (acceptPost.value) {
-                    acceptWorker.value = '';
-                }
-            });
-
-            acceptWorker.addEventListener('change', () => {
-                if (acceptWorker.value) {
-                    acceptPost.value = '';
-                }
             });
         }
 

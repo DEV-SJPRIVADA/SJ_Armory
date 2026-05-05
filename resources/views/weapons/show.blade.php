@@ -57,10 +57,10 @@
                         <div class="text-sm">
                             <div class="text-gray-500">{{ __('Asignación interna') }}</div>
                             <div class="font-medium text-gray-900">
-                                @if ($weapon->activePostAssignment)
-                                    {{ __('Puesto') }}
-                                @elseif ($weapon->activeWorkerAssignment)
+                                @if ($weapon->activeWorkerAssignment)
                                     {{ __('Trabajador') }}
+                                @elseif ($weapon->activePostAssignment)
+                                    {{ __('Puesto') }}
                                 @else
                                     {{ __('Sin asignar') }}
                                 @endif

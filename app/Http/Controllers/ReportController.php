@@ -219,6 +219,7 @@ class ReportController extends Controller
             'portfolio_transferred' => 'Asignaciones transferidas',
             'internal_assigned_post' => 'Arma asignada a puesto',
             'internal_assigned_worker' => 'Arma asignada a trabajador',
+            'internal_assigned_worker_and_post' => 'Arma asignada a trabajador con ubicación de puesto',
             'internal_assignment_retired' => 'AsignaciÃ³n interna retirada',
             'internal_post_closed_for_transfer' => 'Puesto cerrado por transferencia',
             'internal_worker_closed_for_transfer' => 'Trabajador cerrado por transferencia',

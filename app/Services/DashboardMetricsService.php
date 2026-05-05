@@ -168,11 +168,14 @@ class DashboardMetricsService
         $nonOperationalWeaponsCount = $weapons->count() - $operationalWeaponsCount;
 
         $operationalDistribution = [
-            'Asignadas a puesto' => $activeDestinationWeapons
-                ->filter(fn (Weapon $weapon) => $weapon->activePostAssignment)
+            'Solo puesto' => $activeDestinationWeapons
+                ->filter(fn (Weapon $weapon) => $weapon->activePostAssignment && ! $weapon->activeWorkerAssignment)
                 ->count(),
-            'Asignadas a trabajador' => $activeDestinationWeapons
-                ->filter(fn (Weapon $weapon) => $weapon->activeWorkerAssignment)
+            'Solo trabajador' => $activeDestinationWeapons
+                ->filter(fn (Weapon $weapon) => ! $weapon->activePostAssignment && $weapon->activeWorkerAssignment)
+                ->count(),
+            'Puesto y trabajador' => $activeDestinationWeapons
+                ->filter(fn (Weapon $weapon) => $weapon->activePostAssignment && $weapon->activeWorkerAssignment)
                 ->count(),
             'Sin asignación interna' => $activeDestinationWeapons
                 ->filter(fn (Weapon $weapon) => ! $weapon->activePostAssignment && ! $weapon->activeWorkerAssignment)
@@ -310,8 +313,9 @@ class DashboardMetricsService
             'operational_chart' => [
                 'items' => collect($operationalDistribution)->map(function (int $value, string $label) {
                     $colors = [
-                        'Asignadas a puesto' => '#0891b2',
-                        'Asignadas a trabajador' => '#7c3aed',
+                        'Solo puesto' => '#0891b2',
+                        'Solo trabajador' => '#7c3aed',
+                        'Puesto y trabajador' => '#0d9488',
                         'Sin asignación interna' => '#f59e0b',
                     ];
 

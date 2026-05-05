@@ -278,16 +278,6 @@ class WeaponTransferController extends Controller
 
         $postId = $data['post_id'] ?? null;
         $workerId = $data['worker_id'] ?? null;
-        if ($postId && $workerId) {
-            return redirect()
-                ->route('transfers.index', $request->only(['q', 'status']))
-                ->withErrors([
-                    'post_id' => __('Seleccione solo un puesto o un trabajador.'),
-                    'worker_id' => __('Seleccione solo un puesto o un trabajador.'),
-                ])
-                ->withInput($request->only(['client_id', 'post_id', 'worker_id']))
-                ->with('reopen_accept_transfer', $this->acceptTransferModalPayload($transfer));
-        }
 
         $transfer->load(['weapon', 'toUser.clients']);
         $weapon = $transfer->weapon;
@@ -588,7 +578,9 @@ class WeaponTransferController extends Controller
                     'assignment_id' => $assignment->id,
                 ],
             ]);
+        }
 
+        if (! $workerId) {
             return;
         }
 

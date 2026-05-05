@@ -2,13 +2,23 @@
     <!-- Current Assignment Status -->
     <div class="bg-white rounded-lg border border-gray-200 p-4">
         <div class="text-xs font-semibold text-gray-500 mb-2">{{ __('Asignación actual') }}</div>
-        <div class="text-lg font-bold text-gray-900">
-            @if ($weapon->activePostAssignment)
-                {{ __('Puesto:') }} {{ $weapon->activePostAssignment->post?->name }}
-            @elseif ($weapon->activeWorkerAssignment)
-                {{ __('Trabajador:') }} {{ $weapon->activeWorkerAssignment->worker?->name }}
+        <div class="text-lg font-bold text-gray-900 space-y-1">
+            @if ($weapon->activePostAssignment || $weapon->activeWorkerAssignment)
+                @if ($weapon->activeWorkerAssignment)
+                    <div>{{ __('Trabajador:') }} {{ $weapon->activeWorkerAssignment->worker?->name }}
+                        @if ($weapon->activeWorkerAssignment->worker?->document)
+                            <span class="text-gray-600">({{ $weapon->activeWorkerAssignment->worker->document }})</span>
+                        @endif
+                    </div>
+                @endif
+                @if ($weapon->activePostAssignment)
+                    <div>{{ __('Puesto:') }} {{ $weapon->activePostAssignment->post?->name }}</div>
+                @endif
+                @if ($weapon->activePostAssignment && $weapon->activeWorkerAssignment)
+                    <div class="text-xs font-normal text-gray-500">{{ __('En el mapa se usa la ubicación del puesto.') }}</div>
+                @endif
             @else
-                {{ __('Sin asignación interna') }}
+                <div>{{ __('Sin asignación interna') }}</div>
             @endif
         </div>
     </div>
@@ -27,6 +37,10 @@
                 {{ session('replace_message') }}
             </div>
         </div>
+    @endif
+
+    @if ($weapon->activeClientAssignment)
+        <p class="text-xs text-gray-500 px-1">{{ __('Puede elegir puesto, trabajador o ambos: si hay trabajador y puesto, la ubicación en el mapa es la del puesto.') }}</p>
     @endif
 
     <!-- Assignment Form -->
@@ -97,6 +111,44 @@
         @endif
     </div>
 </div>
+
+@php
+    $internalLocationModal = session('internal_assignment_location_modal');
+@endphp
+@if ($internalLocationModal)
+    <x-modal name="internal-assignment-location" :show="true" maxWidth="md" focusable>
+        <div class="p-6 sm:p-8">
+            <p class="text-center text-base font-medium text-gray-900 leading-relaxed">
+                @if (($internalLocationModal['kind'] ?? '') === 'post')
+                    {{ __('El puesto no tiene ubicación. Por favor asigne ubicación en el mapa antes de continuar.') }}
+                    @if (! empty($internalLocationModal['name']))
+                        <span class="mt-2 block text-sm font-semibold text-gray-800">{{ $internalLocationModal['name'] }}</span>
+                    @endif
+                @else
+                    {{ __('El cliente no tiene ubicación. Por favor asigne ubicación en el mapa antes de continuar.') }}
+                    @if (! empty($internalLocationModal['name']))
+                        <span class="mt-2 block text-sm font-semibold text-gray-800">{{ $internalLocationModal['name'] }}</span>
+                    @endif
+                @endif
+            </p>
+            <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center sm:gap-4">
+                <button
+                    type="button"
+                    class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 sm:w-auto"
+                    x-on:click="window.dispatchEvent(new CustomEvent('close-modal', { detail: 'internal-assignment-location' }))"
+                >
+                    {{ __('Cancelar') }}
+                </button>
+                <a
+                    href="{{ $internalLocationModal['edit_url'] ?? '#' }}"
+                    class="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 sm:w-auto"
+                >
+                    {{ __('Asignar ubicación') }}
+                </a>
+            </div>
+        </div>
+    </x-modal>
+@endif
 
 <script>
     (() => {

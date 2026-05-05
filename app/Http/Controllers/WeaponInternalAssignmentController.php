@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Events\AssignmentChanged;
 use App\Models\AuditLog;
+use App\Models\Client;
 use App\Models\Post;
 use App\Models\Weapon;
 use App\Models\WeaponPostAssignment;
 use App\Models\WeaponWorkerAssignment;
 use App\Models\Worker;
+use App\Support\MapCoordinates;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -41,7 +43,7 @@ class WeaponInternalAssignmentController extends Controller
         $workerId = $data['worker_id'] ?? null;
         $replace = $request->boolean('replace');
 
-        if (($postId && $workerId) || (!$postId && !$workerId)) {
+        if (! $postId && ! $workerId) {
             abort(422, 'Seleccione un puesto o un trabajador.');
         }
 
@@ -57,7 +59,14 @@ class WeaponInternalAssignmentController extends Controller
         $isSamePost = $postId && $activePost && $activePost->post_id === (int) $postId;
         $isSameWorker = $workerId && $activeWorker && $activeWorker->worker_id === (int) $workerId;
 
-        if (($activePost || $activeWorker) && !$replace && !($isSamePost || $isSameWorker)) {
+        $unchanged = match (true) {
+            $postId && $workerId => $isSamePost && $isSameWorker,
+            (bool) $postId => $isSamePost && ! $activeWorker,
+            (bool) $workerId => $isSameWorker && ! $activePost,
+            default => false,
+        };
+
+        if (($activePost || $activeWorker) && !$replace && !$unchanged) {
             return back()
                 ->withInput()
                 ->with('replace_warning', true)
@@ -69,10 +78,52 @@ class WeaponInternalAssignmentController extends Controller
         $ammoCount = $data['ammo_count'] ?? null;
         $providerCount = $data['provider_count'] ?? null;
 
+        if ($postId) {
+            $post = Post::findOrFail($postId);
+            if ($post->isArchived()) {
+                abort(422, 'El puesto está archivado.');
+            }
+            $this->ensureClientMatches($user, $post->client_id, $activeClientAssignment->client_id, $post->name);
+            if (! MapCoordinates::isFilled($post->latitude, $post->longitude)) {
+                return back()
+                    ->withInput()
+                    ->with('internal_assignment_location_modal', [
+                        'kind' => 'post',
+                        'name' => $post->name,
+                        'edit_url' => route('posts.edit', $post),
+                    ]);
+            }
+        }
+
+        if ($workerId) {
+            $worker = Worker::findOrFail($workerId);
+            if ($worker->isArchived()) {
+                abort(422, 'El trabajador está archivado.');
+            }
+            $this->ensureClientMatches($user, $worker->client_id, $activeClientAssignment->client_id, $worker->name);
+            if (! $user->isAdmin() && $worker->responsible_user_id !== $user->id) {
+                abort(403, 'Solo puede asignar trabajadores a su cargo.');
+            }
+            if (! $postId) {
+                $client = Client::query()->find($worker->client_id);
+                if (! $client || ! MapCoordinates::isFilled($client->latitude, $client->longitude)) {
+                    return back()
+                        ->withInput()
+                        ->with('internal_assignment_location_modal', [
+                            'kind' => 'client',
+                            'name' => $client?->name ?? __('Cliente'),
+                            'edit_url' => $client ? route('clients.edit', $client) : route('clients.index'),
+                        ]);
+                }
+            }
+        }
+
         DB::transaction(function () use ($weapon, $user, $postId, $workerId, $startAt, $reason, $ammoCount, $providerCount, $activeClientAssignment) {
             $before = $this->currentInternalState($weapon);
             $this->closeActiveAssignments($weapon);
 
+            $post = null;
+            $postAssignment = null;
             if ($postId) {
                 $post = Post::findOrFail($postId);
                 if ($post->isArchived()) {
@@ -80,7 +131,7 @@ class WeaponInternalAssignmentController extends Controller
                 }
                 $this->ensureClientMatches($user, $post->client_id, $activeClientAssignment->client_id, $post->name);
 
-                $assignment = WeaponPostAssignment::create([
+                $postAssignment = WeaponPostAssignment::create([
                     'weapon_id' => $weapon->id,
                     'post_id' => $post->id,
                     'assigned_by' => $user->id,
@@ -90,42 +141,54 @@ class WeaponInternalAssignmentController extends Controller
                     'ammo_count' => $ammoCount,
                     'provider_count' => $providerCount,
                 ]);
+            }
 
-                $this->logInternalAssignment($user, $weapon, 'internal_assigned_post', $before, [
+            $worker = null;
+            $workerAssignment = null;
+            if ($workerId) {
+                $worker = Worker::findOrFail($workerId);
+                if ($worker->isArchived()) {
+                    abort(422, 'El trabajador está archivado.');
+                }
+                $this->ensureClientMatches($user, $worker->client_id, $activeClientAssignment->client_id, $worker->name);
+
+                if (!$user->isAdmin() && $worker->responsible_user_id !== $user->id) {
+                    abort(403, 'Solo puede asignar trabajadores a su cargo.');
+                }
+
+                $workerAssignment = WeaponWorkerAssignment::create([
+                    'weapon_id' => $weapon->id,
+                    'worker_id' => $worker->id,
+                    'assigned_by' => $user->id,
+                    'start_at' => $startAt,
+                    'is_active' => true,
+                    'reason' => $reason,
+                    'ammo_count' => $ammoCount,
+                    'provider_count' => $providerCount,
+                ]);
+            }
+
+            if ($postId && $workerId) {
+                $this->logInternalAssignment($user, $weapon, 'internal_assigned_worker_and_post', $before, [
                     'post_id' => $post->id,
-                    'assignment_id' => $assignment->id,
+                    'worker_id' => $worker->id,
+                    'post_assignment_id' => $postAssignment->id,
+                    'worker_assignment_id' => $workerAssignment->id,
                     'start_at' => $startAt,
                 ]);
-
-                return;
+            } elseif ($postId) {
+                $this->logInternalAssignment($user, $weapon, 'internal_assigned_post', $before, [
+                    'post_id' => $post->id,
+                    'assignment_id' => $postAssignment->id,
+                    'start_at' => $startAt,
+                ]);
+            } else {
+                $this->logInternalAssignment($user, $weapon, 'internal_assigned_worker', $before, [
+                    'worker_id' => $worker->id,
+                    'assignment_id' => $workerAssignment->id,
+                    'start_at' => $startAt,
+                ]);
             }
-
-            $worker = Worker::findOrFail($workerId);
-            if ($worker->isArchived()) {
-                abort(422, 'El trabajador está archivado.');
-            }
-            $this->ensureClientMatches($user, $worker->client_id, $activeClientAssignment->client_id, $worker->name);
-
-            if (!$user->isAdmin() && $worker->responsible_user_id !== $user->id) {
-                abort(403, 'Solo puede asignar trabajadores a su cargo.');
-            }
-
-            $assignment = WeaponWorkerAssignment::create([
-                'weapon_id' => $weapon->id,
-                'worker_id' => $worker->id,
-                'assigned_by' => $user->id,
-                'start_at' => $startAt,
-                'is_active' => true,
-                'reason' => $reason,
-                'ammo_count' => $ammoCount,
-                'provider_count' => $providerCount,
-            ]);
-
-            $this->logInternalAssignment($user, $weapon, 'internal_assigned_worker', $before, [
-                'worker_id' => $worker->id,
-                'assignment_id' => $assignment->id,
-                'start_at' => $startAt,
-            ]);
         });
 
         app()->terminating(function () use ($weapon, $activeClientAssignment, $postId, $workerId): void {
