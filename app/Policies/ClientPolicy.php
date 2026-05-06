@@ -32,7 +32,15 @@ class ClientPolicy
 
     public function update(User $user, Client $client): bool
     {
-        return $user->isAdmin();
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        if ($user->isResponsibleLevelOne()) {
+            return $user->clients()->whereKey($client->id)->exists();
+        }
+
+        return false;
     }
 
     public function delete(User $user, Client $client): bool

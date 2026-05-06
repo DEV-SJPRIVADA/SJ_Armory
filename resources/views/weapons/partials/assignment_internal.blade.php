@@ -65,7 +65,7 @@
                     <select name="worker_id" class="mt-1 block w-full rounded-md border-gray-300 text-sm">
                         <option value="">{{ __('Seleccione') }}</option>
                         @foreach ($workers as $worker)
-                            <option value="{{ $worker->id }}">{{ $worker->name }} ({{ $worker->role }})</option>
+                            <option value="{{ $worker->id }}">{{ $worker->name }} ({{ \App\Models\Worker::roleLabels()[$worker->role] ?? $worker->role }})</option>
                         @endforeach
                     </select>
                     <x-input-error :messages="$errors->get('worker_id')" class="mt-2" />

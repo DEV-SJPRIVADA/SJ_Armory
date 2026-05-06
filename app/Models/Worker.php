@@ -12,6 +12,25 @@ class Worker extends Model
 
     public const ROLE_ESCOLTA = 'ESCOLTA';
     public const ROLE_SUPERVISOR = 'SUPERVISOR';
+    public const ROLE_GUARDA = 'GUARDA';
+    public const ROLE_MOTORIZADO = 'MOTORIZADO';
+    public const ROLE_GUARDA_INFRAESTRUCTURA = 'GUARDA_INFRAESTRUCTURA';
+
+    /**
+     * Valores guardados en workers.role y etiquetas para formularios y listados.
+     *
+     * @return array<string, string>
+     */
+    public static function roleLabels(): array
+    {
+        return [
+            self::ROLE_ESCOLTA => 'Escolta',
+            self::ROLE_SUPERVISOR => 'Supervisor',
+            self::ROLE_GUARDA => 'Guarda',
+            self::ROLE_MOTORIZADO => 'Motorizado',
+            self::ROLE_GUARDA_INFRAESTRUCTURA => 'Guarda de infraestructura',
+        ];
+    }
 
     protected $fillable = [
         'client_id',

@@ -138,7 +138,7 @@ composer reverb
 | Ruta | Propósito |
 |---|---|
 | `app/Http/Controllers` | Casos de uso (CRUD, asignaciones, transferencias, reportes) |
-| `app/Models` | Dominio / Eloquent (Weapon, Client, Assignments, Transfers, etc.) |
+| `app/Models` | Dominio / Eloquent (Weapon, Client, `Worker::roleLabels()` para cargos de trabajador, Assignments, Transfers, etc.) |
 | `app/Policies` | Autorización por rol/alcance (`WeaponPolicy`, `ClientPolicy`, etc.) |
 | `app/Services` | Lógica de negocio (métricas, importaciones, documentos, geocoding) |
 | `app/Support` | Helpers de dominio (p. ej. comprobación de coordenadas para mapa) |
@@ -195,7 +195,8 @@ composer reverb
 
 - `ClientPolicy`
   - `view` para RESPONSABLE: solo si el cliente está en su cartera (`user_clients`)
-  - `create/update/delete`: solo ADMIN
+  - `update`: ADMIN, o RESPONSABLE **nivel 1** con el cliente en su cartera (misma regla que edición de puestos en cartera)
+  - `create` / `delete`: solo ADMIN
 
 ---
 
@@ -528,8 +529,9 @@ Flujo:
 
 Controlador: `app/Http/Controllers/ClientController.php`
 
-- CRUD.
-- RESPONSABLE ve solo clientes de su cartera.
+- Listado y detalle: RESPONSABLE ve solo clientes de su cartera.
+- Alta y borrado: solo ADMIN (`ClientPolicy`).
+- Edicion: ADMIN o RESPONSABLE **nivel 1** para clientes que estan en su cartera (politica `ClientPolicy::update`).
 - Geocodificacion automatica por direccion/ciudad/departamento.
 - Opcion de coordenadas manuales desde mapa (`coords_source = map`).
 - Si la ubicacion se selecciona en mapa:
@@ -566,7 +568,7 @@ Controlador: `app/Http/Controllers/WorkerController.php`
 - **Historial** (`worker_histories`): misma regla que puestos (registro inicial + nota obligatoria en cada edición).
 - **Responsable nivel 1 (no admin)**: puede gestionar trabajadores solo para **clientes de su cartera**; al crear/editar el **responsable queda fijo en su usuario**. El filtro **Responsable** en el listado se oculta para ese rol.
 - Listado: filtros en una sola fila horizontal; evento `WorkerChanged` en canal `workers.updates` cuando broadcasting está activo.
-- Roles de trabajador: ver `WorkerController::roleOptions()` (p. ej. escolta, supervisor).
+- Roles de trabajador (campo `workers.role`, validado en alta/edición): `ESCOLTA`, `SUPERVISOR`, `GUARDA`, `MOTORIZADO`, `GUARDA_INFRAESTRUCTURA`. Etiquetas en español para formularios y listados: `Worker::roleLabels()` (constant `ROLE_*` en el modelo).
 
 ### 5.8 Documentos de arma
 

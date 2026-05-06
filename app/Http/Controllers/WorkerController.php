@@ -397,9 +397,6 @@ class WorkerController extends Controller
 
     private function roleOptions(): array
     {
-        return [
-            Worker::ROLE_ESCOLTA => 'Escolta',
-            Worker::ROLE_SUPERVISOR => 'Supervisor',
-        ];
+        return Worker::roleLabels();
     }
 }
