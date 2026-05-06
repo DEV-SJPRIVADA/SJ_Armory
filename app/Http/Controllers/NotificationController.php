@@ -18,6 +18,7 @@ class NotificationController extends Controller
 
         $items = $user->notifications()
             ->orderByDesc('created_at')
+            ->when(! $request->boolean('history'), fn ($q) => $q->whereNull('read_at'))
             ->limit(100)
             ->get()
             ->map(function ($n): array {

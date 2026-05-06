@@ -10,7 +10,7 @@ class DomainActivityNotification extends Notification
     use Queueable;
 
     /**
-     * @param  array{title: string, body: string, action_url?: string|null, module?: string}  $payload
+     * @param  array{title: string, body: string, action_url?: string|null, module?: string, actor_name?: string}  $payload
      */
     public function __construct(private array $payload) {}
 
@@ -23,7 +23,7 @@ class DomainActivityNotification extends Notification
     }
 
     /**
-     * @return array{title: string, body: string, action_url?: string|null, module?: string}
+     * @return array{title: string, body: string, action_url?: string|null, module?: string, actor_name?: string}
      */
     public function toDatabase(object $notifiable): array
     {

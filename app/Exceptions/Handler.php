@@ -36,7 +36,7 @@ class Handler extends ExceptionHandler
             }
 
             return redirect()
-                ->guest(route('login'))
+                ->guest('/')
                 ->with('status', 'La sesión expiró. Inicia sesión nuevamente y repite la acción.');
         });
     }

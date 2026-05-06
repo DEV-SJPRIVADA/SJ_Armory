@@ -20,6 +20,7 @@ Sistema web para **gestión de armamento**, **asignaciones operativas**, **trans
 - ✅ **Mapa**: geocodificación y visualización operativa.
 - ✅ **Auditoría**: registro de cambios y acciones críticas.
 - ✅ **Realtime (Broadcasting)**: Laravel Reverb + Echo (WebSockets) para sincronización en tiempo real.
+- ✅ **Notificaciones**: campana en barra superior con **solo no leídas**; menú de usuario con **Historial de notificaciones** (leídas y no leídas, mismo modal con `?history=1`); textos con actor y contexto (arma, cliente, puesto, etc.).
 
 ---
 
@@ -280,8 +281,16 @@ composer reverb
 
 | Variable | Ejemplo | Descripción |
 |---|---|---|
+| `SESSION_LIFETIME` | `30` | Minutos de **inactividad** (sin peticiones al servidor) antes de que la sesión deje de ser válida; cada petición renueva el temporizador. Ajustable en `.env`. |
+| `SESSION_DRIVER` | `file` | Driver de almacenamiento de sesión (`file`, `database`, `redis`, …). |
 | `SESSION_DOMAIN` | *(vacío)* | Dominio de cookie si aplica |
 | `SANCTUM_STATEFUL_DOMAINS` | *(vacío)* | Hosts/ips stateful (si se usa por IP/red, incluirlos) |
+
+### 🔐 Sesión expirada y rutas protegidas
+
+- Si el usuario **no está autenticado** (incluye sesión caducada por inactividad según `SESSION_LIFETIME`) y accede a una ruta **web** protegida, Laravel redirige a **`/`** (vista **welcome**), no a `/login`.
+- Peticiones que el framework interpreta como **JSON** (`Accept: application/json`, etc.): **401** sin redirección HTML.
+- **Token CSRF inválido** (p. ej. formulario abierto tras caducar la sesión): redirección a **`/`** con mensaje flash; se guarda la URL previa para **`intended()`** después de iniciar sesión (`app/Exceptions/Handler.php`).
 
 ---
 
@@ -809,7 +818,7 @@ Grupos funcionales:
   - `login`, `forgot-password`, `reset-password`, `verify-email`, `logout`.
   - `register` solo si `AUTH_ALLOW_PUBLIC_REGISTRATION=true`.
 - Perfil:
-  - `profile.edit/update/destroy`.
+  - `profile.edit/update/destroy` (la UI de **editar perfil** no expone eliminación de cuenta; la ruta `destroy` puede seguir existiendo por compatibilidad o pruebas).
 - Administracion:
   - `users.*`, `users.status`, `users.send-access-credentials` (POST: reenvío de credenciales por correo con contraseña temporal nueva, solo ADMIN desde el listado).
 - Operacion:
@@ -946,6 +955,7 @@ netsh advfirewall firewall add rule name="Laragon Apache HTTP 80 (LocalSubnet)" 
 - `DB_USERNAME=root`
 - `FILESYSTEM_DISK=local`
 - `SESSION_DRIVER=file`
+- `SESSION_LIFETIME=30` (o el valor vigente en `.env`; inactividad en minutos)
 - `SESSION_DOMAIN=` vacio
 - `SANCTUM_STATEFUL_DOMAINS=sj_armory.test,sj_armory.test:80,SJPCANAOPE1,SJPCANAOPE1:80,172.16.23.36,172.16.23.36:80`
 

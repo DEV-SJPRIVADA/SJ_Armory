@@ -123,6 +123,7 @@
     x-data="{
         menuOpen: false,
         notificationsOpen: false,
+        notificationHistoryMode: false,
         notificationItems: [],
         notificationLoading: false,
         notificationUnread: {{ (int) ($unreadNotificationCount ?? 0) }},
@@ -137,10 +138,14 @@
                 }
             });
         },
+        notificationsIndexUrl(history) {
+            const base = '{{ url('/notifications') }}';
+            return history ? base + '?history=1' : base;
+        },
         async loadNotifications() {
             this.notificationLoading = true;
             try {
-                const r = await fetch('{{ route('notifications.index') }}', {
+                const r = await fetch(this.notificationsIndexUrl(this.notificationHistoryMode), {
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
                 if (!r.ok) { return; }
@@ -152,12 +157,18 @@
             }
         },
         async openNotificationsModal() {
+            this.notificationHistoryMode = false;
+            this.notificationsOpen = true;
+            await this.loadNotifications();
+        },
+        async openNotificationsHistory() {
+            this.notificationHistoryMode = true;
             this.notificationsOpen = true;
             await this.loadNotifications();
         },
         async markAllNotificationsRead() {
             const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
-            await fetch('{{ route('notifications.read-all') }}', {
+            const r = await fetch('{{ route('notifications.read-all') }}', {
                 method: 'POST',
                 headers: {
                     Accept: 'application/json',
@@ -165,8 +176,13 @@
                     'X-CSRF-TOKEN': token,
                 },
             });
+            if (!r.ok) { return; }
             this.notificationUnread = 0;
-            this.notificationItems = this.notificationItems.map(i => ({ ...i, read: true }));
+            if (this.notificationHistoryMode) {
+                this.notificationItems = this.notificationItems.map(i => ({ ...i, read: true }));
+            } else {
+                this.notificationItems = [];
+            }
         },
         async markOneRead(id, url) {
             const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
@@ -181,7 +197,11 @@
             if (r.ok) {
                 const d = await r.json();
                 this.notificationUnread = d.unread_count ?? 0;
-                this.notificationItems = this.notificationItems.map(i => i.id === id ? { ...i, read: true } : i);
+                if (this.notificationHistoryMode) {
+                    this.notificationItems = this.notificationItems.map(i => i.id === id ? { ...i, read: true } : i);
+                } else {
+                    await this.loadNotifications();
+                }
             }
             if (url) {
                 window.location.href = url;
@@ -300,6 +320,16 @@
                                     <option value="en" @selected(app()->getLocale() === 'en')>Ingl&eacute;s</option>
                                 </select>
                             </form>
+
+                            @if ($notificationBellEnabled ?? false)
+                                <button
+                                    type="button"
+                                    class="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-900 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition duration-150 ease-in-out sj-dropdown-link border-0 bg-white w-full"
+                                    @click="openNotificationsHistory()"
+                                >
+                                    {{ __('Historial de notificaciones') }}
+                                </button>
+                            @endif
 
                             <x-dropdown-link :href="route('profile.edit')">
                                 {{ __('Perfil') }}
@@ -428,6 +458,16 @@
                     </select>
                 </form>
 
+                @if ($notificationBellEnabled ?? false)
+                    <button
+                        type="button"
+                        class="block w-full px-4 py-2 text-start text-base text-slate-100 hover:bg-white/10 border-0 bg-transparent"
+                        @click="menuOpen = false; openNotificationsHistory()"
+                    >
+                        {{ __('Historial de notificaciones') }}
+                    </button>
+                @endif
+
                 <x-responsive-nav-link :href="route('profile.edit')">
                     {{ __('Perfil') }}
                 </x-responsive-nav-link>
@@ -457,7 +497,7 @@
                 @click.outside="notificationsOpen = false"
             >
                 <div class="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
-                    <h2 class="text-base font-semibold text-gray-900">{{ __('Notificaciones') }}</h2>
+                    <h2 class="text-base font-semibold text-gray-900" x-text="notificationHistoryMode ? '{{ __('Historial de notificaciones') }}' : '{{ __('Notificaciones') }}'"></h2>
                     <div class="flex items-center gap-2">
                         <button
                             type="button"
@@ -472,7 +512,8 @@
                 </div>
                 <div class="min-h-0 flex-1 overflow-y-auto">
                     <div x-show="notificationLoading" class="p-6 text-center text-sm text-gray-500">{{ __('Cargando…') }}</div>
-                    <div x-show="!notificationLoading && notificationItems.length === 0" class="p-6 text-center text-sm text-gray-500">{{ __('No hay notificaciones.') }}</div>
+                    <div x-show="!notificationLoading && notificationItems.length === 0 && !notificationHistoryMode" class="p-6 text-center text-sm text-gray-500">{{ __('No tienes notificaciones sin leer.') }}</div>
+                    <div x-show="!notificationLoading && notificationItems.length === 0 && notificationHistoryMode" class="p-6 text-center text-sm text-gray-500">{{ __('No hay notificaciones en el historial.') }}</div>
                     <div x-show="!notificationLoading && notificationItems.length > 0" class="divide-y divide-gray-100">
                         <template x-for="item in notificationItems" :key="item.id">
                             <div>
