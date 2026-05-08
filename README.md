@@ -225,7 +225,7 @@ composer reverb
 - `maps.updates`
 - `posts.updates`
 
-> Nota: la autorización de estos canales está configurada como `true` (permitir suscripción) y está lista para endurecerse por rol/alcance.
+> **Nota:** la autorización de estos canales está configurada como `true` (cualquier usuario autenticado puede suscribirse). Si los eventos broadcast llevan **datos operativos sensibles**, conviene **acotar por rol o alcance** en `routes/channels.php` y revisar los payloads en `app/Events`. En despliegues muy exigentes, trátelo como deuda de seguridad conocida.
 
 ---
 
@@ -321,6 +321,15 @@ Formato de código:
 ./vendor/bin/pint
 ```
 
+### Seguridad y operación (resumen de revisión interna)
+
+Las rutas operativas viven bajo `auth`; imports y usuarios exigen **ADMIN** por middleware. Puntos a vigilar en evolución del proyecto:
+
+- **Broadcasting (canales):** ver bloque **Realtime** arriba; suscripción permisiva + payload de eventos.
+- **Geocodificación:** `GeocodingController` (`/geocode/search`, `/geocode/reverse`) exige sesión pero **no** restringe por rol ni rate limit; en producción puede usarse como proxy a Nominatim (abuso de ancho de banda / cuotas).
+
+No sustituye una auditoría externa ni pentest; documenta decisiones conocidas del codebase.
+
 ---
 
 ## 🧯 Troubleshooting rápido
@@ -337,6 +346,7 @@ Formato de código:
   - **Sin servidor local:** use `MAIL_MAILER=log` y revise `storage/logs/laravel.log` (el mensaje se registra, no sale a Internet).
   - Con `APP_DEBUG=true`, el aviso en pantalla puede incluir el detalle del fallo SMTP (útil en desarrollo; no dejar `APP_DEBUG=true` en producción con datos reales).
 - 🗺️ **Mapa / selector de ubicación**: comparten capas **Satélite (híbrido)** (Esri: imagen + vías + límites) y **Calles (OpenStreetMap)**. Tras tocar `map.js` o `location-picker.js`, vuelva a compilar y refresque sin caché. El popup del mapa de armas limita la altura de la tabla (~5 filas visibles) con scroll para el resto. Si el **cursor parpadea o desaparece** al mover el ratón sobre el mapa (Chrome/Edge en Windows): la vista `maps/index` evita `overflow-hidden` en el card del mapa y `app.css` unifica el cursor (`grab` solo en el contenedor Leaflet, `inherit` en paneles/teselas); despliegue el CSS compilado actualizado en `public/build`.
+- 🎨 **Parpadeo muy breve al cambiar de vista o al usar menús:** suele ser la **hidratación de Alpine.js** después de cargar el bundle de Vite (`resources/js/app.js`); existe `[x-cloak]` global en `resources/css/app.css` y los modales lo usan. Una red lenta o recarga completa de página amplía la ventana. No suele indicar error de Blade ni fuga de código al usuario final.
 
 Tipos de arma permitidos en validacion actual:
 
@@ -532,7 +542,7 @@ Flujo:
   - Si hay error de validacion/alcance, no se muestra pantalla de excepcion: se redirige a `transfers.index` con una alerta y opciones para reintentar la seleccion o cancelar.
   - Asigna nuevo cliente responsable.
   - Opcionalmente asigna **puesto y/o trabajador** (puede elegir ambos; el mapa prioriza el puesto cuando hay puesto). La validacion de coordenadas del puesto o del cliente (solo trabajador) es la misma que en la asignacion interna desde el detalle del arma.
-- **Cancelación** (`transfers.cancel`): remitente, destinatario o administrador pueden cancelar una pendiente; **no** altera el destino si la asignación sigue activa (flujo actual). Si la transferencia es antigua y el arma quedó sin cliente (migración de comportamiento previo), se intenta **restaurar** desde `from_client_id` / `from_user_id`.
+- **Cancelación** (`transfers.cancel`): remitente, destinatario o administrador pueden cancelar una pendiente; **no** altera el destino si la asignación sigue activa (flujo actual). Si la transferencia es antigua y el arma quedó sin cliente (migración de comportamiento previo), se intenta **restaurar** desde `from_client_id` / `from_user_id`. La confirmación en pantalla es un **modal** (`resources/views/transfers/index.blade.php`, `cancel-transfer`), no el cuadro nativo del navegador.
 - Rechazo: la ruta `transfers.reject` fue sustituida por cancelación unificada (`cancelled`); registros antiguos pueden seguir en estado `rejected`.
 
 ### 5.5 Clientes

@@ -179,14 +179,11 @@
                                             </button>
                                         @endif
                                         @if ($canCancelRow)
-                                            <form action="{{ route('transfers.cancel', $transfer) }}" method="POST" class="inline"
-                                                onsubmit="return confirm({{ json_encode(__('¿Cancelar esta transferencia pendiente?')) }});">
-                                                @csrf
-                                                @method('PATCH')
-                                                <button type="submit" class="text-amber-700 hover:text-amber-900">
-                                                    {{ __('Cancelar') }}
-                                                </button>
-                                            </form>
+                                            <button type="button" class="text-amber-700 hover:text-amber-900"
+                                                data-cancel-action="{{ route('transfers.cancel', $transfer) }}"
+                                                data-transfer-code="{{ $serie }}">
+                                                {{ __('Cancelar') }}
+                                            </button>
                                         @endif
                                         @if (! $canAcceptRow && ! $canCancelRow)
                                             <span class="text-gray-500">{{ __('Sin acciones') }}</span>
@@ -207,6 +204,40 @@
             </div>
         </div>
     </div>
+
+    <x-modal name="cancel-transfer" maxWidth="md" focusable>
+        <div class="p-6 text-gray-900">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">{{ __('Cancelar transferencia') }}</h3>
+                    <p class="mt-2 text-sm text-gray-600 leading-relaxed">
+                        {{ __('¿Cancelar esta transferencia pendiente?') }}
+                    </p>
+                    <p id="cancel-transfer-weapon" class="mt-3 text-sm font-medium text-gray-800"></p>
+                </div>
+                <button type="button" class="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                    x-on:click="$dispatch('close-modal', 'cancel-transfer')"
+                    aria-label="{{ __('Cerrar') }}">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <form id="cancel-transfer-form" method="POST" class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+                @csrf
+                @method('PATCH')
+                <button type="button"
+                    class="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 sm:w-auto"
+                    x-on:click="$dispatch('close-modal', 'cancel-transfer')">
+                    {{ __('Cerrar') }}
+                </button>
+                <button type="submit"
+                    class="w-full rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-amber-700 sm:w-auto">
+                    {{ __('Confirmar cancelación') }}
+                </button>
+            </form>
+        </div>
+    </x-modal>
 
     @php
         $histStatusLabels = [
@@ -496,6 +527,27 @@
         </div>
     </x-modal>
     @endif
+
+<script>
+    (() => {
+        const form = document.getElementById('cancel-transfer-form');
+        const weaponEl = document.getElementById('cancel-transfer-weapon');
+        const weaponLabel = @json(__('Arma'));
+        document.querySelectorAll('[data-cancel-action]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                if (! form) {
+                    return;
+                }
+                form.action = btn.dataset.cancelAction || '';
+                if (weaponEl) {
+                    const code = btn.dataset.transferCode || '';
+                    weaponEl.textContent = code ? `${weaponLabel}: ${code}` : '';
+                }
+                window.dispatchEvent(new CustomEvent('open-modal', { detail: 'cancel-transfer' }));
+            });
+        });
+    })();
+</script>
 
 @if ($canManageTransfers)
 <script>
