@@ -505,6 +505,7 @@ Listado de armas (`resources/views/weapons/partials/index_rows.blade.php`):
 
 - Columna **Puesto o trabajador**: si hay trabajador activo, muestra el **nombre** del trabajador (tambien cuando hay puesto combinado); si solo hay puesto, el nombre del puesto.
 - Columna **Cedula**: documento del trabajador activo, o `-` si no hay trabajador.
+- **Exportación** (misma página `resources/views/weapons/index.blade.php`): modales **Exportar filtrado** y **Exportar selección** con preview y formato xlsx/csv; el modal usa **z-index** por encima de la barra fija `.sj-nav` y el diálogo en **flex columna** con scroll solo en la tabla previa, de modo que el **pie con botones** siga visible.
 
 ### 5.4 Transferencias
 

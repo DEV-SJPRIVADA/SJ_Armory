@@ -486,7 +486,7 @@
     .weapon-export-modal {
         inset: 0;
         position: fixed;
-        z-index: 180;
+        z-index: 5000;
     }
 
     .weapon-export-modal.hidden {
@@ -497,6 +497,7 @@
         background: rgba(15, 23, 42, 0.48);
         inset: 0;
         position: absolute;
+        z-index: 0;
     }
 
     .weapon-export-modal__dialog {
@@ -504,18 +505,22 @@
         border: 1px solid rgb(226 232 240);
         border-radius: 1.25rem;
         box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+        display: flex;
+        flex-direction: column;
         inset: 50% auto auto 50%;
-        max-height: min(80vh, 52rem);
+        max-height: min(85vh, 52rem);
         overflow: hidden;
         position: absolute;
         transform: translate(-50%, -50%);
         width: min(92vw, 96rem);
+        z-index: 1;
     }
 
     .weapon-export-modal__header {
         align-items: flex-start;
         border-bottom: 1px solid rgb(226 232 240);
         display: flex;
+        flex-shrink: 0;
         gap: 1rem;
         justify-content: space-between;
         padding: 1.25rem 1.5rem 1rem;
@@ -553,6 +558,7 @@
         background: rgb(255 247 237);
         border-bottom: 1px solid rgb(254 215 170);
         color: rgb(154 52 18);
+        flex-shrink: 0;
         font-size: 0.95rem;
         margin: 0;
         padding: 1rem 1.5rem;
@@ -561,6 +567,7 @@
     .weapon-export-modal__format {
         align-items: center;
         display: flex;
+        flex-shrink: 0;
         flex-wrap: wrap;
         gap: 0.85rem;
         padding: 1rem 1.5rem 0.25rem;
@@ -592,7 +599,8 @@
     }
 
     .weapon-export-modal__table-shell {
-        max-height: 28rem;
+        flex: 1 1 auto;
+        min-height: 0;
         overflow: auto;
     }
 
@@ -632,8 +640,10 @@
 
     .weapon-export-modal__footer {
         align-items: center;
+        background: #fff;
         border-top: 1px solid rgb(226 232 240);
         display: flex;
+        flex-shrink: 0;
         flex-wrap: wrap;
         gap: 0.75rem;
         justify-content: flex-end;
