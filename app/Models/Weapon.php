@@ -6,11 +6,12 @@ use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Weapon extends Model
 {
-    use HasFactory;
     use Auditable;
+    use HasFactory;
 
     protected $fillable = [
         'internal_code',
@@ -101,8 +102,21 @@ class Weapon extends Model
         return $this->hasMany(WeaponTransfer::class);
     }
 
+    /**
+     * Transferencia pendiente (relación para eager load en listados).
+     */
+    public function activePendingTransfer(): HasOne
+    {
+        return $this->hasOne(WeaponTransfer::class)
+            ->where('status', WeaponTransfer::STATUS_PENDING);
+    }
+
     public function pendingTransfer(): ?WeaponTransfer
     {
+        if ($this->relationLoaded('activePendingTransfer')) {
+            return $this->activePendingTransfer;
+        }
+
         /** @var WeaponTransfer|null $transfer */
         $transfer = $this->transfers()
             ->where('status', WeaponTransfer::STATUS_PENDING)
@@ -110,6 +124,32 @@ class Weapon extends Model
             ->first();
 
         return $transfer;
+    }
+
+    /**
+     * Cliente operativo mostrable: asignación activa, o cliente de origen en transferencia pendiente (datos legacy o sin desplegar fix).
+     */
+    public function operationalDisplayClient(): ?Client
+    {
+        $fromAssignment = $this->activeClientAssignment?->client;
+        if ($fromAssignment) {
+            return $fromAssignment;
+        }
+
+        return $this->activePendingTransfer?->fromClient;
+    }
+
+    /**
+     * Responsable operativo mostrable (mismo criterio que operationalDisplayClient).
+     */
+    public function operationalDisplayResponsible(): ?User
+    {
+        $fromAssignment = $this->activeClientAssignment?->responsible;
+        if ($fromAssignment) {
+            return $fromAssignment;
+        }
+
+        return $this->activePendingTransfer?->fromUser;
     }
 
     /**

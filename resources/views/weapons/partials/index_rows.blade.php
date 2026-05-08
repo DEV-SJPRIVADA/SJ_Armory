@@ -14,7 +14,7 @@
             ? trim(($openIncident->type?->name ?? __('Novedad')) . ($openIncident->modality ? ': ' . $openIncident->modality->name : ''))
             : ($manualInProcess
                 ? trim(($manualInProcess->document_name ?: 'Documento') . ': ' . ($manualInProcess->observations ?: 'En proceso'))
-                : ($renewalAlert['observation'] !== '-' ? $renewalAlert['observation'] : ($weapon->activeClientAssignment ? __('Asignada') : __('Sin destino'))));
+                : ($renewalAlert['observation'] !== '-' ? $renewalAlert['observation'] : ($weapon->operationalDisplayClient() ? __('Asignada') : __('Sin destino'))));
         $statusClass = $openIncident ? 'text-red-700' : ($manualInProcess ? 'text-red-700' : ($renewalAlert['text_class'] ?? ''));
         $incidentTone = $openIncident
             ? 'danger'
@@ -26,7 +26,7 @@
                     ? 'warning'
                     : (($renewalAlert['severity'] ?? 0) >= 1
                         ? 'notice'
-                        : ($weapon->activeClientAssignment || $weapon->activePostAssignment || $weapon->activeWorkerAssignment ? 'ok' : 'neutral')))));
+                        : ($weapon->operationalDisplayClient() || $weapon->activePostAssignment || $weapon->activeWorkerAssignment ? 'ok' : 'neutral')))));
         $destinationLabel = '-';
         if ($weapon->activeWorkerAssignment) {
             $destinationLabel = $weapon->activeWorkerAssignment->worker?->name ?? '-';
@@ -40,7 +40,7 @@
         data-show-url="{{ route('weapons.show', $weapon) }}"
         data-edit-url="{{ route('weapons.edit', $weapon) }}"
         data-can-edit="{{ auth()->user()?->can('update', $weapon) ? '1' : '0' }}"
-        data-export-client="{{ $weapon->activeClientAssignment?->client?->name ?? __('Sin destino') }}"
+        data-export-client="{{ $weapon->operationalDisplayClient()?->name ?? __('Sin destino') }}"
         data-export-type="{{ $weapon->weapon_type }}"
         data-export-brand="{{ $weapon->brand }}"
         data-export-serial="{{ $weapon->serial_number }}"
@@ -57,7 +57,7 @@
                 aria-label="{{ __('Seleccionar arma :serial', ['serial' => $weapon->serial_number]) }}"
             >
         </td>
-        <td class="px-3 py-2 min-w-[200px] whitespace-nowrap">{{ $weapon->activeClientAssignment?->client?->name ?? __('Sin destino') }}</td>
+        <td class="px-3 py-2 min-w-[200px] whitespace-nowrap">{{ $weapon->operationalDisplayClient()?->name ?? __('Sin destino') }}</td>
         <td class="px-3 py-2 whitespace-nowrap">{{ $weapon->weapon_type }}</td>
         <td class="px-3 py-2 whitespace-nowrap">{{ $weapon->brand }}</td>
         <td class="px-3 py-2 whitespace-nowrap">{{ $weapon->serial_number }}</td>
@@ -78,7 +78,7 @@
         <td class="px-3 py-2 whitespace-nowrap text-center">
             {{ $internalAssignment?->provider_count ?? '-' }}
         </td>
-        <td class="px-3 py-2 min-w-[200px] whitespace-nowrap">{{ $weapon->activeClientAssignment?->responsible?->name ?? '-' }}</td>
+        <td class="px-3 py-2 min-w-[200px] whitespace-nowrap">{{ $weapon->operationalDisplayResponsible()?->name ?? '-' }}</td>
         <td class="px-3 py-2 min-w-[220px] whitespace-nowrap">{{ $destinationLabel }}</td>
         <td class="px-3 py-2 whitespace-nowrap">
             {{ $weapon->activeWorkerAssignment?->worker?->document ?? '-' }}

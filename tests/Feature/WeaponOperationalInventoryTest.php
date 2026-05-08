@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Weapon;
 use App\Models\WeaponClientAssignment;
 use App\Models\WeaponIncident;
+use App\Models\WeaponTransfer;
 use Database\Seeders\IncidentModalitySeeder;
 use Database\Seeders\IncidentTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -110,10 +111,61 @@ class WeaponOperationalInventoryTest extends TestCase
             ]);
     }
 
+    public function test_weapons_index_shows_origin_client_from_pending_transfer_when_active_assignment_was_closed(): void
+    {
+        $admin = User::factory()->create(['role' => 'ADMIN']);
+        $sender = User::factory()->create(['role' => 'RESPONSABLE']);
+        $recipient = User::factory()->create(['role' => 'RESPONSABLE']);
+        $client = Client::query()->create(['name' => 'Cliente Origen Listado', 'nit' => '900111222-4']);
+        $sender->clients()->attach($client->id);
+        $recipient->clients()->attach($client->id);
+
+        $weapon = Weapon::query()->create([
+            'internal_code' => 'IC-PEND-LEG',
+            'serial_number' => 'SER-PEND-LEG',
+            'weapon_type' => 'Pistola',
+            'caliber' => '9MM',
+            'brand' => 'Jericho',
+            'capacity' => '15',
+            'ownership_type' => 'company_owned',
+            'permit_type' => 'porte',
+        ]);
+
+        $assignment = WeaponClientAssignment::query()->create([
+            'weapon_id' => $weapon->id,
+            'client_id' => $client->id,
+            'responsible_user_id' => $sender->id,
+            'start_at' => now()->toDateString(),
+            'is_active' => true,
+            'assigned_by' => $sender->id,
+        ]);
+
+        WeaponTransfer::query()->create([
+            'weapon_id' => $weapon->id,
+            'from_user_id' => $sender->id,
+            'to_user_id' => $recipient->id,
+            'requested_by' => $sender->id,
+            'from_client_id' => $client->id,
+            'new_client_id' => null,
+            'status' => WeaponTransfer::STATUS_PENDING,
+            'requested_at' => now(),
+        ]);
+
+        $assignment->update([
+            'end_at' => now()->toDateString(),
+            'is_active' => null,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('weapons.index', ['inventory_scope' => 'all', 'q' => 'PEND-LEG']))
+            ->assertOk()
+            ->assertSee('Cliente Origen Listado', false);
+    }
+
     private function createWeapon(string $serial, Client $client, User $responsible, ?string $permitExpiresAt = null): Weapon
     {
         $weapon = Weapon::query()->create([
-            'internal_code' => 'IC-' . $serial,
+            'internal_code' => 'IC-'.$serial,
             'serial_number' => $serial,
             'weapon_type' => 'Pistola',
             'caliber' => '9MM',

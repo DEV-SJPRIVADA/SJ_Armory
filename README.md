@@ -524,7 +524,7 @@ Flujo:
 - Al solicitar (opcional por lote): **munición** y/o **proveedores** con cantidad; si no se marcan los interruptores, el envío es solo el arma. Los valores quedan en `weapon_transfers.ammo_count` / `provider_count` y, al **aceptar**, se aplican a la asignación interna nueva (puesto y/o trabajador) si existe.
 - Al solicitar: **no** se retira el destino operativo ni la asignación interna; el arma **sigue asignada** al responsable y cliente actuales hasta que el destinatario **acepte** (o se cancele la transferencia).
 - Mientras exista una transferencia **pendiente** para un arma, no se puede cambiar su destino operativo, ni su asignación interna, ni iniciar otra transferencia; el administrador ve en el mensaje **quién envió** y **quién debe aceptar**.
-- **Detalle del arma** (`weapons.show`): caja de aviso “Transferencia pendiente” con enlace a `transfers.index`; los intentos bloqueados devuelven error de validación con el mismo criterio de mensaje (detalle ampliado solo para **ADMIN** vía `Weapon::pendingTransferBlockMessage()`).
+- **Listado e inventario** (`weapons.index`, exportaciones): la columna **Cliente** y el **Responsable** usan la asignación activa si existe; si no (p. ej. datos previos a no retirar al solicitar), se muestran **`from_client_id` / `from_user_id`** de la transferencia **pendiente** para no dejar el arma como “Sin destino” en pantalla.
 - Aceptacion:
   - El usuario que acepta solo puede asignar **clientes de su cartera** (y el sistema valida en backend que el `client_id` pertenezca a la cartera del destinatario).
   - En el modal, **Puestos** y **Trabajadores** solo se muestran luego de seleccionar cliente y se filtran por ese cliente.
@@ -1115,6 +1115,7 @@ Suite actual en `tests/`:
 - Unit basica.
 - Feature de autenticacion y perfil (Breeze).
 - Feature de `Subir armas`, incluyendo preview y progreso/ejecucion de lote.
+- Feature de inventario operativo (`WeaponOperationalInventoryTest`), incluyendo listado con transferencia pendiente y asignación de cliente legacy cerrada (`operationalDisplayClient`).
 
 Comando:
 
@@ -1125,8 +1126,6 @@ Configuracion de testing:
 - `phpunit.xml` define variables de entorno para PHPUnit (`APP_ENV=testing`, SQLite en memoria, etc.)
 
 Con esto, `php artisan test` no debe tocar la base real del proyecto.
-
-Nota: actualmente no hay suite dedicada para reglas de negocio de armas/asignaciones/transferencias, aunque la logica ya esta implementada en controladores/servicios.
 
 ## 16. Operacion y despliegue (resumen)
 

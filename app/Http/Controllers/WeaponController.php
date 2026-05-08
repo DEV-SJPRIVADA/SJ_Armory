@@ -24,7 +24,6 @@ use Throwable;
 
 class WeaponController extends Controller
 {
-
     public function __construct()
     {
         $this->authorizeResource(Weapon::class, 'weapon');
@@ -88,7 +87,7 @@ class WeaponController extends Controller
 
         return $this->streamWeaponsExport(
             $query->get(),
-            'armamento-filtrado-' . now()->format('Ymd-His'),
+            'armamento-filtrado-'.now()->format('Ymd-His'),
             $format
         );
     }
@@ -101,7 +100,7 @@ class WeaponController extends Controller
         $query = $this->buildExportQuery($request);
         $count = (clone $query)->count();
 
-        if (!$hasExplicitFilters) {
+        if (! $hasExplicitFilters) {
             return response()->json([
                 'count' => $count,
                 'has_filters' => false,
@@ -168,7 +167,7 @@ class WeaponController extends Controller
 
         return $this->streamWeaponsExport(
             $weapons,
-            'armamento-seleccionado-' . now()->format('Ymd-His'),
+            'armamento-seleccionado-'.now()->format('Ymd-His'),
             $format
         );
     }
@@ -178,11 +177,11 @@ class WeaponController extends Controller
         $data = $request->validate([
             'internal_code' => ['nullable', 'string', 'max:100', 'unique:weapons,internal_code'],
             'serial_number' => ['required', 'string', 'max:100', 'unique:weapons,serial_number'],
-            'weapon_type' => ['required', 'in:' . implode(',', $this->weaponTypeOptions())],
+            'weapon_type' => ['required', 'in:'.implode(',', $this->weaponTypeOptions())],
             'caliber' => ['required', 'string', 'max:100'],
             'brand' => ['required', 'string', 'max:100'],
             'capacity' => ['required', 'string', 'max:50'],
-            'ownership_type' => ['required', 'in:' . implode(',', array_keys($this->ownershipOptions()))],
+            'ownership_type' => ['required', 'in:'.implode(',', array_keys($this->ownershipOptions()))],
             'ownership_entity' => ['nullable', 'string', 'max:255'],
             'permit_type' => ['required', 'in:porte,tenencia'],
             'permit_number' => ['nullable', 'string', 'max:100'],
@@ -209,7 +208,7 @@ class WeaponController extends Controller
                 $weapon = Weapon::create($data);
 
                 if ($permitPhoto) {
-                    $storedPermitPath = $permitPhoto->store('weapons/' . $weapon->id . '/permits', 'local');
+                    $storedPermitPath = $permitPhoto->store('weapons/'.$weapon->id.'/permits', 'local');
                     $storedFile = File::create([
                         'disk' => 'local',
                         'path' => $storedPermitPath,
@@ -226,13 +225,13 @@ class WeaponController extends Controller
                 $documentService->syncPermitDocument($weapon);
                 $documentService->syncRenewalDocument($weapon);
 
-                if (!$photos) {
+                if (! $photos) {
                     return;
                 }
 
                 foreach ($photoOrder as $index => $description) {
                     $photoFile = $photos[$index] ?? null;
-                    if (!$photoFile) {
+                    if (! $photoFile) {
                         continue;
                     }
 
@@ -247,7 +246,7 @@ class WeaponController extends Controller
                         $existingPhoto->delete();
                     }
 
-                    $path = $photoFile->store('weapons/' . $weapon->id . '/photos', 'public');
+                    $path = $photoFile->store('weapons/'.$weapon->id.'/photos', 'public');
                     $storedPaths[] = $path;
 
                     $storedFile = File::create([
@@ -349,6 +348,7 @@ class WeaponController extends Controller
                 ->get()
                 ->mapWithKeys(function (Client $client) {
                     $responsible = $client->users->first();
+
                     return [
                         $client->id => [
                             'id' => $responsible?->id,
@@ -404,7 +404,7 @@ class WeaponController extends Controller
         $this->authorize('view', $weapon);
 
         $permitFile = $weapon->permitFile;
-        if (!$permitFile) {
+        if (! $permitFile) {
             abort(404);
         }
 
@@ -423,7 +423,7 @@ class WeaponController extends Controller
         ]);
 
         $permitPhoto = $data['photo'];
-        $storedPermitPath = $permitPhoto->store('weapons/' . $weapon->id . '/permits', 'local');
+        $storedPermitPath = $permitPhoto->store('weapons/'.$weapon->id.'/permits', 'local');
 
         try {
             DB::transaction(function () use ($request, $weapon, $permitPhoto, $storedPermitPath) {
@@ -469,13 +469,13 @@ class WeaponController extends Controller
     public function update(Request $request, Weapon $weapon, WeaponDocumentService $documentService)
     {
         $data = $request->validate([
-            'internal_code' => ['required', 'string', 'max:100', 'unique:weapons,internal_code,' . $weapon->id],
-            'serial_number' => ['required', 'string', 'max:100', 'unique:weapons,serial_number,' . $weapon->id],
-            'weapon_type' => ['required', 'in:' . implode(',', $this->weaponTypeOptions())],
+            'internal_code' => ['required', 'string', 'max:100', 'unique:weapons,internal_code,'.$weapon->id],
+            'serial_number' => ['required', 'string', 'max:100', 'unique:weapons,serial_number,'.$weapon->id],
+            'weapon_type' => ['required', 'in:'.implode(',', $this->weaponTypeOptions())],
             'caliber' => ['required', 'string', 'max:100'],
             'brand' => ['required', 'string', 'max:100'],
             'capacity' => ['required', 'string', 'max:50'],
-            'ownership_type' => ['required', 'in:' . implode(',', array_keys($this->ownershipOptions()))],
+            'ownership_type' => ['required', 'in:'.implode(',', array_keys($this->ownershipOptions()))],
             'ownership_entity' => ['nullable', 'string', 'max:255'],
             'permit_type' => ['required', 'in:porte,tenencia'],
             'permit_number' => ['nullable', 'string', 'max:100'],
@@ -507,7 +507,7 @@ class WeaponController extends Controller
         try {
             DB::transaction(function () use ($data, $photos, $photoOrder, $permitPhoto, $request, $weapon, $documentService, &$storedPaths, &$storedPermitPath) {
                 if ($permitPhoto) {
-                    $storedPermitPath = $permitPhoto->store('weapons/' . $weapon->id . '/permits', 'local');
+                    $storedPermitPath = $permitPhoto->store('weapons/'.$weapon->id.'/permits', 'local');
                     $storedFile = File::create([
                         'disk' => 'local',
                         'path' => $storedPermitPath,
@@ -534,7 +534,7 @@ class WeaponController extends Controller
 
                 foreach ($photoOrder as $index => $description) {
                     $photoFile = $photos[$index] ?? null;
-                    if (!$photoFile) {
+                    if (! $photoFile) {
                         continue;
                     }
 
@@ -549,7 +549,7 @@ class WeaponController extends Controller
                         $existingPhoto->delete();
                     }
 
-                    $path = $photoFile->store('weapons/' . $weapon->id . '/photos', 'public');
+                    $path = $photoFile->store('weapons/'.$weapon->id.'/photos', 'public');
                     $storedPaths[] = $path;
 
                     $storedFile = File::create([
@@ -683,7 +683,7 @@ class WeaponController extends Controller
         $query = Weapon::query();
         $filters = $this->filtersFromRequest($request);
 
-        if (!$this->hasExplicitExportFilters($request)) {
+        if (! $this->hasExplicitExportFilters($request)) {
             $filters['inventory_scope'] = 'all';
         }
 
@@ -717,7 +717,7 @@ class WeaponController extends Controller
             'permit_expires_to',
             'destination',
         ] as $key) {
-            if (!empty($filters[$key])) {
+            if (! empty($filters[$key])) {
                 return true;
             }
         }
@@ -732,21 +732,33 @@ class WeaponController extends Controller
                 return;
             case 'non_operational':
                 $query->nonOperationalInventory();
+
                 return;
             case 'operational':
             default:
                 $query->operationalInventory();
+
                 return;
         }
     }
 
     private function applyRoleScope(Builder $query, User $user): void
     {
-        if ($user->isResponsible() && !$user->isAdmin()) {
-            $query->whereHas('clientAssignments', function (Builder $assignmentQuery) use ($user) {
-                $assignmentQuery
-                    ->where('responsible_user_id', $user->id)
-                    ->where('is_active', true);
+        if ($user->isResponsible() && ! $user->isAdmin()) {
+            $query->where(function (Builder $outer) use ($user) {
+                $outer
+                    ->whereHas('clientAssignments', function (Builder $assignmentQuery) use ($user) {
+                        $assignmentQuery
+                            ->where('responsible_user_id', $user->id)
+                            ->where('is_active', true);
+                    })
+                    ->orWhereHas('activePendingTransfer', function (Builder $transferQuery) use ($user) {
+                        $transferQuery->where(function (Builder $inner) use ($user) {
+                            $inner
+                                ->where('from_user_id', $user->id)
+                                ->orWhere('to_user_id', $user->id);
+                        });
+                    });
             });
         }
     }
@@ -758,24 +770,33 @@ class WeaponController extends Controller
         }
 
         $query->where(function (Builder $builder) use ($search) {
-            $builder->where('serial_number', 'like', '%' . $search . '%')
-                ->orWhere('weapon_type', 'like', '%' . $search . '%')
-                ->orWhere('permit_type', 'like', '%' . $search . '%')
-                ->orWhere('permit_number', 'like', '%' . $search . '%')
-                ->orWhere('caliber', 'like', '%' . $search . '%')
-                ->orWhere('brand', 'like', '%' . $search . '%')
+            $builder->where('serial_number', 'like', '%'.$search.'%')
+                ->orWhere('weapon_type', 'like', '%'.$search.'%')
+                ->orWhere('permit_type', 'like', '%'.$search.'%')
+                ->orWhere('permit_number', 'like', '%'.$search.'%')
+                ->orWhere('caliber', 'like', '%'.$search.'%')
+                ->orWhere('brand', 'like', '%'.$search.'%')
                 ->orWhereHas('activeClientAssignment.client', function (Builder $clientQuery) use ($search) {
-                    $clientQuery->where('name', 'like', '%' . $search . '%');
+                    $clientQuery->where('name', 'like', '%'.$search.'%');
                 })
                 ->orWhereHas('activeClientAssignment.responsible', function (Builder $userQuery) use ($search) {
-                    $userQuery->where('name', 'like', '%' . $search . '%');
+                    $userQuery->where('name', 'like', '%'.$search.'%');
+                })
+                ->orWhereHas('activePendingTransfer', function (Builder $transferQuery) use ($search) {
+                    $transferQuery
+                        ->whereHas('fromClient', function (Builder $clientQuery) use ($search) {
+                            $clientQuery->where('name', 'like', '%'.$search.'%');
+                        })
+                        ->orWhereHas('fromUser', function (Builder $userQuery) use ($search) {
+                            $userQuery->where('name', 'like', '%'.$search.'%');
+                        });
                 })
                 ->orWhereHas('activePostAssignment.post', function (Builder $postQuery) use ($search) {
-                    $postQuery->where('name', 'like', '%' . $search . '%');
+                    $postQuery->where('name', 'like', '%'.$search.'%');
                 })
                 ->orWhereHas('activeWorkerAssignment.worker', function (Builder $workerQuery) use ($search) {
-                    $workerQuery->where('name', 'like', '%' . $search . '%')
-                        ->orWhere('document', 'like', '%' . $search . '%');
+                    $workerQuery->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('document', 'like', '%'.$search.'%');
                 });
         });
     }
@@ -803,14 +824,28 @@ class WeaponController extends Controller
     private function applyFilters(Builder $query, array $filters): void
     {
         if ($filters['client_id']) {
-            $query->whereHas('activeClientAssignment', function (Builder $assignmentQuery) use ($filters) {
-                $assignmentQuery->where('client_id', $filters['client_id']);
+            $clientId = $filters['client_id'];
+            $query->where(function (Builder $outer) use ($clientId) {
+                $outer
+                    ->whereHas('activeClientAssignment', function (Builder $assignmentQuery) use ($clientId) {
+                        $assignmentQuery->where('client_id', $clientId);
+                    })
+                    ->orWhereHas('activePendingTransfer', function (Builder $transferQuery) use ($clientId) {
+                        $transferQuery->where('from_client_id', $clientId);
+                    });
             });
         }
 
         if ($filters['responsible_user_id']) {
-            $query->whereHas('activeClientAssignment', function (Builder $assignmentQuery) use ($filters) {
-                $assignmentQuery->where('responsible_user_id', $filters['responsible_user_id']);
+            $responsibleId = $filters['responsible_user_id'];
+            $query->where(function (Builder $outer) use ($responsibleId) {
+                $outer
+                    ->whereHas('activeClientAssignment', function (Builder $assignmentQuery) use ($responsibleId) {
+                        $assignmentQuery->where('responsible_user_id', $responsibleId);
+                    })
+                    ->orWhereHas('activePendingTransfer', function (Builder $transferQuery) use ($responsibleId) {
+                        $transferQuery->where('from_user_id', $responsibleId);
+                    });
             });
         }
 
@@ -843,13 +878,22 @@ class WeaponController extends Controller
                 $query->where(function (Builder $builder) {
                     $builder->whereHas('activeClientAssignment')
                         ->orWhereHas('activePostAssignment')
-                        ->orWhereHas('activeWorkerAssignment');
+                        ->orWhereHas('activeWorkerAssignment')
+                        ->orWhereHas('activePendingTransfer', function (Builder $tq) {
+                            $tq->whereNotNull('from_client_id');
+                        });
                 });
                 break;
             case 'without_destination':
                 $query->whereDoesntHave('activeClientAssignment')
                     ->whereDoesntHave('activePostAssignment')
-                    ->whereDoesntHave('activeWorkerAssignment');
+                    ->whereDoesntHave('activeWorkerAssignment')
+                    ->where(function (Builder $destQuery) {
+                        $destQuery->whereDoesntHave('activePendingTransfer')
+                            ->orWhereHas('activePendingTransfer', function (Builder $tq) {
+                                $tq->whereNull('from_client_id');
+                            });
+                    });
                 break;
             case 'post':
                 $query->whereHas('activePostAssignment');
@@ -864,7 +908,7 @@ class WeaponController extends Controller
     {
         $inventoryScope = trim((string) $request->input('inventory_scope', 'operational')) ?: 'operational';
 
-        if (!in_array($inventoryScope, ['operational', 'all', 'non_operational'], true)) {
+        if (! in_array($inventoryScope, ['operational', 'all', 'non_operational'], true)) {
             $inventoryScope = 'operational';
         }
 
@@ -886,6 +930,8 @@ class WeaponController extends Controller
         return [
             'activeClientAssignment.client',
             'activeClientAssignment.responsible',
+            'activePendingTransfer.fromClient',
+            'activePendingTransfer.fromUser',
             'activePostAssignment.post',
             'activeWorkerAssignment.worker',
             'documents',
@@ -898,11 +944,11 @@ class WeaponController extends Controller
 
     private function indexFilterOptions(User $user): array
     {
-        $clients = $user->isResponsible() && !$user->isAdmin()
+        $clients = $user->isResponsible() && ! $user->isAdmin()
             ? $user->clients()->orderBy('name')->get(['clients.id', 'name'])
             : Client::query()->orderBy('name')->get(['id', 'name']);
 
-        $responsibles = $user->isResponsible() && !$user->isAdmin()
+        $responsibles = $user->isResponsible() && ! $user->isAdmin()
             ? collect([$user])
             : User::query()
                 ->whereIn('role', ['ADMIN', 'RESPONSABLE'])
@@ -915,10 +961,10 @@ class WeaponController extends Controller
     private function streamWeaponsExport(iterable $weapons, string $filename, string $format): StreamedResponse
     {
         if ($format === 'csv') {
-            return $this->streamWeaponsCsvExport($weapons, $filename . '.csv');
+            return $this->streamWeaponsCsvExport($weapons, $filename.'.csv');
         }
 
-        return $this->streamWeaponsXlsxExport($weapons, $filename . '.xlsx');
+        return $this->streamWeaponsXlsxExport($weapons, $filename.'.xlsx');
     }
 
     private function streamWeaponsCsvExport(iterable $weapons, string $filename): StreamedResponse
@@ -988,7 +1034,7 @@ class WeaponController extends Controller
 
         return response()->streamDownload(function () use ($headers, $rows) {
             $temporaryPath = tempnam(sys_get_temp_dir(), 'weapons-export-');
-            $zip = new \ZipArchive();
+            $zip = new \ZipArchive;
             $zip->open($temporaryPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
             $zip->addFromString('[Content_Types].xml', $this->xlsxContentTypesXml());
             $zip->addFromString('_rels/.rels', $this->xlsxRootRelsXml());
@@ -1014,9 +1060,9 @@ class WeaponController extends Controller
                 $text = (string) ($value ?? '');
                 $escaped = str_replace('"', '""', $text);
 
-                return '"' . $escaped . '"';
+                return '"'.$escaped.'"';
             })
-            ->implode(';') . "\r\n";
+            ->implode(';')."\r\n";
 
         fwrite($output, mb_convert_encoding($line, 'UTF-16LE', 'UTF-8'));
     }
@@ -1127,28 +1173,28 @@ XML;
             $style = $rowIndex === 0 ? ' s="1"' : '';
 
             foreach ($row as $columnIndex => $value) {
-                $reference = $this->xlsxColumnName($columnIndex + 1) . ($rowIndex + 1);
+                $reference = $this->xlsxColumnName($columnIndex + 1).($rowIndex + 1);
                 $escaped = $this->xlsxEscape((string) ($value ?? ''));
-                $cells[] = '<c r="' . $reference . '" t="inlineStr"' . $style . '><is><t>' . $escaped . '</t></is></c>';
+                $cells[] = '<c r="'.$reference.'" t="inlineStr"'.$style.'><is><t>'.$escaped.'</t></is></c>';
             }
 
-            $sheetRows[] = '<row r="' . ($rowIndex + 1) . '">' . implode('', $cells) . '</row>';
+            $sheetRows[] = '<row r="'.($rowIndex + 1).'">'.implode('', $cells).'</row>';
         }
 
         $columnsXml = [];
         foreach ($columnWidths as $index => $width) {
             $column = $index + 1;
-            $columnsXml[] = '<col min="' . $column . '" max="' . $column . '" width="' . $width . '" customWidth="1"/>';
+            $columnsXml[] = '<col min="'.$column.'" max="'.$column.'" width="'.$width.'" customWidth="1"/>';
         }
 
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-            . '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
-            . '<sheetFormatPr defaultRowHeight="15"/>'
-            . '<cols>' . implode('', $columnsXml) . '</cols>'
-            . '<sheetData>' . implode('', $sheetRows) . '</sheetData>'
-            . '<autoFilter ref="A1:' . $lastColumn . '1"/>'
-            . '</worksheet>';
+            .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            .'<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+            .'<sheetFormatPr defaultRowHeight="15"/>'
+            .'<cols>'.implode('', $columnsXml).'</cols>'
+            .'<sheetData>'.implode('', $sheetRows).'</sheetData>'
+            .'<autoFilter ref="A1:'.$lastColumn.'1"/>'
+            .'</worksheet>';
     }
 
     private function xlsxColumnName(int $columnIndex): string
@@ -1157,7 +1203,7 @@ XML;
 
         while ($columnIndex > 0) {
             $columnIndex--;
-            $name = chr(65 + ($columnIndex % 26)) . $name;
+            $name = chr(65 + ($columnIndex % 26)).$name;
             $columnIndex = intdiv($columnIndex, 26);
         }
 
@@ -1170,11 +1216,12 @@ XML;
 
         return htmlspecialchars($clean, ENT_XML1 | ENT_COMPAT, 'UTF-8');
     }
+
     private function weaponPreviewRow(Weapon $weapon): array
     {
         return [
             'id' => $weapon->id,
-            'client' => $weapon->activeClientAssignment?->client?->name ?? 'Sin destino',
+            'client' => $weapon->operationalDisplayClient()?->name ?? 'Sin destino',
             'type' => $weapon->weapon_type,
             'brand' => $weapon->brand,
             'serial' => $weapon->serial_number,
@@ -1191,17 +1238,17 @@ XML;
             ?? $weapon->documents->firstWhere('is_permit', true);
         $renewalAlert = WeaponDocumentAlert::forComplianceDocument($renewalDocument);
         $manualInProcess = $weapon->documents
-            ->filter(fn ($doc) => !($doc->is_permit || $doc->is_renewal))
+            ->filter(fn ($doc) => ! ($doc->is_permit || $doc->is_renewal))
             ->first(fn ($doc) => ($doc->status ?? '') === 'En proceso');
         $openIncident = $weapon->openIncidents->first();
         $internalAssignment = $weapon->activeWorkerAssignment ?? $weapon->activePostAssignment;
         $statusText = $manualInProcess
-            ? trim(($manualInProcess->document_name ?: 'Documento') . ': ' . ($manualInProcess->observations ?: 'En proceso'))
+            ? trim(($manualInProcess->document_name ?: 'Documento').': '.($manualInProcess->observations ?: 'En proceso'))
             : ($renewalAlert['observation'] !== '-'
                 ? $renewalAlert['observation']
-                : ($weapon->activeClientAssignment ? 'Asignada' : 'Sin destino'));
+                : ($weapon->operationalDisplayClient() ? 'Asignada' : 'Sin destino'));
         $incidentText = $openIncident
-            ? trim(($openIncident->type?->name ?? 'Novedad') . ($openIncident->modality ? ' / ' . $openIncident->modality->name : ''))
+            ? trim(($openIncident->type?->name ?? 'Novedad').($openIncident->modality ? ' / '.$openIncident->modality->name : ''))
             : 'Sin novedades';
 
         $destination = '-';
@@ -1212,7 +1259,7 @@ XML;
         }
 
         return [
-            $weapon->activeClientAssignment?->client?->name ?? 'Sin destino',
+            $weapon->operationalDisplayClient()?->name ?? 'Sin destino',
             $weapon->weapon_type,
             $weapon->brand,
             $weapon->serial_number,
@@ -1225,17 +1272,17 @@ XML;
             $incidentText,
             $internalAssignment?->ammo_count ?? '-',
             $internalAssignment?->provider_count ?? '-',
-            $weapon->activeClientAssignment?->responsible?->name ?? '-',
+            $weapon->operationalDisplayResponsible()?->name ?? '-',
             $destination,
             $weapon->activeWorkerAssignment?->worker?->document ?? '-',
-            $weapon->imprint_month ? 'Recibida ' . $weapon->imprint_month : 'Pendiente',
+            $weapon->imprint_month ? 'Recibida '.$weapon->imprint_month : 'Pendiente',
         ];
     }
 
     private function generateInternalCode(): string
     {
         $prefix = 'SJ-';
-        $latestCode = Weapon::where('internal_code', 'like', $prefix . '%')
+        $latestCode = Weapon::where('internal_code', 'like', $prefix.'%')
             ->orderByRaw('CAST(SUBSTRING(internal_code, 4) AS UNSIGNED) DESC')
             ->value('internal_code');
         $lastNumber = $latestCode ? (int) preg_replace('/\D/', '', $latestCode) : 0;
@@ -1247,7 +1294,7 @@ XML;
     public function toggleImprint(Request $request, Weapon $weapon)
     {
         $user = $request->user();
-        if (!$user || !$user->isAdmin()) {
+        if (! $user || ! $user->isAdmin()) {
             abort(403);
         }
 
@@ -1273,8 +1320,3 @@ XML;
         return back();
     }
 }
-
-
-
-
-
