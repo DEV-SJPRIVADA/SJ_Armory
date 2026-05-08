@@ -165,10 +165,11 @@
                                             —
                                         @endif
                                     </td>
-                                    <td class="px-3 py-2 text-right whitespace-nowrap space-x-2">
+                                    <td class="px-3 py-2 text-right whitespace-nowrap">
+                                        <div class="inline-flex flex-wrap items-center justify-end gap-2">
                                         @if ($canAcceptRow)
                                             <button type="button"
-                                                class="text-emerald-600 hover:text-emerald-900"
+                                                class="inline-flex items-center rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-semibold text-white shadow-sm ring-1 ring-emerald-800/80 hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-1"
                                                 data-transfer-id="{{ $transfer->id }}"
                                                 data-transfer-action="{{ route('transfers.accept', $transfer) }}"
                                                 data-transfer-code="{{ $serie }}"
@@ -179,7 +180,8 @@
                                             </button>
                                         @endif
                                         @if ($canCancelRow)
-                                            <button type="button" class="text-amber-700 hover:text-amber-900"
+                                            <button type="button"
+                                                class="inline-flex items-center rounded-md border-2 border-amber-800 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-950 shadow-sm hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-1"
                                                 data-cancel-action="{{ route('transfers.cancel', $transfer) }}"
                                                 data-transfer-code="{{ $serie }}">
                                                 {{ __('Cancelar') }}
@@ -188,6 +190,7 @@
                                         @if (! $canAcceptRow && ! $canCancelRow)
                                             <span class="text-gray-500">{{ __('Sin acciones') }}</span>
                                         @endif
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
@@ -223,16 +226,16 @@
                     </svg>
                 </button>
             </div>
-            <form id="cancel-transfer-form" method="POST" class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+            <form id="cancel-transfer-form" method="POST" class="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end sm:gap-3">
                 @csrf
                 @method('PATCH')
                 <button type="button"
-                    class="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 sm:w-auto"
+                    class="order-2 w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50 sm:order-1 sm:w-auto"
                     x-on:click="$dispatch('close-modal', 'cancel-transfer')">
                     {{ __('Cerrar') }}
                 </button>
                 <button type="submit"
-                    class="w-full rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-amber-700 sm:w-auto">
+                    class="order-1 w-full rounded-md bg-amber-700 px-4 py-2 text-sm font-semibold text-white shadow-sm ring-1 ring-amber-900/30 hover:bg-amber-800 sm:order-2 sm:w-auto">
                     {{ __('Confirmar cancelación') }}
                 </button>
             </form>

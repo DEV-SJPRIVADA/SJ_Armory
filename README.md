@@ -542,7 +542,7 @@ Flujo:
   - Si hay error de validacion/alcance, no se muestra pantalla de excepcion: se redirige a `transfers.index` con una alerta y opciones para reintentar la seleccion o cancelar.
   - Asigna nuevo cliente responsable.
   - Opcionalmente asigna **puesto y/o trabajador** (puede elegir ambos; el mapa prioriza el puesto cuando hay puesto). La validacion de coordenadas del puesto o del cliente (solo trabajador) es la misma que en la asignacion interna desde el detalle del arma.
-- **Cancelación** (`transfers.cancel`): remitente, destinatario o administrador pueden cancelar una pendiente; **no** altera el destino si la asignación sigue activa (flujo actual). Si la transferencia es antigua y el arma quedó sin cliente (migración de comportamiento previo), se intenta **restaurar** desde `from_client_id` / `from_user_id`. La confirmación en pantalla es un **modal** (`resources/views/transfers/index.blade.php`, `cancel-transfer`), no el cuadro nativo del navegador.
+- **Cancelación** (`transfers.cancel`): remitente, destinatario o administrador pueden cancelar una pendiente; **no** altera el destino si la asignación sigue activa (flujo actual). Si la transferencia es antigua y el arma quedó sin cliente (migración de comportamiento previo), se intenta **restaurar** desde `from_client_id` / `from_user_id`. La confirmación en pantalla es un **modal** (`resources/views/transfers/index.blade.php`, `cancel-transfer`), no el cuadro nativo del navegador; en la tabla, **Aceptar** y **Cancelar** usan estilos tipo botón (contraste alto) para lectura clara.
 - Rechazo: la ruta `transfers.reject` fue sustituida por cancelación unificada (`cancelled`); registros antiguos pueden seguir en estado `rejected`.
 
 ### 5.5 Clientes
