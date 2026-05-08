@@ -218,7 +218,7 @@
             </button>
         </div>
         <div class="p-4">
-            <div class="h-[70vh] max-h-[70vh] w-full overflow-hidden rounded bg-slate-100">
+            <div class="h-[70vh] max-h-[70vh] w-full overflow-auto rounded bg-slate-100">
                 <img id="image_editor_image" alt="Editor" class="block max-h-none max-w-none" />
             </div>
         </div>
@@ -437,18 +437,25 @@
         destroyCropper();
 
         cropper = new Cropper(modalImage, {
-            viewMode: 1,
+            viewMode: 0,
             autoCropArea: 1,
             responsive: true,
             restore: false,
             background: false,
+            toggleDragModeOnDblclick: false,
         });
 
         requestAnimationFrame(() => {
-            if (cropper) {
-                cropper.rotateTo(editorFineRotation);
+            if (cropper && editorFineRotation !== 0) {
+                cropper.rotate(editorFineRotation);
             }
         });
+    };
+
+    const applyFineRotationDelta = (diff) => {
+        if (cropper && diff !== 0) {
+            cropper.rotate(diff);
+        }
     };
 
     const syncFineRotationUi = () => {
@@ -637,12 +644,11 @@
         await renderEditorImage();
     });
     fineRotateInput?.addEventListener('input', () => {
-        editorFineRotation = Number.parseFloat(fineRotateInput.value || '0') || 0;
+        const next = Number.parseFloat(fineRotateInput.value || '0') || 0;
+        const diff = next - editorFineRotation;
+        editorFineRotation = next;
+        applyFineRotationDelta(diff);
         syncFineRotationUi();
-
-        if (cropper) {
-            cropper.rotateTo(editorFineRotation);
-        }
     });
     resetRotateButton?.addEventListener('click', async () => {
         if (!editorSourceFile) {

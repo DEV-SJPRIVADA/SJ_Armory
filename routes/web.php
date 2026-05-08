@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AlertsController;
+use App\Http\Controllers\AuthenticatedPermitImageController;
 use App\Http\Controllers\Auth\ForcedPasswordChangeController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\DashboardController;
@@ -103,6 +104,13 @@ Route::middleware('auth')->group(function () {
         ->name('weapons.permit');
     Route::patch('/weapons/{weapon}/permit', [WeaponController::class, 'updatePermitPhoto'])
         ->name('weapons.permit.update');
+    Route::get('/authenticated-permit-images/{permit_kind}', [AuthenticatedPermitImageController::class, 'show'])
+        ->whereIn('permit_kind', ['porte', 'tenencia'])
+        ->name('authenticated-permit-images.show');
+
+    Route::post('/weapon-imports/permit-authenticated/{permit_kind}', [WeaponImportController::class, 'updatePermitAuthenticated'])
+        ->whereIn('permit_kind', ['porte', 'tenencia'])
+        ->name('weapon-imports.permit-authenticated.update');
 
     Route::post('/weapons/{weapon}/photos', [WeaponPhotoController::class, 'store'])
         ->name('weapons.photos.store');

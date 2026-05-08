@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\File;
+use App\Models\PermitAuthenticatedTemplate;
 use App\Models\Weapon;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -154,6 +155,66 @@ class WeaponDocumentService
         ];
     }
 
+    public function buildPermitPdf(Weapon $weapon, File $frontFile, ?string $permitKind): array
+    {
+        if (!$this->hasPdfPreviewSupport()) {
+            throw new RuntimeException('La generación de PDF no está disponible en este momento.');
+        }
+
+        $normalizedKind = in_array($permitKind, [PermitAuthenticatedTemplate::KIND_PORTE, PermitAuthenticatedTemplate::KIND_TENENCIA], true)
+            ? $permitKind
+            : null;
+
+        if ($normalizedKind === null) {
+            throw new RuntimeException('El permiso no tiene tipo válido para componer el PDF.');
+        }
+
+        $reverseTemplate = PermitAuthenticatedTemplate::query()
+            ->where('permit_kind', $normalizedKind)
+            ->with('file')
+            ->first();
+
+        if (!$reverseTemplate?->file) {
+            throw new RuntimeException('No existe reverso autenticado cargado para este tipo de permiso.');
+        }
+
+        $frontDataUri = $this->imageDataUri($frontFile);
+        $reverseDataUri = $this->imageDataUri($reverseTemplate->file);
+
+        $tmpDir = $this->createTempDirectory('sj-armory-permit-');
+
+        $tipoSegment = $normalizedKind === PermitAuthenticatedTemplate::KIND_PORTE ? 'Porte' : 'Tenencia';
+        $serialSegment = preg_replace('/[^\p{L}\p{N}._-]+/u', '_', (string) ($weapon->serial_number ?? ''));
+        $serialSegment = trim($serialSegment, '._-');
+        if ($serialSegment === '') {
+            $serialSegment = 'sin-serie';
+        }
+        $fileName = 'Permiso_'.$tipoSegment.'_'.$serialSegment.'.pdf';
+        $pdfPath = $tmpDir.DIRECTORY_SEPARATOR.$fileName;
+
+        $html = View::make('weapons.permit-pdf', [
+            'frontDataUri' => $frontDataUri,
+            'reverseDataUri' => $reverseDataUri,
+            'permitKind' => $normalizedKind,
+        ])->render();
+
+        $options = new Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html, 'UTF-8');
+        $dompdf->setPaper('letter', 'portrait');
+        $dompdf->render();
+
+        file_put_contents($pdfPath, $dompdf->output());
+
+        return [
+            'file_name' => $fileName,
+            'path' => $pdfPath,
+        ];
+    }
+
     private function createTempDirectory(string $prefix): string
     {
         $base = rtrim(sys_get_temp_dir(), '\\/');
@@ -164,5 +225,20 @@ class WeaponDocumentService
         }
 
         return $path;
+    }
+
+    private function imageDataUri(File $file): string
+    {
+        if (!str_starts_with((string) $file->mime_type, 'image/')) {
+            throw new RuntimeException('El archivo del permiso debe ser una imagen para generar el PDF.');
+        }
+
+        if (!Storage::disk($file->disk)->exists($file->path)) {
+            throw new RuntimeException('No se encontró una imagen requerida para generar el PDF.');
+        }
+
+        $contents = Storage::disk($file->disk)->get($file->path);
+
+        return 'data:'.$file->mime_type.';base64,'.base64_encode($contents);
     }
 }

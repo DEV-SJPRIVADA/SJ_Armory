@@ -8,13 +8,13 @@ Sistema web para **gestión de armamento**, **asignaciones operativas**, **trans
 
 ## 📌 Alcance funcional
 
-- ✅ **Armas**: alta/edición, fotos (técnicas y permiso), documentos, exportación, inventario.
+- ✅ **Armas**: alta/edición, fotos (técnicas y permiso; reverso autenticado según plantillas globales **porte** / **tenencia**), documentos (descarga del **permiso** como PDF frente + reverso), exportación, inventario.
 - ✅ **Asignaciones**:
   - **Operativa** (arma ↔ cliente/responsable)
   - **Interna** (arma ↔ puesto y/o trabajador; ubicación en mapa prioriza puesto si existe; la columna de destino en el listado refleja principalmente al trabajador cuando hay trabajador activo)
 - ✅ **Transferencias**: listado **unificado** (pendientes y enviadas en una tabla; serie en columna arma; munición/proveedores opcionales en el envío; aceptación; **cancelación** con restauración cuando aplica); con transferencia **pendiente**, la ficha del arma muestra un **aviso** (usuario normal: mensaje genérico; **ADMIN**: quién **envió** y quién **debe aceptar**); botón **Historial** (modal, últimas participaciones).
 - ✅ **Clientes / Puestos / Trabajadores / Usuarios** (puestos y trabajadores: archivo, historial de cambios, políticas por rol)
-- ✅ **Cargas masivas**: validación previa, preview, ejecución por chunks, trazabilidad por lote.
+- ✅ **Cargas masivas**: validación previa, preview, ejecución por chunks, trazabilidad por lote; en la vista **Subir armas**, el **ADMIN** gestiona las plantillas globales de reverso autenticado (porte y tenencia) usadas en el PDF y en la ficha.
 - ✅ **Dashboard**: KPIs, métricas, gráficos y estado “as of”.
 - ✅ **Alertas**: vencimientos documentales.
 - ✅ **Mapa**: geocodificación y visualización operativa.
@@ -406,6 +406,13 @@ Flujo actual de armas:
   - la validacion detallada se revisa solo en el modal,
   - el resultado detallado solo aparece en el `index` despues de ejecutar.
 
+**Plantillas de reverso autenticado (permiso)**
+
+- Solo **ADMIN**, desde el listado del centro de cargas (`weapon-imports.index`).
+- Modal por tipo **porte** / **tenencia**: subida de imagen con recorte (cropper); se persisten en `permit_authenticated_templates` (una fila por tipo) y en `files`; disco `local`, carpeta `storage/app/permit-authenticated-templates/`.
+- Ruta de actualización: `weapon-imports.permit-authenticated.update` (`POST /weapon-imports/permit-authenticated/{porte|tenencia}`).
+- Las mismas plantillas alimentan la **descarga del permiso en PDF** (véase §5.8) y la tarjeta de reverso en la ficha del arma cuando el tipo de permiso coincide.
+
 Estados operativos del lote:
 
 - `draft`
@@ -603,6 +610,13 @@ Controlador: `app/Http/Controllers/WeaponDocumentController.php`
   - La fila de **Revalidación** se oculta de la tabla de documentos para responsables y auditores.
   - El endpoint `weapons.documents.download` valida `is_renewal` y aborta con `403` si el usuario no es ADMIN, aun cuando intente entrar por la URL directa.
   - Los responsables y auditores siguen viendo y descargando el documento de **Permiso** y los demás documentos manuales.
+
+**Descarga del permiso como PDF**
+
+- Si el documento está marcado como permiso (`is_permit`), la descarga genera un **PDF** (`WeaponDocumentService::buildPermitPdf`, vista Blade `resources/views/weapons/permit-pdf.blade.php`, Dompdf) en lugar de devolver el archivo subido tal cual.
+- Debe existir **foto de permiso** del arma (`permit_file_id`), tipo de permiso del arma **porte** o **tenencia**, y la **plantilla de reverso** correspondiente en `permit_authenticated_templates`; si falta el reverso cargado, la descarga responde con error controlado.
+- Contenido: **frente** (imagen del permiso del arma) + **reverso** (plantilla global del mismo tipo). Medidas por cara: **8,56 cm × 5,4 cm**, una hoja carta vertical.
+- Nombre del archivo entregado: `Permiso_Porte_<serie>.pdf` o `Permiso_Tenencia_<serie>.pdf` (serie sanitizada; si no hay serie, `sin-serie`).
 
 Observaciones permitidas en carga documental:
 
@@ -886,6 +900,7 @@ Rutas usadas por el dominio:
 
 - Fotos arma: `storage/app/public/weapons/{weapon_id}/photos`
 - Permiso arma: `storage/app/weapons/{weapon_id}/permits`
+- Plantillas reverso autenticado (global, porte/tenencia): `storage/app/permit-authenticated-templates` (metadatos en `files` / `permit_authenticated_templates`)
 - Documentos arma: `storage/app/weapons/{weapon_id}/documents`
 - Renovacion autogenerada: `storage/app/weapons/{weapon_id}/documents/renovacion_{internal_code}.docx`
 - Archivos de importacion: `storage/app/weapon-imports`

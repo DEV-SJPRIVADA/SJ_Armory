@@ -10,6 +10,7 @@ use App\Services\WeaponDocumentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Throwable;
 
 class WeaponDocumentController extends Controller
@@ -102,6 +103,20 @@ class WeaponDocumentController extends Controller
 
         if (!$file || !Storage::disk($file->disk)->exists($file->path)) {
             abort(404);
+        }
+
+        if ($document->is_permit) {
+            try {
+                $result = $documentService->buildPermitPdf(
+                    $weapon,
+                    $file,
+                    $document->permit_kind ?? $weapon->permit_type
+                );
+            } catch (RuntimeException $exception) {
+                abort(422, $exception->getMessage());
+            }
+
+            return response()->download($result['path'], $result['file_name'])->deleteFileAfterSend(true);
         }
 
         return Storage::disk($file->disk)->download($file->path, $file->original_name);

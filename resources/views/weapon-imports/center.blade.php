@@ -1,5 +1,28 @@
 @push('styles')
+    <link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css">
     <style>
+        .sj-paste-hint-zone { position: relative; }
+        .sj-paste-proxy {
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+            background: transparent;
+            border: 0;
+            color: transparent;
+            caret-color: transparent;
+            opacity: 0;
+            font-size: 1px;
+            line-height: 1;
+            padding: 0;
+            margin: 0;
+            outline: none;
+            user-select: none;
+            -webkit-user-select: none;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .sj-paste-proxy::selection { background: transparent; }
+        .sj-pa-surface { transition: border-color 0.15s ease, background-color 0.15s ease; }
         .mass-import-progress { display: none; gap: 0.75rem; border: 1px solid #dbeafe; border-radius: 0.9rem; background: #eff6ff; padding: 1rem; }
         .mass-import-progress.is-visible { display: grid; }
         .mass-import-progress__top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
@@ -18,6 +41,7 @@
 @endpush
 
 @push('scripts')
+<script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script>
 (() => {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -219,6 +243,292 @@
 
     applyType(typeInput.value || 'weapon');
 })();
+
+(() => {
+    const modalRoot = document.getElementById('permit-authenticated-upload-modal');
+    if (!modalRoot) {
+        return;
+    }
+
+    const kinds = ['porte', 'tenencia'];
+    const roots = {};
+
+    kinds.forEach((kind) => {
+        roots[kind] = {
+            kind,
+            input: document.getElementById(`pa-input-${kind}`),
+            img: document.getElementById(`pa-img-${kind}`),
+            empty: document.getElementById(`pa-placeholder-${kind}`),
+            btn: document.getElementById(`pa-btn-${kind}`),
+            surface: document.querySelector(`[data-pa-surface="${kind}"]`),
+            zone: document.querySelector(`[data-pa-zone="${kind}"]`),
+            pasteProxy: document.getElementById(`pa-paste-proxy-${kind}`),
+            _objUrl: null,
+        };
+    });
+
+    let hoverKind = null;
+    let pendingTarget = null;
+    let editorCropper = null;
+    let editorObjectUrl = null;
+
+    const editorModal = document.getElementById('permit-auth-editor-modal');
+    const editorImage = document.getElementById('permit-auth-editor-image');
+    const editorClose = document.getElementById('permit-auth-editor-close');
+    const editorCancel = document.getElementById('permit-auth-editor-cancel');
+    const editorApply = document.getElementById('permit-auth-editor-apply');
+    const editorRotateLeft = document.getElementById('permit-auth-editor-rotate-left');
+    const editorRotateRight = document.getElementById('permit-auth-editor-rotate-right');
+    const editorFineInput = document.getElementById('permit-auth-editor-rotate-fine');
+    const editorFineValue = document.getElementById('permit-auth-editor-rotate-value');
+    const editorReset = document.getElementById('permit-auth-editor-rotate-reset');
+
+    let editorFineRotation = 0;
+
+    const isPermitAuthModalVisible = () => {
+        let el = modalRoot;
+        while (el) {
+            const st = el.style?.display;
+            if (st === 'none') {
+                return false;
+            }
+            const cs = window.getComputedStyle(el);
+            if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') {
+                return false;
+            }
+            el = el.parentElement;
+        }
+        return true;
+    };
+
+    const syncFineUi = () => {
+        if (editorFineInput) {
+            editorFineInput.value = editorFineRotation.toString();
+        }
+        if (editorFineValue) {
+            editorFineValue.textContent = `${editorFineRotation.toFixed(1)}°`;
+        }
+    };
+
+    const closeEditor = () => {
+        if (editorCropper) {
+            editorCropper.destroy();
+            editorCropper = null;
+        }
+        if (editorObjectUrl) {
+            URL.revokeObjectURL(editorObjectUrl);
+            editorObjectUrl = null;
+        }
+        if (editorImage) {
+            editorImage.removeAttribute('src');
+        }
+        editorFineRotation = 0;
+        syncFineUi();
+        window.dispatchEvent(new CustomEvent('close-modal', { detail: 'permit-auth-editor' }));
+    };
+
+    const assignFileToZone = (cfg, file) => {
+        if (!cfg?.input || !file || !file.type.startsWith('image/')) {
+            return;
+        }
+        if (cfg._objUrl) {
+            URL.revokeObjectURL(cfg._objUrl);
+        }
+        cfg._objUrl = URL.createObjectURL(file);
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        cfg.input.files = dt.files;
+        if (cfg.img) {
+            cfg.img.src = cfg._objUrl;
+            cfg.img.classList.remove('hidden');
+        }
+        if (cfg.empty) {
+            cfg.empty.classList.add('hidden');
+        }
+        if (cfg.btn) {
+            cfg.btn.disabled = false;
+        }
+    };
+
+    const openEditor = (cfg, file) => {
+        if (!cfg || !file || !editorModal || !editorImage) {
+            return;
+        }
+        if (!file.type.startsWith('image/')) {
+            return;
+        }
+        pendingTarget = cfg;
+        if (editorObjectUrl) {
+            URL.revokeObjectURL(editorObjectUrl);
+        }
+        editorObjectUrl = URL.createObjectURL(file);
+        editorImage.src = editorObjectUrl;
+        window.dispatchEvent(new CustomEvent('open-modal', { detail: 'permit-auth-editor' }));
+        editorFineRotation = 0;
+        syncFineUi();
+
+        if (editorCropper) {
+            editorCropper.destroy();
+        }
+
+        editorCropper = new Cropper(editorImage, {
+            viewMode: 0,
+            autoCropArea: 1,
+            toggleDragModeOnDblclick: false,
+            responsive: true,
+        });
+    };
+
+    kinds.forEach((kind) => {
+        const cfg = roots[kind];
+        if (!cfg.zone || !cfg.input || !cfg.surface) {
+            return;
+        }
+
+        cfg.zone.addEventListener('mouseenter', () => {
+            hoverKind = kind;
+        });
+        cfg.zone.addEventListener('mouseleave', () => {
+            if (hoverKind === kind) {
+                hoverKind = null;
+            }
+        });
+
+        cfg.input.addEventListener('change', () => {
+            const file = cfg.input.files && cfg.input.files[0] ? cfg.input.files[0] : null;
+            if (file) {
+                openEditor(cfg, file);
+            }
+        });
+
+        ['dragenter', 'dragover'].forEach((eventName) => {
+            cfg.surface.addEventListener(eventName, (event) => {
+                event.preventDefault();
+                cfg.surface.classList.add('border-indigo-400', 'bg-indigo-50');
+            });
+        });
+
+        ['dragleave', 'dragend', 'drop'].forEach((eventName) => {
+            cfg.surface.addEventListener(eventName, (event) => {
+                event.preventDefault();
+                cfg.surface.classList.remove('border-indigo-400', 'bg-indigo-50');
+            });
+        });
+
+        cfg.surface.addEventListener('drop', (event) => {
+            const file = event.dataTransfer?.files?.[0];
+            if (file) {
+                openEditor(cfg, file);
+            }
+        });
+
+        if (cfg.pasteProxy) {
+            cfg.zone.addEventListener('mouseenter', () => {
+                hoverKind = kind;
+            });
+            cfg.zone.addEventListener('mouseleave', () => {
+                if (hoverKind === kind) {
+                    hoverKind = null;
+                }
+            });
+            cfg.pasteProxy.addEventListener('focus', () => {
+                hoverKind = kind;
+            });
+            cfg.pasteProxy.addEventListener('mousedown', (event) => {
+                hoverKind = kind;
+                if (event.button === 0) {
+                    event.preventDefault();
+                    cfg.input.click();
+                }
+            });
+            cfg.pasteProxy.addEventListener('paste', (event) => {
+                const items = Array.from(event.clipboardData?.items || []);
+                const imageItem = items.find((item) => item.kind === 'file' && item.type.startsWith('image/'));
+                const file = imageItem ? imageItem.getAsFile() : null;
+                if (!file) {
+                    return;
+                }
+                event.preventDefault();
+                event.stopPropagation();
+                openEditor(cfg, file);
+                cfg.pasteProxy.textContent = '';
+            });
+        }
+    });
+
+    window.addEventListener('paste', (event) => {
+        if (!isPermitAuthModalVisible() || !hoverKind || !roots[hoverKind]) {
+            return;
+        }
+        const items = Array.from(event.clipboardData?.items || []);
+        const imageItem = items.find((item) => item.kind === 'file' && item.type.startsWith('image/'));
+        const file = imageItem ? imageItem.getAsFile() : null;
+        if (!file) {
+            return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        openEditor(roots[hoverKind], file);
+    });
+
+    editorClose?.addEventListener('click', closeEditor);
+    editorCancel?.addEventListener('click', closeEditor);
+    editorApply?.addEventListener('click', () => {
+        if (!editorCropper || !pendingTarget) {
+            closeEditor();
+            return;
+        }
+
+        editorCropper.getCroppedCanvas().toBlob((blob) => {
+            if (!blob) {
+                closeEditor();
+                return;
+            }
+            const file = new File([blob], `permit_authenticated_${pendingTarget.kind}.jpg`, { type: blob.type || 'image/jpeg' });
+            assignFileToZone(pendingTarget, file);
+            closeEditor();
+        }, 'image/jpeg', 0.92);
+    });
+
+    editorRotateLeft?.addEventListener('click', () => {
+        if (!editorCropper) return;
+        if (editorFineRotation !== 0) {
+            editorCropper.rotate(-editorFineRotation);
+            editorFineRotation = 0;
+            syncFineUi();
+        }
+        editorCropper.rotate(-90);
+    });
+
+    editorRotateRight?.addEventListener('click', () => {
+        if (!editorCropper) return;
+        if (editorFineRotation !== 0) {
+            editorCropper.rotate(-editorFineRotation);
+            editorFineRotation = 0;
+            syncFineUi();
+        }
+        editorCropper.rotate(90);
+    });
+
+    editorFineInput?.addEventListener('input', () => {
+        if (!editorCropper) return;
+        const next = Number.parseFloat(editorFineInput.value || '0') || 0;
+        const diff = next - editorFineRotation;
+        editorFineRotation = next;
+        if (diff !== 0) {
+            editorCropper.rotate(diff);
+        }
+        syncFineUi();
+    });
+
+    editorReset?.addEventListener('click', () => {
+        if (editorCropper) {
+            editorCropper.reset();
+        }
+        editorFineRotation = 0;
+        syncFineUi();
+    });
+})();
 </script>
 @endpush
 
@@ -229,12 +539,15 @@
                 <h2 class="text-xl font-semibold leading-tight text-gray-800">Centro de cargas masivas</h2>
                 <p class="mt-1 text-sm text-gray-500">Carga y procesa informacion en lote</p>
             </div>
-            <div class="flex flex-col gap-2 sm:flex-row lg:justify-end">
+            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:justify-end">
                 <button type="button" data-import-trigger data-import-type="weapon" x-data="" x-on:click.prevent="$dispatch('open-modal', 'mass-import-upload')" class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
-                    Subir armas
+                    {{ __('Subir armas') }}
+                </button>
+                <button type="button" x-data="" x-on:click.prevent="$dispatch('open-modal', 'permit-authenticated-upload')" class="inline-flex items-center justify-center rounded-md border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-900 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-100">
+                    {{ __('Cargar autenticación') }}
                 </button>
                 <button type="button" data-import-trigger data-import-type="client" x-data="" x-on:click.prevent="$dispatch('open-modal', 'mass-import-upload')" class="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                    Subir clientes
+                    {{ __('Subir clientes') }}
                 </button>
             </div>
         </div>
@@ -253,6 +566,8 @@
             @if ($errors->has('batch'))
                 <div class="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $errors->first('batch') }}</div>
             @endif
+
+            @php($permitAuthTemplates = $permitAuthTemplates ?? collect())
 
             <section>
                 <div class="mb-4 flex items-end justify-between gap-3">
@@ -292,6 +607,111 @@
             </section>
         </div>
     </div>
+
+    <x-modal name="permit-authenticated-upload" :show="$errors->has('photo')" maxWidth="5xl" focusable>
+        <div id="permit-authenticated-upload-modal" class="p-6">
+            <div class="flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">{{ __('Permiso autenticado global') }}</h3>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500">{{ __('Dos referencias para todo el sistema (porte y tenencia). Se muestran en las fichas según el tipo de permiso del arma. Arrastra, pega con el puntero sobre la tarjeta o haz clic para elegir archivo.') }}</p>
+                </div>
+                <button type="button" x-data="" x-on:click.prevent="$dispatch('close-modal', 'permit-authenticated-upload')" class="shrink-0 rounded-md px-2 py-1 text-sm text-gray-500 transition hover:bg-gray-100 hover:text-gray-700">
+                    {{ __('Cerrar') }}
+                </button>
+            </div>
+
+            @if ($errors->has('photo'))
+                <div class="mt-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $errors->first('photo') }}</div>
+            @endif
+
+            <div class="mt-6 grid gap-6 md:grid-cols-2">
+                @foreach (['porte' => __('Porte'), 'tenencia' => __('Tenencia')] as $kind => $label)
+                    @php($tpl = $permitAuthTemplates->get($kind))
+                    @php($hasFile = (bool) ($tpl?->file))
+                    <div class="rounded-xl border border-gray-200 bg-gradient-to-b from-slate-50/80 to-white p-4 shadow-sm sj-paste-hint-zone">
+                        <form id="pa-form-{{ $kind }}" method="POST" action="{{ route('weapon-imports.permit-authenticated.update', $kind) }}" enctype="multipart/form-data" class="space-y-3">
+                            @csrf
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-sm font-semibold text-gray-800">{{ $label }}</span>
+                                @if ($hasFile && $tpl?->updated_at)
+                                    <span class="text-xs text-gray-500">{{ __('Actualizado :fecha', ['fecha' => $tpl->updated_at->format('d/m/Y H:i')]) }}</span>
+                                @endif
+                            </div>
+
+                            <div class="sj-paste-hint-zone rounded-lg border border-gray-200 bg-white p-2" data-pa-zone="{{ $kind }}" tabindex="0">
+                                <div id="pa-paste-proxy-{{ $kind }}" class="sj-paste-proxy" contenteditable="true" spellcheck="false"></div>
+                                <label for="pa-input-{{ $kind }}" class="block cursor-pointer">
+                                    <input id="pa-input-{{ $kind }}" name="photo" type="file" accept="image/*" class="hidden">
+                                    <div data-pa-surface="{{ $kind }}" class="sj-pa-surface relative flex h-44 w-full items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 transition hover:border-indigo-400 hover:bg-indigo-50/40">
+                                        <img
+                                            id="pa-img-{{ $kind }}"
+                                            src="{{ $hasFile ? route('authenticated-permit-images.show', ['permit_kind' => $kind]) : '' }}"
+                                            alt=""
+                                            class="{{ $hasFile ? 'block' : 'hidden' }} relative z-0 h-full w-full object-contain p-2"
+                                        >
+                                        <div
+                                            id="pa-placeholder-{{ $kind }}"
+                                            class="{{ $hasFile ? 'hidden' : 'flex' }} pointer-events-none relative z-0 min-h-[7rem] w-full flex-col items-center justify-center px-3 text-center"
+                                        >
+                                            <svg class="mb-2 h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                            </svg>
+                                            <span class="text-sm font-medium text-gray-600">{{ __('Toca para elegir imagen') }}</span>
+                                            <span class="mt-1 text-xs text-gray-400">{{ __('Arrastra, suelta o pega (cursor sobre esta tarjeta)') }}</span>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <button type="submit" id="pa-btn-{{ $kind }}" disabled class="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300">
+                                {{ __('Guardar imagen') }}
+                            </button>
+                        </form>
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="mt-6 flex justify-end border-t border-gray-100 pt-4">
+                <button type="button" x-data="" x-on:click.prevent="$dispatch('close-modal', 'permit-authenticated-upload')" class="rounded-md px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-100 hover:text-gray-900">
+                    {{ __('Listo') }}
+                </button>
+            </div>
+        </div>
+    </x-modal>
+
+    <x-modal name="permit-auth-editor" :show="false" maxWidth="4xl" focusable>
+        <div id="permit-auth-editor-modal" class="p-4">
+        <div class="w-full rounded bg-white shadow-2xl">
+            <div class="flex items-center justify-between border-b px-4 py-3">
+                <h3 class="text-sm font-semibold text-gray-800">{{ __('Editar imagen') }}</h3>
+                <button id="permit-auth-editor-close" type="button" class="text-sm text-gray-500 hover:text-gray-700">{{ __('Cerrar') }}</button>
+            </div>
+            <div class="p-4">
+                <div class="h-[70vh] max-h-[70vh] w-full overflow-auto rounded bg-slate-100">
+                    <img id="permit-auth-editor-image" alt="Editor" class="block max-h-none max-w-none" />
+                </div>
+            </div>
+            <div class="flex items-center justify-between gap-2 border-t px-4 py-3">
+                <div class="flex flex-1 flex-wrap items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <button id="permit-auth-editor-rotate-left" type="button" class="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100">{{ __('Girar izquierda') }}</button>
+                        <button id="permit-auth-editor-rotate-right" type="button" class="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100">{{ __('Girar derecha') }}</button>
+                    </div>
+                    <div class="flex min-w-[18rem] flex-1 flex-wrap items-center gap-2">
+                        <span class="text-xs font-medium text-gray-600">{{ __('Ajuste fino') }}</span>
+                        <input id="permit-auth-editor-rotate-fine" type="range" min="-10" max="10" step="0.1" value="0" class="h-2 min-w-[10rem] flex-1 cursor-pointer accent-indigo-600">
+                        <span id="permit-auth-editor-rotate-value" class="w-14 text-right text-xs font-medium text-gray-600">0.0°</span>
+                        <button id="permit-auth-editor-rotate-reset" type="button" class="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100">{{ __('Restablecer') }}</button>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="permit-auth-editor-cancel" type="button" class="text-sm text-gray-600 hover:text-gray-900">{{ __('Cancelar') }}</button>
+                    <button id="permit-auth-editor-apply" type="button" class="rounded bg-indigo-600 px-3 py-1 text-xs text-white hover:bg-indigo-700">{{ __('Guardar') }}</button>
+                </div>
+            </div>
+        </div>
+        </div>
+    </x-modal>
 
     <x-modal name="mass-import-upload" :show="$errors->has('document')" maxWidth="2xl" focusable>
         <div id="mass-import-upload-modal" class="p-6">

@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\File;
+use App\Models\PermitAuthenticatedTemplate;
 use App\Models\WeaponImportBatch;
 use App\Services\WeaponImportService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Throwable;
@@ -31,7 +35,57 @@ class WeaponImportController extends Controller
 
         return view('weapon-imports.center', [
             'batches' => $batches,
+            'permitAuthTemplates' => PermitAuthenticatedTemplate::with('file')
+                ->whereIn('permit_kind', ['porte', 'tenencia'])
+                ->get()
+                ->keyBy('permit_kind'),
         ]);
+    }
+
+    public function updatePermitAuthenticated(Request $request, string $permitKind)
+    {
+        abort_unless(in_array($permitKind, ['porte', 'tenencia'], true), 404);
+
+        $data = $request->validate([
+            'photo' => ['required', 'image', 'max:5120'],
+        ]);
+
+        $uploaded = $data['photo'];
+        $storedPath = $uploaded->store('permit-authenticated-templates', 'local');
+
+        try {
+            DB::transaction(function () use ($request, $permitKind, $uploaded, $storedPath) {
+                $storedFile = File::create([
+                    'disk' => 'local',
+                    'path' => $storedPath,
+                    'original_name' => $uploaded->getClientOriginalName(),
+                    'mime_type' => $uploaded->getClientMimeType(),
+                    'size' => $uploaded->getSize(),
+                    'checksum' => hash_file('sha256', $uploaded->getRealPath()),
+                    'uploaded_by' => $request->user()?->id,
+                ]);
+
+                $existing = PermitAuthenticatedTemplate::where('permit_kind', $permitKind)->first();
+                $oldFile = $existing?->file;
+
+                PermitAuthenticatedTemplate::updateOrCreate(
+                    ['permit_kind' => $permitKind],
+                    ['file_id' => $storedFile->id]
+                );
+
+                if ($oldFile && $oldFile->id !== $storedFile->id) {
+                    Storage::disk($oldFile->disk)->delete($oldFile->path);
+                    $oldFile->delete();
+                }
+            });
+        } catch (Throwable $exception) {
+            Storage::disk('local')->delete($storedPath);
+            throw $exception;
+        }
+
+        return redirect()
+            ->route('weapon-imports.index')
+            ->with('status', __('Imagen de permiso autenticado actualizada.'));
     }
 
     public function show(Request $request, WeaponImportBatch $weaponImportBatch)

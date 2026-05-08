@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\Client;
 use App\Models\File;
 use App\Models\IncidentType;
+use App\Models\PermitAuthenticatedTemplate;
 use App\Models\User;
 use App\Models\Weapon;
 use App\Models\WeaponIncident;
@@ -309,6 +310,7 @@ class WeaponController extends Controller
                 $query->orderBy('id');
             },
             'photos.file',
+            'permitFile',
             'documents' => function ($query) {
                 $query->orderByDesc('is_permit')
                     ->orderByDesc('is_renewal')
@@ -387,8 +389,16 @@ class WeaponController extends Controller
 
         $pendingTransferForWeapon = $weapon->pendingTransfer();
 
+        $weaponPermitAuthTemplate = null;
+        if (in_array($weapon->permit_type, ['porte', 'tenencia'], true)) {
+            $weaponPermitAuthTemplate = PermitAuthenticatedTemplate::with('file')
+                ->where('permit_kind', $weapon->permit_type)
+                ->first();
+        }
+
         return view('weapons.show', compact(
             'weapon',
+            'weaponPermitAuthTemplate',
             'ownershipTypes',
             'responsibles',
             'posts',

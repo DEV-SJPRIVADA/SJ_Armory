@@ -38,6 +38,7 @@
         @endif
 
         @php
+            $weaponPermitAuthTemplate = $weaponPermitAuthTemplate ?? null;
             $photoDescriptions = \App\Models\WeaponPhoto::DESCRIPTIONS;
             $photosByDescription = $weapon->photos->keyBy('description');
         @endphp
@@ -55,11 +56,16 @@
                     data-photo-description="{{ $description }}"
                     data-photo-src="{{ $photoUrl ?? '' }}"
                     data-photo-empty="{{ $photo ? '0' : '1' }}"
-                    data-drop-zone
-                    tabindex="0"
+                    @can('updatePhotos', $weapon)
+                        data-photo-editable="1"
+                        data-drop-zone
+                        tabindex="0"
+                    @endcan
                     title="{{ __('Haz clic, arrastra o pega una imagen') }}"
                 >
-                    <div class="sj-paste-proxy" data-paste-proxy contenteditable="true" spellcheck="false"></div>
+                    @can('updatePhotos', $weapon)
+                        <div class="sj-paste-proxy" data-paste-proxy contenteditable="true" spellcheck="false"></div>
+                    @endcan
                     @if ($photoUrl)
                         <img src="{{ $photoUrl }}" alt="{{ $label }}" class="h-40 w-full rounded object-contain bg-gray-50" data-drop-surface>
                     @else
@@ -94,23 +100,57 @@
                 </div>
             @endforeach
 
-            <div class="relative border rounded-lg p-3 weapon-photo-card" data-photo-type="permit" data-photo-src="{{ $weapon->permitFile ? route('weapons.permit', $weapon) : '' }}" data-photo-empty="{{ $weapon->permitFile ? '0' : '1' }}" data-drop-zone tabindex="0" title="{{ __('Haz clic, arrastra o pega una imagen') }}">
-                <div class="sj-paste-proxy" data-paste-proxy contenteditable="true" spellcheck="false"></div>
+            <div
+                class="relative border rounded-lg p-3 weapon-photo-card"
+                data-photo-type="permit"
+                data-photo-src="{{ $weapon->permitFile ? route('weapons.permit', $weapon) : '' }}"
+                data-photo-empty="{{ $weapon->permitFile ? '0' : '1' }}"
+                @can('updatePhotos', $weapon)
+                    data-photo-editable="1"
+                    data-drop-zone
+                    tabindex="0"
+                @endcan
+                title="{{ __('Haz clic, arrastra o pega una imagen') }}"
+            >
+                @can('updatePhotos', $weapon)
+                    <div class="sj-paste-proxy" data-paste-proxy contenteditable="true" spellcheck="false"></div>
+                @endcan
                 @if ($weapon->permitFile)
                     <img src="{{ route('weapons.permit', $weapon) }}" alt="Permiso" class="h-40 w-full rounded object-contain bg-gray-50" data-drop-surface>
                 @else
                     <div class="flex h-40 w-full items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400 transition" data-drop-surface>
                         <div>
                             <div class="font-medium">{{ __('Foto pendiente') }}</div>
-                            <div class="mt-1 text-xs text-gray-400">{{ __('Permiso') }}</div>
+                            <div class="mt-1 text-xs text-gray-400">{{ __('Permiso (frente)') }}</div>
                         </div>
                     </div>
                 @endif
                 <div class="mt-2 text-sm text-gray-600">
                     <div class="flex items-center gap-2">
-                        <span>{{ __('Permiso') }}</span>
+                        <span>{{ __('Permiso (frente)') }}</span>
                         <span class="text-xs text-gray-500">{{ $weapon->permitFile?->created_at?->format('Y-m-d') ?? __('Pendiente') }}</span>
                     </div>
+                </div>
+            </div>
+
+            @php
+                $globalAuthPermitUrl = ($weaponPermitAuthTemplate?->file && in_array($weapon->permit_type, ['porte', 'tenencia'], true))
+                    ? route('authenticated-permit-images.show', ['permit_kind' => $weapon->permit_type])
+                    : '';
+            @endphp
+            <div class="relative rounded-lg border border-slate-200 bg-slate-50/50 p-3" title="{{ __('Imagen de referencia global (no editable desde esta ficha)') }}">
+                @if ($globalAuthPermitUrl !== '')
+                    <img src="{{ $globalAuthPermitUrl }}" alt="{{ __('Permiso autenticado (referencia)') }}" class="h-40 w-full rounded object-contain bg-white">
+                @else
+                    <div class="flex h-40 w-full items-center justify-center rounded border border-dashed border-gray-300 bg-white text-center text-sm text-gray-400">
+                        <div>
+                            <div class="font-medium">{{ __('Sin imagen de referencia') }}</div>
+                            <div class="mt-1 text-xs text-gray-400">{{ __('Tipo de permiso del arma: :tipo', ['tipo' => $weapon->permit_type ?: '—']) }}</div>
+                        </div>
+                    </div>
+                @endif
+                <div class="mt-2 text-sm text-gray-600">
+                    <span>{{ __('Permiso autenticado') }}</span>
                 </div>
             </div>
         </div>
@@ -145,7 +185,7 @@
                     </button>
                 </div>
                 <div class="p-4">
-                    <div class="max-h-[70vh] w-full overflow-hidden">
+                    <div class="max-h-[70vh] w-full overflow-auto">
                         <img id="image_editor_image" alt="Editor" class="max-h-[70vh] w-full object-contain" />
                     </div>
                 </div>
@@ -318,7 +358,7 @@
             <script>
             const photoEditToggle = document.getElementById('photo_edit_toggle');
             const photoGrid = document.getElementById('weapon-photo-grid');
-            const photoCards = Array.from(document.querySelectorAll('.weapon-photo-card'));
+            const photoCards = Array.from(document.querySelectorAll('.weapon-photo-card[data-photo-editable]'));
             const dropZones = Array.from(document.querySelectorAll('[data-drop-zone]'));
             const actionModal = document.getElementById('photo_action_modal');
             const actionCrop = document.getElementById('photo_action_crop');
@@ -343,7 +383,6 @@
             let activePhotoType = 'weapon';
             let activePhotoDescription = null;
             let cropper = null;
-            let editorRotation = 0;
             let editorFineRotation = 0;
             let hoveredPasteZone = null;
 
@@ -440,9 +479,9 @@
                 }
             };
 
-            const applyEditorRotation = () => {
-                if (cropper) {
-                    cropper.rotateTo(editorRotation + editorFineRotation);
+            const applyFineRotationDelta = (diff) => {
+                if (cropper && diff !== 0) {
+                    cropper.rotate(diff);
                 }
             };
 
@@ -459,7 +498,6 @@
 
                 editorModal.classList.remove('hidden');
                 editorModal.classList.add('flex');
-                editorRotation = 0;
                 editorFineRotation = 0;
                 syncFineRotationUi();
 
@@ -468,12 +506,10 @@
                 }
 
                 cropper = new Cropper(editorImage, {
-                    viewMode: 1,
+                    viewMode: 0,
                     autoCropArea: 1,
-                });
-
-                requestAnimationFrame(() => {
-                    applyEditorRotation();
+                    toggleDragModeOnDblclick: false,
+                    responsive: true,
                 });
             };
 
@@ -489,7 +525,6 @@
                     delete editorImage.dataset.objectUrl;
                 }
                 editorImage.removeAttribute('src');
-                editorRotation = 0;
                 editorFineRotation = 0;
                 syncFineRotationUi();
             };
@@ -743,23 +778,40 @@
             cancelButton?.addEventListener('click', closeEditor);
             cropButton?.addEventListener('click', applyCrop);
             rotateLeftButton?.addEventListener('click', () => {
-                editorRotation -= 90;
-                applyEditorRotation();
+                if (! cropper) {
+                    return;
+                }
+                if (editorFineRotation !== 0) {
+                    cropper.rotate(-editorFineRotation);
+                    editorFineRotation = 0;
+                    syncFineRotationUi();
+                }
+                cropper.rotate(-90);
             });
             rotateRightButton?.addEventListener('click', () => {
-                editorRotation += 90;
-                applyEditorRotation();
+                if (! cropper) {
+                    return;
+                }
+                if (editorFineRotation !== 0) {
+                    cropper.rotate(-editorFineRotation);
+                    editorFineRotation = 0;
+                    syncFineRotationUi();
+                }
+                cropper.rotate(90);
             });
             fineRotateInput?.addEventListener('input', () => {
-                editorFineRotation = Number.parseFloat(fineRotateInput.value || '0') || 0;
+                const next = Number.parseFloat(fineRotateInput.value || '0') || 0;
+                const diff = next - editorFineRotation;
+                editorFineRotation = next;
+                applyFineRotationDelta(diff);
                 syncFineRotationUi();
-                applyEditorRotation();
             });
             resetRotateButton?.addEventListener('click', () => {
-                editorRotation = 0;
+                if (cropper) {
+                    cropper.reset();
+                }
                 editorFineRotation = 0;
                 syncFineRotationUi();
-                applyEditorRotation();
             });
             </script>
         @endpush
