@@ -29,8 +29,21 @@ class DomainActivityNotificationService
             return;
         }
 
-        $clientIds = $this->resolveClientIds($event);
-        $recipientIds = $this->resolveRecipientUserIds($clientIds);
+        $actorId = auth()->id();
+
+        if ($event instanceof TransferChanged && $event->action === 'cancelled') {
+            $transfer = WeaponTransfer::query()->find($event->entityId);
+            $recipientIds = collect([$transfer?->from_user_id, $transfer?->to_user_id])
+                ->filter()
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->reject(fn (int $userId) => $actorId !== null && $userId === (int) $actorId)
+                ->values()
+                ->all();
+        } else {
+            $clientIds = $this->resolveClientIds($event);
+            $recipientIds = $this->resolveRecipientUserIds($clientIds);
+        }
 
         foreach ($recipientIds as $userId) {
             $user = User::query()->find($userId);
@@ -285,6 +298,13 @@ class DomainActivityNotificationService
                     'module' => 'transfers',
                     'actor_name' => $actor,
                 ],
+                'cancelled' => [
+                    'title' => __('Transferencia cancelada'),
+                    'body' => __(':actor canceló la transferencia del arma :code.', ['actor' => $actor, 'code' => $code]),
+                    'action_url' => $actionUrl,
+                    'module' => 'transfers',
+                    'actor_name' => $actor,
+                ],
                 default => null,
             };
         }
@@ -330,11 +350,14 @@ class DomainActivityNotificationService
         if ($weapon === null) {
             return (string) $weaponId;
         }
+        if ($weapon->serial_number) {
+            return (string) $weapon->serial_number;
+        }
         if ($weapon->internal_code) {
             return (string) $weapon->internal_code;
         }
 
-        return (string) ($weapon->serial_number ?: $weapon->id);
+        return (string) $weapon->id;
     }
 
     private function clientTitle(int|string|null $clientId): string

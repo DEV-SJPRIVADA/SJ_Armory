@@ -12,7 +12,7 @@ Sistema web para **gestión de armamento**, **asignaciones operativas**, **trans
 - ✅ **Asignaciones**:
   - **Operativa** (arma ↔ cliente/responsable)
   - **Interna** (arma ↔ puesto y/o trabajador; ubicación en mapa prioriza puesto si existe; la columna de destino en el listado refleja principalmente al trabajador cuando hay trabajador activo)
-- ✅ **Transferencias**: solicitudes, aceptación / rechazo.
+- ✅ **Transferencias**: listado **unificado** (pendientes y enviadas en una tabla; serie en columna arma; munición/proveedores opcionales en el envío; aceptación; **cancelación** con restauración del destino previo); botón **Historial** (modal, últimas participaciones).
 - ✅ **Clientes / Puestos / Trabajadores / Usuarios** (puestos y trabajadores: archivo, historial de cambios, políticas por rol)
 - ✅ **Cargas masivas**: validación previa, preview, ejecución por chunks, trazabilidad por lote.
 - ✅ **Dashboard**: KPIs, métricas, gráficos y estado “as of”.
@@ -515,11 +515,12 @@ Estados:
 - `pending`
 - `accepted`
 - `rejected`
-- `cancelled` (constante disponible; flujo actual usa pending/accepted/rejected)
+- `cancelled` (cancelación por remitente, destinatario o admin; restaura destino previo si aplica)
 
 Flujo:
 
 - Solicitud masiva (`bulkStore`) de una o varias armas.
+- Al solicitar (opcional por lote): **munición** y/o **proveedores** con cantidad; si no se marcan los interruptores, el envío es solo el arma. Los valores quedan en `weapon_transfers.ammo_count` / `provider_count` y, al **aceptar**, se aplican a la asignación interna nueva (puesto y/o trabajador) si existe.
 - Al solicitar:
   - Cierra asignaciones internas activas.
   - Retira asignacion de cliente activa.
@@ -531,8 +532,8 @@ Flujo:
   - Si hay error de validacion/alcance, no se muestra pantalla de excepcion: se redirige a `transfers.index` con una alerta y opciones para reintentar la seleccion o cancelar.
   - Asigna nuevo cliente responsable.
   - Opcionalmente asigna **puesto y/o trabajador** (puede elegir ambos; el mapa prioriza el puesto cuando hay puesto). La validacion de coordenadas del puesto o del cliente (solo trabajador) es la misma que en la asignacion interna desde el detalle del arma.
-- Rechazo:
-  - Marca estado rechazado.
+- **Cancelación** (`transfers.cancel`): remitente, destinatario o administrador pueden cancelar una pendiente; se **restaura** el destino operativo previo (cliente y responsable de origen) cuando la transferencia los tenía registrados.
+- Rechazo: la ruta `transfers.reject` fue sustituida por cancelación unificada (`cancelled`); registros antiguos pueden seguir en estado `rejected`.
 
 ### 5.5 Clientes
 
@@ -756,7 +757,7 @@ Se registran, entre otros:
 - Carga de documentos.
 - Asignaciones cliente e internas (incluye combinacion trabajador + puesto y bloqueo sin coordenadas en mapa).
 - Cierres de asignaciones por transferencia/cambio cliente.
-- Solicitud, aceptacion y rechazo de transferencias.
+- Solicitud, aceptación y **cancelación** de transferencias (registros antiguos pueden figurar como rechazados).
 - Cambios de cartera.
 - Cargas masivas de armas (`weapon_import_created`, `weapon_import_updated`).
 
@@ -783,7 +784,7 @@ Se registran, entre otros:
 - `weapon_client_assignments`
 - `weapon_post_assignments`
 - `weapon_worker_assignments`
-- `weapon_transfers`
+- `weapon_transfers` (incluye `ammo_count`, `provider_count` opcionales en el envío)
 
 ### Archivos y trazabilidad
 
@@ -833,7 +834,7 @@ Grupos funcionales:
 - Maestros:
   - `clients.*`, `posts.*`, `workers.*`.
 - Transferencias:
-  - `transfers.index`, `transfers.bulk`, `transfers.accept`, `transfers.reject`.
+  - `transfers.index`, `transfers.bulk`, `transfers.accept`, `transfers.cancel`.
 - Cartera:
   - `portfolios.index/edit/update/transfer`.
 - Reportes y alertas:

@@ -9,6 +9,11 @@
                 <a href="{{ route('dashboard') }}" class="text-sm text-gray-600 hover:text-gray-900">
                     {{ __('Volver') }}
                 </a>
+                <button type="button" class="text-sm font-medium text-gray-700 hover:text-gray-900"
+                    x-data
+                    x-on:click.prevent="$dispatch('open-modal', 'transfer-history')">
+                    {{ __('Historial') }}
+                </button>
                 @if ($canManageTransfers)
                     <button type="button" class="text-sm font-medium text-indigo-600 hover:text-indigo-900"
                         x-data
@@ -100,29 +105,57 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <h3 class="text-lg font-semibold">
-                        {{ $status === 'pending' ? __('Pendientes por aceptar') : __('Recibidas') . ' - ' . $statusLabel }}
+                        {{ $status === 'pending' ? __('Pendientes por aceptar') : __('Transferencias') . ' — ' . $statusLabel }}
                     </h3>
                     <div class="overflow-x-auto">
                     <table class="mt-3 min-w-full divide-y divide-gray-200 text-sm">
                         <thead class="bg-gray-50">
+                            @php
+                                $authUser = auth()->user();
+                            @endphp
                             <tr>
-                                <th class="px-3 py-2 text-left font-medium text-gray-600">{{ __('Arma') }}</th>
+                                <th class="px-3 py-2 text-left font-medium text-gray-600">{{ __('Arma') }} ({{ __('Serie') }})</th>
+                                <th class="px-3 py-2 text-left font-medium text-gray-600">{{ __('Munición') }}</th>
+                                <th class="px-3 py-2 text-left font-medium text-gray-600">{{ __('Proveedores') }}</th>
                                 <th class="px-3 py-2 text-left font-medium text-gray-600">{{ __('Cliente origen') }}</th>
                                 <th class="px-3 py-2 text-left font-medium text-gray-600">{{ __('Remitente') }}</th>
+                                <th class="px-3 py-2 text-left font-medium text-gray-600">{{ __('Destinatario') }}</th>
                                 <th class="px-3 py-2 text-left font-medium text-gray-600">{{ __('Cliente destino') }}</th>
                                 <th class="px-3 py-2 text-right font-medium text-gray-600">{{ __('Acciones') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
-                            @forelse ($incoming as $transfer)
+                            @forelse ($transfers as $transfer)
+                                @php
+                                    $isRowReceiver = $transfer->to_user_id === $authUser->id;
+                                    $isRowSender = $transfer->requested_by === $authUser->id;
+                                    $canAcceptRow = $canManageTransfers && $status === \App\Models\WeaponTransfer::STATUS_PENDING && ($authUser->isAdmin() || $isRowReceiver);
+                                    $canCancelRow = $status === \App\Models\WeaponTransfer::STATUS_PENDING && ($authUser->isAdmin() || $isRowSender || $isRowReceiver);
+                                    $serie = $transfer->weapon?->serial_number ?? $transfer->weapon?->internal_code ?? $transfer->weapon_id;
+                                @endphp
                                 <tr>
                                     <td class="px-3 py-2">
                                         <a href="{{ route('weapons.show', $transfer->weapon) }}" class="text-indigo-600 hover:text-indigo-900">
-                                            {{ $transfer->weapon?->internal_code ?? $transfer->weapon_id }}
+                                            {{ $serie }}
                                         </a>
                                     </td>
+                                    <td class="px-3 py-2">
+                                        @if ($transfer->ammo_count !== null)
+                                            {{ $transfer->ammo_count }}
+                                        @else
+                                            <span class="text-gray-400">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        @if ($transfer->provider_count !== null)
+                                            {{ $transfer->provider_count }}
+                                        @else
+                                            <span class="text-gray-400">—</span>
+                                        @endif
+                                    </td>
                                     <td class="px-3 py-2">{{ $transfer->fromClient?->name ?? __('Sin destino') }}</td>
-                                    <td class="px-3 py-2">{{ $transfer->fromUser?->name }}</td>
+                                    <td class="px-3 py-2">{{ $transfer->requestedBy?->name ?? $transfer->fromUser?->name ?? '—' }}</td>
+                                    <td class="px-3 py-2">{{ $transfer->toUser?->name ?? '—' }}</td>
                                     <td class="px-3 py-2">
                                         @if ($transfer->newClient)
                                             {{ $transfer->newClient->name }}
@@ -132,81 +165,37 @@
                                             —
                                         @endif
                                     </td>
-                                    <td class="px-3 py-2 text-right space-x-2">
-                                        @if ($status === 'pending' && $canManageTransfers)
+                                    <td class="px-3 py-2 text-right whitespace-nowrap space-x-2">
+                                        @if ($canAcceptRow)
                                             <button type="button"
                                                 class="text-emerald-600 hover:text-emerald-900"
                                                 data-transfer-id="{{ $transfer->id }}"
                                                 data-transfer-action="{{ route('transfers.accept', $transfer) }}"
-                                                data-transfer-code="{{ $transfer->weapon?->internal_code ?? $transfer->weapon_id }}"
+                                                data-transfer-code="{{ $serie }}"
                                                 data-allowed-client-ids="{{ $transfer->toUser?->clients->pluck('id')->join(',') }}"
                                                 x-data
                                                 x-on:click.prevent="$dispatch('open-modal', 'accept-transfer')">
                                                 {{ __('Aceptar') }}
                                             </button>
-                                            <form action="{{ route('transfers.reject', $transfer) }}" method="POST" class="inline">
+                                        @endif
+                                        @if ($canCancelRow)
+                                            <form action="{{ route('transfers.cancel', $transfer) }}" method="POST" class="inline"
+                                                onsubmit="return confirm({{ json_encode(__('¿Cancelar esta transferencia pendiente?')) }});">
                                                 @csrf
                                                 @method('PATCH')
-                                                <button type="submit" class="text-red-600 hover:text-red-900">
-                                                    {{ __('Rechazar') }}
+                                                <button type="submit" class="text-amber-700 hover:text-amber-900">
+                                                    {{ __('Cancelar') }}
                                                 </button>
                                             </form>
-                                        @else
+                                        @endif
+                                        @if (! $canAcceptRow && ! $canCancelRow)
                                             <span class="text-gray-500">{{ __('Sin acciones') }}</span>
                                         @endif
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="px-3 py-6 text-center text-gray-500">
-                                        {{ __('No hay transferencias para este filtro.') }}
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    <h3 class="text-lg font-semibold">{{ __('Transferencias enviadas') }} - {{ $statusLabel }}</h3>
-                    <div class="overflow-x-auto">
-                    <table class="mt-3 min-w-full divide-y divide-gray-200 text-sm">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-3 py-2 text-left font-medium text-gray-600">{{ __('Arma') }}</th>
-                                <th class="px-3 py-2 text-left font-medium text-gray-600">{{ __('Cliente origen') }}</th>
-                                <th class="px-3 py-2 text-left font-medium text-gray-600">{{ __('Destinatario') }}</th>
-                                <th class="px-3 py-2 text-left font-medium text-gray-600">{{ __('Cliente destino') }}</th>
-                                <th class="px-3 py-2 text-left font-medium text-gray-600">{{ __('Fecha') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-                            @forelse ($outgoing as $transfer)
-                                <tr>
-                                    <td class="px-3 py-2">
-                                        <a href="{{ route('weapons.show', $transfer->weapon) }}" class="text-indigo-600 hover:text-indigo-900">
-                                            {{ $transfer->weapon?->internal_code ?? $transfer->weapon_id }}
-                                        </a>
-                                    </td>
-                                    <td class="px-3 py-2">{{ $transfer->fromClient?->name ?? __('Sin destino') }}</td>
-                                    <td class="px-3 py-2">{{ $transfer->toUser?->name }}</td>
-                                    <td class="px-3 py-2">
-                                        @if ($transfer->newClient)
-                                            {{ $transfer->newClient->name }}
-                                        @elseif ($transfer->status === \App\Models\WeaponTransfer::STATUS_PENDING)
-                                            <span class="text-gray-500">{{ __('Pendiente de asignar') }}</span>
-                                        @else
-                                            —
-                                        @endif
-                                    </td>
-                                    <td class="px-3 py-2">{{ $transfer->requested_at?->format('Y-m-d H:i') }}</td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="5" class="px-3 py-6 text-center text-gray-500">
+                                    <td colspan="8" class="px-3 py-6 text-center text-gray-500">
                                         {{ __('No hay transferencias para este filtro.') }}
                                     </td>
                                 </tr>
@@ -218,6 +207,79 @@
             </div>
         </div>
     </div>
+
+    @php
+        $histStatusLabels = [
+            'pending' => __('Pendiente'),
+            'accepted' => __('Aceptada'),
+            'rejected' => __('Rechazada'),
+            'cancelled' => __('Cancelada'),
+        ];
+    @endphp
+
+    <x-modal name="transfer-history" maxWidth="6xl">
+        <div class="max-h-[85vh] overflow-y-auto p-6 text-gray-900">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold">{{ __('Historial de transferencias') }}</h3>
+                <button type="button" class="text-sm text-gray-500 hover:text-gray-700"
+                    x-on:click="$dispatch('close-modal', 'transfer-history')">
+                    {{ __('Cerrar') }}
+                </button>
+            </div>
+            <p class="mt-1 text-xs text-gray-500">{{ __('Últimas transferencias en las que participa, todos los estados.') }}</p>
+
+            @if ($historyTransfers->isEmpty())
+                <p class="py-10 text-center text-gray-500">{{ __('Sin registros de historial.') }}</p>
+            @else
+                <div class="mt-4 overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-2 py-2 text-left font-medium text-gray-600">{{ __('Fecha') }}</th>
+                                <th class="px-2 py-2 text-left font-medium text-gray-600">{{ __('Estado') }}</th>
+                                <th class="px-2 py-2 text-left font-medium text-gray-600">{{ __('Serie') }}</th>
+                                <th class="px-2 py-2 text-left font-medium text-gray-600">{{ __('Munición') }}</th>
+                                <th class="px-2 py-2 text-left font-medium text-gray-600">{{ __('Prov.') }}</th>
+                                <th class="px-2 py-2 text-left font-medium text-gray-600">{{ __('Origen') }}</th>
+                                <th class="px-2 py-2 text-left font-medium text-gray-600">{{ __('Remitente') }}</th>
+                                <th class="px-2 py-2 text-left font-medium text-gray-600">{{ __('Destinatario') }}</th>
+                                <th class="px-2 py-2 text-left font-medium text-gray-600">{{ __('Cliente destino') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            @foreach ($historyTransfers as $h)
+                                <tr>
+                                    <td class="whitespace-nowrap px-2 py-2">{{ $h->requested_at?->format('Y-m-d H:i') }}</td>
+                                    <td class="px-2 py-2">{{ $histStatusLabels[$h->status] ?? $h->status }}</td>
+                                    <td class="px-2 py-2">
+                                        @if ($h->weapon)
+                                            <a href="{{ route('weapons.show', $h->weapon) }}" class="text-indigo-600 hover:text-indigo-900">{{ $h->weapon->serial_number ?? $h->weapon->internal_code }}</a>
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
+                                    <td class="px-2 py-2">{{ $h->ammo_count ?? '—' }}</td>
+                                    <td class="px-2 py-2">{{ $h->provider_count ?? '—' }}</td>
+                                    <td class="px-2 py-2">{{ $h->fromClient?->name ?? '—' }}</td>
+                                    <td class="px-2 py-2">{{ $h->requestedBy?->name ?? $h->fromUser?->name ?? '—' }}</td>
+                                    <td class="px-2 py-2">{{ $h->toUser?->name ?? '—' }}</td>
+                                    <td class="px-2 py-2">
+                                        @if ($h->newClient)
+                                            {{ $h->newClient->name }}
+                                        @elseif ($h->status === \App\Models\WeaponTransfer::STATUS_PENDING)
+                                            <span class="text-gray-500">{{ __('Pendiente de asignar') }}</span>
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+    </x-modal>
 
     @if ($canManageTransfers)
     <x-modal name="bulk-transfer" maxWidth="2xl">
@@ -322,6 +384,29 @@
                         </div>
                     </div>
 
+                    <div class="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-4">
+                        <p class="text-sm font-medium text-gray-800">{{ __('Munición y proveedores con el envío') }}</p>
+                        <p class="text-xs text-gray-600">{{ __('Si no activa las opciones, el arma se envía sola. Las cantidades aplican a cada arma de este envío.') }}</p>
+                        <div class="flex flex-col gap-4 sm:flex-row sm:flex-wrap">
+                            <div class="min-w-[200px] space-y-2">
+                                <label class="flex items-center gap-2 text-sm text-gray-800">
+                                    <input type="checkbox" name="send_ammo" id="transfer-send-ammo" value="1" class="rounded border-gray-300" @checked(old('send_ammo'))>
+                                    {{ __('Incluir munición') }}
+                                </label>
+                                <input type="number" name="ammo_count" id="transfer-ammo-count" min="1" class="block w-full rounded-md border-gray-300 text-sm" placeholder="{{ __('Cantidad') }}" value="{{ old('ammo_count') }}">
+                                <x-input-error :messages="$errors->get('ammo_count')" class="mt-1" />
+                            </div>
+                            <div class="min-w-[200px] space-y-2">
+                                <label class="flex items-center gap-2 text-sm text-gray-800">
+                                    <input type="checkbox" name="send_provider" id="transfer-send-provider" value="1" class="rounded border-gray-300" @checked(old('send_provider'))>
+                                    {{ __('Incluir proveedores') }}
+                                </label>
+                                <input type="number" name="provider_count" id="transfer-provider-count" min="1" class="block w-full rounded-md border-gray-300 text-sm" placeholder="{{ __('Cantidad') }}" value="{{ old('provider_count') }}">
+                                <x-input-error :messages="$errors->get('provider_count')" class="mt-1" />
+                            </div>
+                        </div>
+                    </div>
+
                     <div>
                         <label class="block text-sm font-medium text-gray-700">{{ __('Observaciones') }}</label>
                         <textarea name="note" rows="2" spellcheck="true" class="mt-1 block w-full rounded-md border-gray-300 text-sm">{{ old('note') }}</textarea>
@@ -422,7 +507,7 @@
             worker_id: @json(old('worker_id')),
         };
 
-        @if ($errors->has('weapon_ids') || $errors->has('to_user_id') || $errors->has('note'))
+        @if ($errors->has('weapon_ids') || $errors->has('to_user_id') || $errors->has('note') || $errors->has('ammo_count') || $errors->has('provider_count'))
             window.dispatchEvent(new CustomEvent('open-modal', { detail: 'bulk-transfer' }));
         @endif
 
@@ -494,6 +579,28 @@
         updateCount();
         }
 
+        const sendAmmo = document.getElementById('transfer-send-ammo');
+        const ammoInput = document.getElementById('transfer-ammo-count');
+        const sendProv = document.getElementById('transfer-send-provider');
+        const provInput = document.getElementById('transfer-provider-count');
+        const syncTransferExtras = () => {
+            if (ammoInput && sendAmmo) {
+                ammoInput.disabled = !sendAmmo.checked;
+                if (!sendAmmo.checked) {
+                    ammoInput.value = '';
+                }
+            }
+            if (provInput && sendProv) {
+                provInput.disabled = !sendProv.checked;
+                if (!sendProv.checked) {
+                    provInput.value = '';
+                }
+            }
+        };
+        sendAmmo?.addEventListener('change', syncTransferExtras);
+        sendProv?.addEventListener('change', syncTransferExtras);
+        syncTransferExtras();
+
         const acceptForm = document.getElementById('accept-transfer-form');
         const acceptCode = document.getElementById('accept-transfer-code');
         const acceptClient = document.getElementById('accept-client');
@@ -527,7 +634,7 @@
                 }
                 if (acceptCode) {
                     const code = button.dataset.transferCode || '';
-                    acceptCode.textContent = code ? `Arma: ${code}` : '';
+                    acceptCode.textContent = code ? `{{ __('Arma') }}: ${code}` : '';
                 }
                 filterAcceptClientOptionsForRecipient(button.dataset.allowedClientIds || '');
                 if (acceptClient) {

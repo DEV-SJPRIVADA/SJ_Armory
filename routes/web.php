@@ -140,7 +140,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/transfers', [WeaponTransferController::class, 'index'])->name('transfers.index');
     Route::post('/transfers/bulk', [WeaponTransferController::class, 'bulkStore'])->name('transfers.bulk');
     Route::patch('/transfers/{transfer}/accept', [WeaponTransferController::class, 'accept'])->name('transfers.accept');
-    Route::patch('/transfers/{transfer}/reject', [WeaponTransferController::class, 'reject'])->name('transfers.reject');
+    Route::patch('/transfers/{transfer}/cancel', [WeaponTransferController::class, 'cancel'])->name('transfers.cancel');
 
     Route::get('/mapa', [MapController::class, 'index'])->name('maps.index');
     Route::get('/mapa/armas', [MapController::class, 'weapons'])->name('maps.weapons');

@@ -26,6 +26,8 @@ class WeaponTransfer extends Model
         'requested_at',
         'answered_at',
         'note',
+        'ammo_count',
+        'provider_count',
     ];
 
     protected $casts = [

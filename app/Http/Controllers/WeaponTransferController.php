@@ -39,37 +39,20 @@ class WeaponTransferController extends Controller
             $status = WeaponTransfer::STATUS_PENDING;
         }
 
-        $incomingQuery = WeaponTransfer::with(['weapon', 'fromUser', 'fromClient', 'newClient', 'toUser.clients'])
-            ->where('status', $status);
+        $transferRelations = ['weapon', 'fromUser', 'toUser', 'fromClient', 'newClient', 'toUser.clients', 'requestedBy'];
 
-        if ($user->isResponsible()) {
-            $incomingQuery->where('to_user_id', $user->id);
-        }
-
-        if ($search !== '') {
-            $incomingQuery->where(function ($builder) use ($search) {
-                $builder->whereHas('weapon', function ($weaponQuery) use ($search) {
-                    $weaponQuery->where('internal_code', 'like', '%'.$search.'%')
-                        ->orWhere('serial_number', 'like', '%'.$search.'%');
-                })->orWhereHas('fromClient', function ($clientQuery) use ($search) {
-                    $clientQuery->where('name', 'like', '%'.$search.'%');
-                })->orWhereHas('newClient', function ($clientQuery) use ($search) {
-                    $clientQuery->where('name', 'like', '%'.$search.'%');
-                });
-            });
-        }
-
-        $incoming = $incomingQuery->orderByDesc('requested_at')->get();
-
-        $outgoingQuery = WeaponTransfer::with(['weapon', 'toUser', 'fromClient', 'newClient'])
+        $transfersQuery = WeaponTransfer::with($transferRelations)
             ->where('status', $status);
 
         if (! $user->isAdmin() && ! $user->isAuditor()) {
-            $outgoingQuery->where('requested_by', $user->id);
+            $transfersQuery->where(function ($q) use ($user) {
+                $q->where('to_user_id', $user->id)
+                    ->orWhere('requested_by', $user->id);
+            });
         }
 
         if ($search !== '') {
-            $outgoingQuery->where(function ($builder) use ($search) {
+            $transfersQuery->where(function ($builder) use ($search) {
                 $builder->whereHas('weapon', function ($weaponQuery) use ($search) {
                     $weaponQuery->where('internal_code', 'like', '%'.$search.'%')
                         ->orWhere('serial_number', 'like', '%'.$search.'%');
@@ -81,11 +64,26 @@ class WeaponTransferController extends Controller
             });
         }
 
-        $outgoing = $outgoingQuery->orderByDesc('requested_at')->get();
+        $transfers = $transfersQuery->orderByDesc('requested_at')->get();
+
+        $historyQuery = WeaponTransfer::with($transferRelations)
+            ->orderByDesc('requested_at')
+            ->limit(250);
+
+        if (! $user->isAdmin() && ! $user->isAuditor()) {
+            $historyQuery->where(function ($q) use ($user) {
+                $q->where('to_user_id', $user->id)
+                    ->orWhere('requested_by', $user->id);
+            });
+        }
+
+        $historyTransfers = $historyQuery->get();
 
         $weaponsQuery = Weapon::query()->with([
             'activeClientAssignment.client',
             'activeClientAssignment.responsible',
+            'activePostAssignment',
+            'activeWorkerAssignment',
         ])->orderByDesc('id');
 
         if ($user->isResponsible() && ! $user->isAdmin()) {
@@ -111,8 +109,8 @@ class WeaponTransferController extends Controller
         $acceptWorkers = $acceptWorkersQuery->get();
 
         return view('transfers.index', compact(
-            'incoming',
-            'outgoing',
+            'transfers',
+            'historyTransfers',
             'search',
             'status',
             'weapons',
@@ -139,7 +137,26 @@ class WeaponTransferController extends Controller
             'weapon_ids.*' => ['integer', 'exists:weapons,id'],
             'to_user_id' => ['required', 'exists:users,id'],
             'note' => ['nullable', 'string', 'max:2000'],
+            'send_ammo' => ['nullable', 'boolean'],
+            'ammo_count' => ['nullable', 'integer', 'min:1'],
+            'send_provider' => ['nullable', 'boolean'],
+            'provider_count' => ['nullable', 'integer', 'min:1'],
         ]);
+
+        if ($request->boolean('send_ammo') && empty($data['ammo_count'])) {
+            return back()->withErrors([
+                'ammo_count' => __('Indique la cantidad de munición o desactive la opción.'),
+            ])->withInput();
+        }
+
+        if ($request->boolean('send_provider') && empty($data['provider_count'])) {
+            return back()->withErrors([
+                'provider_count' => __('Indique la cantidad de proveedores o desactive la opción.'),
+            ])->withInput();
+        }
+
+        $ammoCount = $request->boolean('send_ammo') ? (int) $data['ammo_count'] : null;
+        $providerCount = $request->boolean('send_provider') ? (int) $data['provider_count'] : null;
 
         $toUser = User::whereIn('role', ['RESPONSABLE', 'ADMIN'])->find($data['to_user_id']);
         if (! $toUser) {
@@ -191,7 +208,7 @@ class WeaponTransferController extends Controller
 
         $dispatchedTransfers = [];
 
-        DB::transaction(function () use ($weapons, $user, $toUser, $data, &$dispatchedTransfers) {
+        DB::transaction(function () use ($weapons, $user, $toUser, $data, &$dispatchedTransfers, $ammoCount, $providerCount) {
             foreach ($weapons as $weapon) {
                 $activeAssignment = $weapon->activeClientAssignment;
                 $this->closeInternalAssignments($weapon, $user);
@@ -207,6 +224,8 @@ class WeaponTransferController extends Controller
                     'status' => WeaponTransfer::STATUS_PENDING,
                     'requested_at' => now(),
                     'note' => $data['note'] ?? null,
+                    'ammo_count' => $ammoCount,
+                    'provider_count' => $providerCount,
                 ]);
 
                 AuditLog::create([
@@ -221,6 +240,8 @@ class WeaponTransferController extends Controller
                         'to_user_id' => $toUser->id,
                         'from_client_id' => $activeAssignment?->client_id,
                         'new_client_id' => null,
+                        'ammo_count' => $ammoCount,
+                        'provider_count' => $providerCount,
                     ],
                 ]);
 
@@ -369,7 +390,15 @@ class WeaponTransferController extends Controller
             );
 
             $this->closeInternalAssignments($weapon, $user);
-            $this->assignInternalDestination($weapon, $user, $clientId, $postId, $workerId);
+            $this->assignInternalDestination(
+                $weapon,
+                $user,
+                $clientId,
+                $postId,
+                $workerId,
+                $transfer->ammo_count,
+                $transfer->provider_count
+            );
 
             $transfer->update([
                 'status' => WeaponTransfer::STATUS_ACCEPTED,
@@ -394,42 +423,68 @@ class WeaponTransferController extends Controller
         return redirect()->route('transfers.index')->with('status', 'Transferencia aceptada.');
     }
 
-    public function reject(Request $request, WeaponTransfer $transfer)
+    public function cancel(Request $request, WeaponTransfer $transfer, WeaponAssignmentService $service)
     {
         $user = $request->user();
         if (! $user) {
             abort(403);
         }
-        if (! $user->isAdmin() && ! $user->isResponsibleLevelOne()) {
-            abort(403);
-        }
 
         if ($transfer->status !== WeaponTransfer::STATUS_PENDING) {
-            abort(422, 'La transferencia ya fue resuelta.');
+            return redirect()
+                ->route('transfers.index', $request->only(['q', 'status']))
+                ->with('transfer_flash_error', __('Esta transferencia ya no está pendiente.'));
         }
 
-        if (! $user->isAdmin() && $transfer->to_user_id !== $user->id) {
+        $allowed = $user->isAdmin()
+            || $transfer->requested_by === $user->id
+            || $transfer->to_user_id === $user->id;
+
+        if (! $allowed) {
             abort(403);
         }
 
-        $transfer->update([
-            'status' => WeaponTransfer::STATUS_REJECTED,
-            'accepted_by' => $user->id,
-            'answered_at' => now(),
-        ]);
+        $weapon = $transfer->weapon()->first();
 
-        AuditLog::create([
-            'user_id' => $user->id,
-            'action' => 'transfer_rejected',
-            'auditable_type' => WeaponTransfer::class,
-            'auditable_id' => $transfer->id,
-            'before' => ['status' => WeaponTransfer::STATUS_PENDING],
-            'after' => ['status' => WeaponTransfer::STATUS_REJECTED],
-        ]);
+        DB::transaction(function () use ($transfer, $weapon, $user, $service) {
+            if ($weapon && $transfer->from_client_id && $transfer->from_user_id) {
+                $fromResponsible = User::find($transfer->from_user_id);
+                if ($fromResponsible) {
+                    $service->assignClient(
+                        $weapon,
+                        (int) $transfer->from_client_id,
+                        $fromResponsible,
+                        $user,
+                        now()->toDateString(),
+                        __('Reversión por cancelación de transferencia.')
+                    );
+                }
+            }
 
-        event(new TransferChanged('rejected', $transfer->id, ['weapon_id' => $transfer->weapon_id]));
+            $transfer->update([
+                'status' => WeaponTransfer::STATUS_CANCELLED,
+                'accepted_by' => $user->id,
+                'answered_at' => now(),
+            ]);
 
-        return redirect()->route('transfers.index')->with('status', 'Transferencia rechazada.');
+            AuditLog::create([
+                'user_id' => $user->id,
+                'action' => 'transfer_cancelled',
+                'auditable_type' => WeaponTransfer::class,
+                'auditable_id' => $transfer->id,
+                'before' => ['status' => WeaponTransfer::STATUS_PENDING],
+                'after' => ['status' => WeaponTransfer::STATUS_CANCELLED],
+            ]);
+        });
+
+        if ($weapon) {
+            event(new TransferChanged('cancelled', $transfer->id, ['weapon_id' => $weapon->id]));
+            event(new AssignmentChanged('updated', $weapon->id, ['transfer_id' => $transfer->id]));
+        } else {
+            event(new TransferChanged('cancelled', $transfer->id, []));
+        }
+
+        return redirect()->route('transfers.index')->with('status', __('Transferencia cancelada.'));
     }
 
     /**
@@ -441,7 +496,7 @@ class WeaponTransferController extends Controller
 
         return [
             'action' => route('transfers.accept', $transfer),
-            'weapon_code' => (string) ($transfer->weapon?->internal_code ?? $transfer->weapon_id),
+            'weapon_code' => (string) ($transfer->weapon?->serial_number ?? $transfer->weapon?->internal_code ?? $transfer->weapon_id),
             'allowed_client_ids' => $transfer->toUser?->clients->pluck('id')->implode(',') ?? '',
         ];
     }
@@ -545,8 +600,15 @@ class WeaponTransferController extends Controller
         }
     }
 
-    private function assignInternalDestination(Weapon $weapon, User $actor, int $clientId, ?int $postId, ?int $workerId): void
-    {
+    private function assignInternalDestination(
+        Weapon $weapon,
+        User $actor,
+        int $clientId,
+        ?int $postId,
+        ?int $workerId,
+        ?int $ammoCount = null,
+        ?int $providerCount = null
+    ): void {
         if (! $postId && ! $workerId) {
             return;
         }
@@ -565,6 +627,8 @@ class WeaponTransferController extends Controller
                 'assigned_by' => $actor->id,
                 'start_at' => now()->toDateString(),
                 'is_active' => true,
+                'ammo_count' => $ammoCount,
+                'provider_count' => $providerCount,
             ]);
 
             AuditLog::create([
@@ -597,6 +661,8 @@ class WeaponTransferController extends Controller
             'assigned_by' => $actor->id,
             'start_at' => now()->toDateString(),
             'is_active' => true,
+            'ammo_count' => $ammoCount,
+            'provider_count' => $providerCount,
         ]);
 
         AuditLog::create([
