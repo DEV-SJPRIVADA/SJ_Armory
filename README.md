@@ -648,6 +648,7 @@ Controlador: `app/Http/Controllers/WeaponPhotoController.php`
 - La actualización de la **foto del permiso** (`WeaponController::updatePermitPhoto`) usa la misma policy `updatePhotos`, así el responsable Nivel 1 puede mantener actualizada la imagen del permiso desde la grilla de fotos.
 - UI: el toggle **Modo edición** en la tarjeta de fotos aparece para los usuarios autorizados; el switch usa estilos propios (`.sj-toggle*`) embebidos en el partial, sin dependencia de clases Tailwind dinámicas (no requiere recompilar Vite).
 - **Móvil (cámara + galería):** al subir o cambiar una imagen (ficha del arma `resources/views/weapons/partials/photos.blade.php` y formulario crear/editar `form.blade.php`), se muestra un modal **Agregar imagen** con **Tomar foto** (`input` con `capture="environment"`) y **Elegir de galería** (`accept="image/*"` sin `capture`). Tras elegir, el flujo sigue con el editor Cropper y la subida por AJAX o formulario. En escritorio se mantienen arrastrar y pegar. Requiere **HTTPS** en producción para usar la cámara desde el navegador.
+- **Editor de imagen en móvil:** el modal **Editar imagen** (`#image_editor_modal`) limita la altura al viewport (`max-h` con `100dvh`), reduce la zona de recorte en pantallas pequeñas (clase `.sj-image-editor-canvas`, ~42dvh) y apila el pie: controles de giro/arriba y fila fija **Cancelar** / **Guardar** (`min-h-11`) con margen para `safe-area-inset-bottom`, para que el botón **Guardar** no quede fuera de pantalla.
 
 Descripciones tecnicas soportadas (`WeaponPhoto::DESCRIPTIONS`):
 

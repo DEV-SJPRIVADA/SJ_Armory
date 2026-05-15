@@ -189,45 +189,47 @@
             </div>
         </div>
 
-        <div id="image_editor_modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
-            <div class="w-full max-w-3xl rounded bg-white shadow-lg">
-                <div class="flex items-center justify-between border-b px-4 py-3">
+        <div id="image_editor_modal" class="fixed inset-0 z-50 hidden items-center justify-center overflow-hidden bg-black/50 p-2 sm:p-4">
+            <div class="sj-image-editor-panel flex max-h-[calc(100dvh-0.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white shadow-lg sm:max-h-[calc(100dvh-2rem)]">
+                <div class="flex shrink-0 items-center justify-between border-b px-4 py-3">
                     <h3 class="text-sm font-semibold text-gray-800">{{ __('Editar imagen') }}</h3>
                     <button id="image_editor_close" type="button" class="text-sm text-gray-500 hover:text-gray-700">
                         {{ __('Cerrar') }}
                     </button>
                 </div>
-                <div class="p-4">
-                    <div class="max-h-[70vh] w-full overflow-auto">
-                        <img id="image_editor_image" alt="Editor" class="max-h-[70vh] w-full object-contain" />
+                <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4">
+                    <div class="sj-image-editor-canvas w-full overflow-auto rounded bg-gray-50">
+                        <img id="image_editor_image" alt="Editor" class="mx-auto w-full max-w-full object-contain" />
                     </div>
                 </div>
-                <div class="flex items-center justify-between gap-2 border-t px-4 py-3">
-                    <div class="flex flex-1 flex-wrap items-center gap-3">
-                        <div class="flex items-center gap-2">
-                            <button id="image_editor_rotate_left" type="button" class="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100">
-                                {{ __('Girar izquierda') }}
+                <div class="shrink-0 border-t bg-white pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                    <div class="flex flex-col gap-3 px-3 py-3 sm:px-4">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                            <div class="flex flex-wrap gap-2">
+                                <button id="image_editor_rotate_left" type="button" class="rounded border border-gray-300 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 sm:py-1">
+                                    {{ __('Girar izquierda') }}
+                                </button>
+                                <button id="image_editor_rotate_right" type="button" class="rounded border border-gray-300 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 sm:py-1">
+                                    {{ __('Girar derecha') }}
+                                </button>
+                            </div>
+                            <div class="flex w-full flex-col gap-2 sm:flex-1 sm:flex-row sm:flex-wrap sm:items-center">
+                                <span class="text-xs font-medium text-gray-600">{{ __('Ajuste fino') }}</span>
+                                <input id="image_editor_rotate_fine" type="range" min="-10" max="10" step="0.1" value="0" class="h-2 w-full min-w-0 flex-1 cursor-pointer accent-indigo-600 sm:min-w-[8rem]">
+                                <span id="image_editor_rotate_value" class="text-xs font-medium text-gray-600 sm:w-14 sm:text-right">0.0°</span>
+                                <button id="image_editor_rotate_reset" type="button" class="rounded border border-gray-300 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 sm:py-1">
+                                    {{ __('Restablecer') }}
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex w-full gap-2 border-t border-gray-100 pt-3">
+                            <button id="image_editor_cancel" type="button" class="min-h-11 flex-1 rounded-md border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 sm:min-h-0 sm:flex-none sm:border-0 sm:bg-transparent sm:py-1">
+                                {{ __('Cancelar') }}
                             </button>
-                            <button id="image_editor_rotate_right" type="button" class="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100">
-                                {{ __('Girar derecha') }}
+                            <button id="image_editor_crop" type="button" class="min-h-11 flex-1 rounded-md bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 sm:min-h-0 sm:flex-none sm:py-1">
+                                {{ __('Guardar') }}
                             </button>
                         </div>
-                        <div class="flex min-w-[18rem] flex-1 flex-wrap items-center gap-2">
-                            <span class="text-xs font-medium text-gray-600">{{ __('Ajuste fino') }}</span>
-                            <input id="image_editor_rotate_fine" type="range" min="-10" max="10" step="0.1" value="0" class="h-2 min-w-[10rem] flex-1 cursor-pointer accent-indigo-600">
-                            <span id="image_editor_rotate_value" class="w-14 text-right text-xs font-medium text-gray-600">0.0°</span>
-                            <button id="image_editor_rotate_reset" type="button" class="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100">
-                                {{ __('Restablecer') }}
-                            </button>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button id="image_editor_cancel" type="button" class="text-sm text-gray-600 hover:text-gray-900">
-                            {{ __('Cancelar') }}
-                        </button>
-                        <button id="image_editor_crop" type="button" class="rounded bg-indigo-600 px-3 py-1 text-xs text-white hover:bg-indigo-700">
-                            {{ __('Guardar') }}
-                        </button>
                     </div>
                 </div>
             </div>
@@ -262,6 +264,30 @@
 
                     .sj-paste-proxy::selection {
                         background: transparent;
+                    }
+
+                    .sj-image-editor-canvas {
+                        max-height: min(42dvh, 380px);
+                    }
+
+                    .sj-image-editor-canvas .cropper-container,
+                    .sj-image-editor-canvas .cropper-canvas,
+                    .sj-image-editor-canvas .cropper-wrap-box,
+                    .sj-image-editor-canvas img {
+                        max-height: min(42dvh, 380px) !important;
+                    }
+
+                    @media (min-width: 640px) {
+                        .sj-image-editor-canvas {
+                            max-height: 55vh;
+                        }
+
+                        .sj-image-editor-canvas .cropper-container,
+                        .sj-image-editor-canvas .cropper-canvas,
+                        .sj-image-editor-canvas .cropper-wrap-box,
+                        .sj-image-editor-canvas img {
+                            max-height: 55vh !important;
+                        }
                     }
 
                     .sj-toggle {
