@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Weapon;
 use App\Models\WeaponDocument;
 use App\Services\WeaponDocumentService;
+use App\Support\AlertDocumentPeriod;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use RuntimeException;
 
 class AlertsController extends Controller
@@ -15,8 +15,9 @@ class AlertsController extends Controller
     {
         $this->authorizeAdmin();
 
-        $selectedMonth = trim((string) $request->input('month', ''));
-        $hasMonthFilter = preg_match('/^\d{4}-\d{2}$/', $selectedMonth) === 1;
+        $selectedMonths = AlertDocumentPeriod::normalizeFromRequest($request);
+        $hasMonthFilter = $selectedMonths !== [];
+        $monthLabel = AlertDocumentPeriod::label($selectedMonths);
 
         $today = now()->startOfDay();
         $alertWindowEnd = $today->copy()->addDays(120)->endOfDay();
@@ -29,15 +30,7 @@ class AlertsController extends Controller
             ->where('is_renewal', true)
             ->whereNotNull('valid_until');
 
-        if ($hasMonthFilter) {
-            $monthStart = Carbon::createFromFormat('Y-m', $selectedMonth)->startOfMonth();
-            $monthEnd = $monthStart->copy()->endOfMonth();
-            $documentsQuery->whereBetween('valid_until', [$monthStart, $monthEnd]);
-            $monthLabel = $monthStart->translatedFormat('F \d\e Y');
-        } else {
-            $selectedMonth = '';
-            $monthLabel = 'Todos los meses';
-        }
+        AlertDocumentPeriod::applyMonthFilter($documentsQuery, $selectedMonths);
 
         $documents = $documentsQuery
             ->orderBy('valid_until')
@@ -65,7 +58,7 @@ class AlertsController extends Controller
                     ? 'Armas vencidas en ' . $monthLabel
                     : 'Armas vencidas registradas en el sistema',
                 'empty' => $hasMonthFilter
-                    ? 'No hay armas vencidas para este mes.'
+                    ? 'No hay armas vencidas para los meses seleccionados.'
                     : 'No hay armas vencidas registradas.',
             ],
             'expiring' => [
@@ -75,17 +68,17 @@ class AlertsController extends Controller
                     ? 'Alertas activas dentro de 120 días en ' . $monthLabel
                     : 'Alertas activas dentro de 120 días en el sistema',
                 'empty' => $hasMonthFilter
-                    ? 'No hay armas por vencer dentro de la ventana de 120 días para este mes.'
+                    ? 'No hay armas por vencer dentro de la ventana de 120 días para los meses seleccionados.'
                     : 'No hay armas por vencer dentro de la ventana de 120 días.',
             ],
             'no_alerts' => [
                 'count' => $noAlerts->pluck('weapon_id')->filter()->unique()->count(),
                 'label' => 'Armas sin alertas',
                 'subtitle' => $hasMonthFilter
-                    ? 'Armas del mes fuera de la ventana de alerta'
+                    ? 'Armas de los meses seleccionados fuera de la ventana de alerta'
                     : 'Armas del sistema fuera de la ventana de alerta',
                 'empty' => $hasMonthFilter
-                    ? 'No hay armas fuera de alerta para este mes.'
+                    ? 'No hay armas fuera de alerta para los meses seleccionados.'
                     : 'No hay armas fuera de alerta.',
             ],
         ];
@@ -96,7 +89,7 @@ class AlertsController extends Controller
             'expired',
             'expiring',
             'noAlerts',
-            'selectedMonth',
+            'selectedMonths',
             'monthLabel',
             'summaryCards',
             'hasMonthFilter',
@@ -109,8 +102,9 @@ class AlertsController extends Controller
         $this->authorizeAdmin();
 
         $weapons = $this->selectedWeapons($request);
+        $downloadBaseName = $this->resolveDownloadBaseName($request);
 
-        $batch = $documentService->buildBatchDocument($weapons);
+        $batch = $documentService->buildBatchDocument($weapons, $downloadBaseName);
 
         return response()->download($batch['path'], $batch['file_name'])->deleteFileAfterSend(true);
     }
@@ -120,9 +114,10 @@ class AlertsController extends Controller
         $this->authorizeAdmin();
 
         $weapons = $this->selectedWeapons($request);
+        $downloadBaseName = $this->resolveDownloadBaseName($request);
 
         try {
-            $preview = $documentService->buildBatchPreviewPdf($weapons);
+            $preview = $documentService->buildBatchPreviewPdf($weapons, $downloadBaseName);
         } catch (RuntimeException $exception) {
             abort(503, $exception->getMessage());
         }
@@ -152,6 +147,13 @@ class AlertsController extends Controller
         abort_if($weapons->isEmpty(), 422, 'Debe seleccionar al menos un arma.');
 
         return $weapons;
+    }
+
+    private function resolveDownloadBaseName(Request $request): string
+    {
+        $months = AlertDocumentPeriod::normalizeFromRequest($request);
+
+        return AlertDocumentPeriod::downloadBaseName($months);
     }
 
     private function authorizeAdmin(): void

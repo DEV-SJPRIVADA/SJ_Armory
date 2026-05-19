@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\File;
 use App\Models\PermitAuthenticatedTemplate;
 use App\Models\Weapon;
+use App\Support\AlertDocumentPeriod;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Support\Facades\DB;
@@ -100,10 +101,10 @@ class WeaponDocumentService
         });
     }
 
-    public function buildBatchDocument(iterable $weapons): array
+    public function buildBatchDocument(iterable $weapons, ?string $downloadBaseName = null): array
     {
-        $fileName = 'revalidacion_masiva_' . now()->format('Ymd_His_u') . '_' . Str::lower(Str::random(6)) . '.docx';
-        $absolutePath = storage_path('app/tmp/' . $fileName);
+        $fileName = $this->resolveBatchFileName($downloadBaseName, 'docx');
+        $absolutePath = storage_path('app/tmp/' . Str::uuid() . '_' . basename($fileName));
 
         $this->builder->buildForWeapons($weapons, $absolutePath);
 
@@ -118,15 +119,15 @@ class WeaponDocumentService
         return class_exists(Dompdf::class);
     }
 
-    public function buildBatchPreviewPdf(iterable $weapons): array
+    public function buildBatchPreviewPdf(iterable $weapons, ?string $downloadBaseName = null): array
     {
         if (!$this->hasPdfPreviewSupport()) {
             throw new RuntimeException('La vista previa PDF no está disponible en este momento.');
         }
 
         $previewDir = $this->createTempDirectory('sj-armory-preview-');
-        $fileName = 'revalidacion_masiva_' . now()->format('Ymd_His_u') . '_' . Str::lower(Str::random(6));
-        $pdfPath = $previewDir . DIRECTORY_SEPARATOR . $fileName . '.pdf';
+        $fileName = $this->resolveBatchFileName($downloadBaseName, 'pdf');
+        $pdfPath = $previewDir . DIRECTORY_SEPARATOR . $fileName;
         $generatedAt = now();
 
         $html = View::make(
@@ -150,7 +151,7 @@ class WeaponDocumentService
         file_put_contents($pdfPath, $dompdf->output());
 
         return [
-            'file_name' => $fileName . '.pdf',
+            'file_name' => $fileName,
             'path' => $pdfPath,
         ];
     }
@@ -213,6 +214,17 @@ class WeaponDocumentService
             'file_name' => $fileName,
             'path' => $pdfPath,
         ];
+    }
+
+    private function resolveBatchFileName(?string $downloadBaseName, string $extension): string
+    {
+        if ($downloadBaseName !== null && trim($downloadBaseName) !== '') {
+            $base = AlertDocumentPeriod::sanitizeDownloadBaseName($downloadBaseName);
+
+            return $base . '.' . $extension;
+        }
+
+        return 'revalidacion_masiva_' . now()->format('Ymd_His_u') . '_' . Str::lower(Str::random(6)) . '.' . $extension;
     }
 
     private function createTempDirectory(string $prefix): string

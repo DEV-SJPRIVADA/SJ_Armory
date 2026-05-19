@@ -16,7 +16,7 @@ Sistema web para **gestión de armamento**, **asignaciones operativas**, **trans
 - ✅ **Clientes / Puestos / Trabajadores / Usuarios** (puestos y trabajadores: archivo, historial de cambios, políticas por rol)
 - ✅ **Cargas masivas**: validación previa, preview, ejecución por chunks, trazabilidad por lote; en la vista **Subir armas**, el **ADMIN** gestiona las plantillas globales de reverso autenticado (porte y tenencia) usadas en el PDF y en la ficha.
 - ✅ **Dashboard**: KPIs, métricas, gráficos y estado “as of”.
-- ✅ **Alertas**: vencimientos documentales.
+- ✅ **Alertas documentales** (`/alerts/documents`): tarjetas vencidos / por vencer / sin alertas; filtro **multi-mes** con panel de checkboxes (varios meses y años); exportación `.docx` y vista previa PDF con nombre `Revalidacion_{mes}_{año}`.
 - ✅ **Mapa**: geocodificación y visualización operativa.
 - ✅ **Auditoría**: registro de cambios y acciones críticas.
 - ✅ **Realtime (Broadcasting)**: Laravel Reverb + Echo (WebSockets) para sincronización en tiempo real.
@@ -714,13 +714,22 @@ Reportes:
 
 Alertas:
 
+- Rutas: `GET alerts/documents`, `POST alerts/documents/preview`, `POST alerts/documents/download` (`alerts.documents*`).
+- Soporte: `app/Support/AlertDocumentPeriod.php` (validación `months[]`, filtro OR por `valid_until`, etiqueta de períodos y nombre de archivo).
 - Vista general por tarjetas:
   - Documentos vencidos
   - Documentos por vencer
   - Armas sin alertas
-- Filtro por mes calendario opcional:
-  - si no se selecciona mes, muestra todo el sistema
-  - si se selecciona un mes, muestra solo vencimientos de ese mes
+- Filtro por uno o varios meses calendario (pueden ser de años distintos):
+  - botón **Meses** abre un panel con navegación de **año** y **12 checkboxes** (Ene–Dic); **Limpiar** quita la selección; **Filtrar** aplica (`months[]=YYYY-MM` en query)
+  - compatibilidad con URL antigua `?month=YYYY-MM` (se normaliza a `months[]`)
+  - sin meses seleccionados: muestra todo el sistema
+  - con meses seleccionados: documentos de revalidación cuyo `valid_until` cae en **cualquiera** de esos meses
+- Nombre de archivo al descargar o previsualizar (solo nombre; el contenido del Word/PDF no incluye el filtro):
+  - formato: `Revalidacion_{mes_español}_{año}.docx` / `.pdf` (ej. `Revalidacion_mayo_2025.docx`)
+  - un mes en filtro: ese mes
+  - varios meses: el período **más cercano a la fecha actual** (empate: el más reciente)
+  - sin filtro: mes y año actuales
 - Cada tarjeta abre un modal con detalle seleccionable.
 - El detalle permite:
   - buscar en todas las columnas,

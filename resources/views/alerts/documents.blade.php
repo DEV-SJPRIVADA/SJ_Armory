@@ -8,10 +8,32 @@
         .alerts-toolbar__center, .alerts-toolbar__bottom { display: flex; justify-content: center; min-width: 0; }
         .alerts-toolbar__filters, .alerts-toolbar__bottom-group { display: flex; align-items: center; justify-content: center; gap: 1rem; min-width: 0; }
         .alerts-toolbar__filters { gap: 0.75rem; width: max-content; margin: 0 !important; }
-        .alerts-toolbar__filters label, .alerts-toolbar__back { color: #374151; font-size: 0.95rem; font-weight: 600; line-height: 1; white-space: nowrap; }
+        .alerts-toolbar__filters label, .alerts-period-picker__label, .alerts-toolbar__back { color: #374151; font-size: 0.95rem; font-weight: 600; line-height: 1; white-space: nowrap; }
         .alerts-toolbar__back { color: #6b7280; justify-self: end; }
         .alerts-toolbar__filters input, .alerts-toolbar__filters button, .alerts-toolbar__filters a, .alerts-toolbar__download, .alerts-toolbar__preview { height: 2.55rem; border-radius: 0.55rem; font-size: 0.95rem; margin-top: 0 !important; box-sizing: border-box; }
-        .alerts-toolbar__month { min-width: 12.75rem; padding: 0 0.9rem; border: 1px solid #cbd5e1; background: #fff; color: #111827; }
+        .alerts-period-picker { position: relative; z-index: 1200; }
+        .alerts-period-picker__toggle { display: inline-flex; align-items: center; justify-content: space-between; gap: 0.65rem; min-width: 14.5rem; max-width: 20rem; padding: 0 0.9rem; border: 1px solid #cbd5e1; background: #fff; color: #111827; font-weight: 600; cursor: pointer; text-align: left; }
+        .alerts-period-picker__toggle:hover { border-color: #0b6fb6; }
+        .alerts-period-picker__toggle[aria-expanded="true"] { border-color: #0b6fb6; box-shadow: 0 0 0 3px rgba(11, 111, 182, 0.15); }
+        .alerts-period-picker__toggle.has-selection { border-color: #93c5fd; background: #f8fbff; }
+        .alerts-period-picker__summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.92rem; }
+        .alerts-period-picker__chevron { flex-shrink: 0; width: 1rem; height: 1rem; color: #64748b; transition: transform .18s ease; }
+        .alerts-period-picker__toggle[aria-expanded="true"] .alerts-period-picker__chevron { transform: rotate(180deg); color: #0b6fb6; }
+        .alerts-period-panel { position: absolute; top: calc(100% + 0.45rem); left: 0; width: min(22rem, calc(100vw - 2rem)); padding: 0.85rem; border: 1px solid #dbe5f1; border-radius: 0.75rem; background: #fff; box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14); }
+        .alerts-period-panel.hidden { display: none; }
+        .alerts-period-panel__header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.75rem; }
+        .alerts-period-panel__year { flex: 1; text-align: center; color: #0f172a; font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; }
+        .alerts-period-panel__nav { display: inline-flex; align-items: center; justify-content: center; width: 2.1rem; height: 2.1rem; padding: 0; border: 1px solid #cbd5e1; border-radius: 0.45rem; background: #fff; color: #334155; font-size: 1rem; font-weight: 700; cursor: pointer; }
+        .alerts-period-panel__nav:hover { border-color: #0b6fb6; color: #0b6fb6; }
+        .alerts-period-panel__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.45rem; }
+        .alerts-period-month { display: flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; background: #f8fafc; color: #334155; font-size: 0.82rem; font-weight: 600; cursor: pointer; user-select: none; transition: border-color .15s ease, background .15s ease, color .15s ease; }
+        .alerts-period-month:hover { border-color: #93c5fd; background: #eff6ff; }
+        .alerts-period-month.is-checked { border-color: #0b6fb6; background: #eff6ff; color: #0b6fb6; }
+        .alerts-period-month input { width: 0.95rem; height: 0.95rem; margin: 0; accent-color: #0b6fb6; cursor: pointer; }
+        .alerts-period-panel__footer { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e2e8f0; }
+        .alerts-period-panel__hint { color: #64748b; font-size: 0.78rem; font-weight: 600; line-height: 1.3; }
+        .alerts-period-panel__clear { padding: 0.35rem 0.65rem; border: none; border-radius: 0.45rem; background: transparent; color: #0b6fb6; font-size: 0.82rem; font-weight: 700; cursor: pointer; }
+        .alerts-period-panel__clear:hover { background: #eff6ff; }
         .alerts-toolbar__filters button, .alerts-toolbar__filters a { display: inline-flex; align-items: center; justify-content: center; padding: 0 1rem; border: 1px solid #cbd5e1; background: #fff; color: #374151; font-weight: 600; text-decoration: none; }
         .alerts-toolbar__download { display: inline-flex; align-items: center; justify-content: center; min-width: 11rem; padding: 0 1.15rem; border: none; background: #cbd5e1; color: #fff; font-weight: 700; white-space: nowrap; transition: background .18s ease, box-shadow .18s ease, transform .18s ease; }
         .alerts-toolbar__download.is-ready { background: #0b6fb6; box-shadow: 0 10px 22px rgba(11, 111, 182, 0.24); }
@@ -63,11 +85,21 @@
         @media (max-width: 768px) {
             .alerts-toolbar__filters, .alerts-toolbar__bottom-group { flex-direction: column; align-items: stretch; width: 100%; }
             .alerts-toolbar__center, .alerts-toolbar__search { width: 100%; }
-            .alerts-toolbar__download, .alerts-toolbar__month, .alerts-toolbar__filters button, .alerts-toolbar__filters a, .alerts-toolbar__filters label { width: 100%; justify-content: center; }
+            .alerts-toolbar__download, .alerts-period-picker, .alerts-period-picker__toggle, .alerts-toolbar__filters button, .alerts-toolbar__filters a, .alerts-toolbar__filters label, .alerts-period-picker__label { width: 100%; justify-content: center; }
+            .alerts-period-picker { width: 100%; }
+            .alerts-period-panel { position: fixed; left: 50%; right: auto; top: auto; bottom: 1rem; width: min(22rem, calc(100vw - 1.25rem)); transform: translateX(-50%); }
             .alerts-modal-wrap { padding-inline: .65rem; }
         }
     </style>
 @endpush
+
+@php
+    $alertMonthShortNames = [
+        __('Ene'), __('Feb'), __('Mar'), __('Abr'),
+        __('May'), __('Jun'), __('Jul'), __('Ago'),
+        __('Sep'), __('Oct'), __('Nov'), __('Dic'),
+    ];
+@endphp
 
 <x-app-layout>
     <x-slot name="header">
@@ -76,9 +108,47 @@
                 <div class="alerts-toolbar__top">
                     <h2 class="alerts-toolbar__title">{{ __('Alertas Documentales') }}</h2>
                     <div class="alerts-toolbar__center">
-                        <form method="GET" class="alerts-toolbar__filters">
-                            <label for="alerts-month">{{ __('Mes') }}</label>
-                            <input id="alerts-month" type="month" name="month" value="{{ $selectedMonth }}" class="alerts-toolbar__month">
+                        <form id="alerts-filter-form" method="GET" action="{{ route('alerts.documents') }}" class="alerts-toolbar__filters">
+                            <span class="alerts-period-picker__label">{{ __('Meses') }}</span>
+                            <div class="alerts-period-picker">
+                                <button
+                                    type="button"
+                                    id="alerts-period-toggle"
+                                    class="alerts-period-picker__toggle @if (count($selectedMonths) > 0) has-selection @endif"
+                                    aria-expanded="false"
+                                    aria-controls="alerts-period-panel"
+                                    aria-haspopup="dialog"
+                                >
+                                    <span id="alerts-period-summary" class="alerts-period-picker__summary">{{ __('Seleccionar meses') }}</span>
+                                    <svg class="alerts-period-picker__chevron" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                                <div
+                                    id="alerts-period-panel"
+                                    class="alerts-period-panel hidden"
+                                    role="dialog"
+                                    aria-modal="true"
+                                    aria-labelledby="alerts-period-year"
+                                    hidden
+                                >
+                                    <div class="alerts-period-panel__header">
+                                        <button type="button" class="alerts-period-panel__nav" data-period-year-step="-1" aria-label="{{ __('Año anterior') }}">&#8249;</button>
+                                        <span id="alerts-period-year" class="alerts-period-panel__year">{{ now()->year }}</span>
+                                        <button type="button" class="alerts-period-panel__nav" data-period-year-step="1" aria-label="{{ __('Año siguiente') }}">&#8250;</button>
+                                    </div>
+                                    <div id="alerts-period-month-grid" class="alerts-period-panel__grid"></div>
+                                    <div class="alerts-period-panel__footer">
+                                        <span id="alerts-period-hint" class="alerts-period-panel__hint">{{ __('Marque uno o varios meses y pulse Filtrar.') }}</span>
+                                        <button type="button" id="alerts-period-clear" class="alerts-period-panel__clear">{{ __('Limpiar') }}</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="alerts-month-hidden-inputs" hidden>
+                                @foreach ($selectedMonths as $monthValue)
+                                    <input type="hidden" name="months[]" value="{{ $monthValue }}">
+                                @endforeach
+                            </div>
                             <button type="submit">{{ __('Filtrar') }}</button>
                             @if ($hasMonthFilter)
                                 <a href="{{ route('alerts.documents') }}">{{ __('Todos') }}</a>
@@ -141,6 +211,11 @@
 
             <form id="alerts-download-form" method="POST" action="{{ route('alerts.documents.download') }}">
                 @csrf
+                <div id="alerts-download-month-inputs">
+                    @foreach ($selectedMonths as $monthValue)
+                        <input type="hidden" name="months[]" value="{{ $monthValue }}">
+                    @endforeach
+                </div>
                 <div id="alerts-modal-layer" class="alerts-modal-layer hidden" aria-hidden="true">
                     <button type="button" class="alerts-modal-backdrop" data-close-modal aria-label="{{ __('Cerrar') }}"></button>
                     <div class="alerts-modal-wrap">
@@ -334,6 +409,179 @@
     @push('scripts')
         <script>
             (() => {
+        const periodToggle = document.getElementById('alerts-period-toggle');
+        const periodPanel = document.getElementById('alerts-period-panel');
+        const periodSummary = document.getElementById('alerts-period-summary');
+        const periodYearLabel = document.getElementById('alerts-period-year');
+        const periodMonthGrid = document.getElementById('alerts-period-month-grid');
+        const periodClearButton = document.getElementById('alerts-period-clear');
+        const periodHint = document.getElementById('alerts-period-hint');
+        const filterForm = document.getElementById('alerts-filter-form');
+        const monthHiddenInputs = document.getElementById('alerts-month-hidden-inputs');
+        const downloadMonthInputs = document.getElementById('alerts-download-month-inputs');
+        const locale = document.documentElement.lang || 'es';
+
+        const monthShortNames = @json($alertMonthShortNames);
+        const txtSelectMonths = @json(__('Seleccionar meses'));
+        const txtAllMonths = @json(__('Todos los meses'));
+        const txtPeriodsSelected = @json(__('períodos seleccionados'));
+        const txtPeriodHintEmpty = @json(__('Marque uno o varios meses y pulse Filtrar.'));
+        const txtPeriodHintCount = @json(__('seleccionado(s). Pulse Filtrar para aplicar.'));
+
+        const selectedMonths = new Set(@json($selectedMonths));
+        let panelYear = (() => {
+            if (selectedMonths.size === 0) return new Date().getFullYear();
+            const sorted = [...selectedMonths].sort();
+            return Number.parseInt(sorted[sorted.length - 1].split('-')[0], 10);
+        })();
+        let panelOpen = false;
+
+        const formatMonthLabel = (monthValue) => {
+            const [year, month] = monthValue.split('-').map((part) => Number.parseInt(part, 10));
+            const date = new Date(year, month - 1, 1);
+            return date.toLocaleDateString(locale, { month: 'short', year: 'numeric' });
+        };
+
+        const syncMonthHiddenInputs = (container) => {
+            if (!container) return;
+            container.innerHTML = '';
+            [...selectedMonths].sort().forEach((monthValue) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'months[]';
+                input.value = monthValue;
+                container.appendChild(input);
+            });
+        };
+
+        const syncDownloadMonthInputs = () => {
+            syncMonthHiddenInputs(downloadMonthInputs);
+        };
+
+        const updatePeriodSummary = () => {
+            if (!periodSummary || !periodToggle) return;
+
+            const count = selectedMonths.size;
+            periodToggle.classList.toggle('has-selection', count > 0);
+
+            if (count === 0) {
+                periodSummary.textContent = txtSelectMonths;
+                if (periodHint) periodHint.textContent = txtPeriodHintEmpty;
+                return;
+            }
+
+            if (count === 1) {
+                periodSummary.textContent = formatMonthLabel([...selectedMonths][0]);
+            } else if (count <= 3) {
+                periodSummary.textContent = [...selectedMonths].sort().map(formatMonthLabel).join(', ');
+            } else {
+                periodSummary.textContent = `${count} ${txtPeriodsSelected}`;
+            }
+
+            if (periodHint) {
+                periodHint.textContent = `${count} ${txtPeriodHintCount}`;
+            }
+        };
+
+        const renderPeriodMonthGrid = () => {
+            if (!periodMonthGrid || !periodYearLabel) return;
+
+            periodYearLabel.textContent = String(panelYear);
+            periodMonthGrid.innerHTML = '';
+
+            for (let month = 1; month <= 12; month += 1) {
+                const monthValue = `${panelYear}-${String(month).padStart(2, '0')}`;
+                const label = document.createElement('label');
+                label.className = 'alerts-period-month';
+                if (selectedMonths.has(monthValue)) {
+                    label.classList.add('is-checked');
+                }
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = monthValue;
+                checkbox.checked = selectedMonths.has(monthValue);
+                checkbox.setAttribute('aria-label', formatMonthLabel(monthValue));
+
+                const text = document.createElement('span');
+                text.textContent = monthShortNames[month - 1] || String(month);
+
+                label.append(checkbox, text);
+                periodMonthGrid.append(label);
+            }
+        };
+
+        const syncPeriodSelection = () => {
+            syncMonthHiddenInputs(monthHiddenInputs);
+            syncDownloadMonthInputs();
+            updatePeriodSummary();
+            renderPeriodMonthGrid();
+        };
+
+        const setPanelOpen = (open) => {
+            panelOpen = open;
+            if (!periodPanel || !periodToggle) return;
+
+            periodPanel.classList.toggle('hidden', !open);
+            periodPanel.hidden = !open;
+            periodToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        };
+
+        periodToggle?.addEventListener('click', () => {
+            setPanelOpen(!panelOpen);
+        });
+
+        periodMonthGrid?.addEventListener('change', (event) => {
+            const checkbox = event.target;
+            if (!(checkbox instanceof HTMLInputElement) || checkbox.type !== 'checkbox') return;
+
+            const monthValue = checkbox.value;
+            if (!/^\d{4}-\d{2}$/.test(monthValue)) return;
+
+            if (checkbox.checked) {
+                selectedMonths.add(monthValue);
+            } else {
+                selectedMonths.delete(monthValue);
+            }
+
+            syncPeriodSelection();
+        });
+
+        document.querySelectorAll('[data-period-year-step]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const step = Number.parseInt(button.getAttribute('data-period-year-step') || '0', 10);
+                if (!step) return;
+                panelYear += step;
+                renderPeriodMonthGrid();
+            });
+        });
+
+        periodClearButton?.addEventListener('click', () => {
+            selectedMonths.clear();
+            syncPeriodSelection();
+        });
+
+        filterForm?.addEventListener('submit', () => {
+            syncMonthHiddenInputs(monthHiddenInputs);
+            setPanelOpen(false);
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!panelOpen) return;
+            const target = event.target;
+            if (!(target instanceof Node)) return;
+            if (periodToggle?.contains(target) || periodPanel?.contains(target)) return;
+            setPanelOpen(false);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && panelOpen) {
+                setPanelOpen(false);
+            }
+        });
+
+        syncPeriodSelection();
+
         const searchInput = document.getElementById('alerts-search');
         const countBadge = document.getElementById('alerts-selected-count');
         const downloadButton = document.getElementById('alerts-download-button');
