@@ -22,17 +22,38 @@
                 <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('status') }}</div>
             @endif
 
-            <form method="GET" class="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div>
-                    <label for="temporary_photo_user_id" class="block text-sm font-medium text-slate-700">{{ __('Usuario temporal (columna Realizado)') }}</label>
-                    <select name="temporary_photo_user_id" id="temporary_photo_user_id" class="mt-1 min-w-[16rem] rounded-lg border-slate-300 text-sm">
-                        <option value="">{{ __('Seleccione...') }}</option>
-                        @foreach ($temporaryUsers as $tu)
-                            <option value="{{ $tu->id }}" @selected($selectedTemporaryUserId === $tu->id)>{{ $tu->name }} ({{ $tu->email }})</option>
-                        @endforeach
-                    </select>
+            @if ($activeGrantMissing)
+                <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    {{ __('Este usuario temporal no tiene un acceso vigente. Asigne acceso temporal para ver las armas asignadas a ese colaborador.') }}
                 </div>
-                <button type="submit" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">{{ __('Filtrar') }}</button>
+            @endif
+
+            <form method="GET" class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="flex flex-wrap items-end gap-3">
+                    <div class="min-w-[12rem] flex-1 basis-[14rem] sm:max-w-[22rem]">
+                        <label for="temporary_photo_user_id" class="block text-sm font-medium text-slate-700">{{ __('Usuario temporal (columna Realizado)') }}</label>
+                        <select name="temporary_photo_user_id" id="temporary_photo_user_id" class="mt-1 h-10 w-full rounded-lg border-slate-300 text-sm">
+                            <option value="">{{ __('Seleccione...') }}</option>
+                            @foreach ($temporaryUsers as $tu)
+                                <option value="{{ $tu->id }}" @selected($selectedTemporaryUserId === $tu->id)>{{ $tu->name }} ({{ $tu->email }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="min-w-[12rem] flex-[2] basis-[16rem]">
+                        <label for="revista-table-filter" class="block text-sm font-medium text-slate-700">{{ __('Buscar armas') }}</label>
+                        <input
+                            id="revista-table-filter"
+                            type="search"
+                            autocomplete="off"
+                            class="mt-1 h-10 w-full rounded-lg border-slate-300 text-sm shadow-sm"
+                            placeholder="{{ __('Serie, código, marca, calibre, permiso...') }}"
+                        >
+                    </div>
+                    <button type="submit" class="h-10 shrink-0 self-end rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                        {{ __('Filtrar') }}
+                    </button>
+                </div>
+                <p id="revista-table-filter-count" class="mt-2 text-xs text-slate-500"></p>
             </form>
 
             <div class="overflow-hidden rounded-xl shadow-sm">
@@ -51,11 +72,27 @@
                                 <th>{{ __('Acciones') }}</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="revista-table-body">
                             @forelse ($rows as $row)
                                 @php($weapon = $row['weapon'])
                                 @php($done = $selectedTemporaryUserId ? ($row['completions'][$selectedTemporaryUserId] ?? false) : false)
-                                <tr>
+                                @php(
+                                    $tableSearchHaystack = mb_strtolower(implode(' ', array_filter([
+                                        $weapon->internal_code,
+                                        $weapon->serial_number,
+                                        $weapon->weapon_type,
+                                        $weapon->caliber,
+                                        $weapon->brand,
+                                        $weapon->permit_type,
+                                        $weapon->permit_number,
+                                        $weapon->permit_expires_at?->format('Y-m-d'),
+                                        $weapon->activeClientAssignment?->client?->name,
+                                        $weapon->activeClientAssignment?->responsible?->name,
+                                        $weapon->activePostAssignment?->post?->name,
+                                        $weapon->activeWorkerAssignment?->worker?->name,
+                                    ], fn ($v) => filled($v))), 'UTF-8')
+                                )
+                                <tr class="revista-table-row" data-search="{{ $tableSearchHaystack }}">
                                     <td class="px-3 py-2">{{ $weapon->weapon_type ?? '—' }}</td>
                                     <td class="px-3 py-2">{{ $weapon->brand ?? '—' }}</td>
                                     <td class="px-3 py-2 font-medium">{{ $weapon->serial_number ?? '—' }}</td>
@@ -88,11 +125,22 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="9" class="px-3 py-8 text-center text-slate-500">{{ __('No hay armas en su alcance.') }}</td></tr>
+                                <tr class="revista-table-empty-server">
+                                    <td colspan="9" class="px-3 py-8 text-center text-slate-500">
+                                        @if ($activeGrantMissing)
+                                            {{ __('No hay armas en el acceso vigente de este colaborador.') }}
+                                        @else
+                                            {{ __('No hay armas en su alcance.') }}
+                                        @endif
+                                    </td>
+                                </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
+                <p id="revista-table-filter-empty" class="hidden border-t border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+                    {{ __('Ningún arma coincide con la búsqueda.') }}
+                </p>
             </div>
         </div>
     </div>
@@ -104,32 +152,78 @@
             <form id="revista-assign-form" method="POST" action="{{ route('revista-armas.access.store') }}" class="flex min-h-0 flex-1 flex-col">
                 @csrf
                 <div class="space-y-4 overflow-y-auto p-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">{{ __('Usuario temporal') }}</label>
-                        <select name="temporary_photo_user_id" required class="mt-1 w-full rounded-lg border-slate-300 text-sm">
-                            <option value="">{{ __('Seleccione...') }}</option>
-                            @foreach ($temporaryUsers as $tu)
-                                <option value="{{ $tu->id }}">{{ $tu->name }} — {{ $tu->email }}</option>
-                            @endforeach
-                        </select>
-                        <p class="mt-1 text-xs text-slate-500">
-                            <a href="{{ route('revista-armas.temporary-users.create') }}" class="text-[#0b6fb6] font-semibold">{{ __('Crear nuevo usuario temporal') }}</a>
-                        </p>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
+                        <div class="min-w-0">
+                            <label for="revista-assign-temp-user" class="block text-sm font-medium text-slate-700">{{ __('Usuario temporal') }}</label>
+                            <select id="revista-assign-temp-user" name="temporary_photo_user_id" required class="mt-1 w-full rounded-lg border-slate-300 text-sm">
+                                <option value="">{{ __('Seleccione...') }}</option>
+                                @foreach ($temporaryUsers as $tu)
+                                    <option value="{{ $tu->id }}">{{ $tu->name }} — {{ $tu->email }}</option>
+                                @endforeach
+                            </select>
+                            <p class="mt-1 text-xs text-slate-500">
+                                <a href="{{ route('revista-armas.temporary-users.create') }}" class="text-[#0b6fb6] font-semibold">{{ __('Crear nuevo usuario temporal') }}</a>
+                            </p>
+                        </div>
+                        <div class="min-w-0">
+                            <label for="revista-weapons-filter" class="block text-sm font-medium text-slate-700">{{ __('Buscar armas') }}</label>
+                            <input
+                                id="revista-weapons-filter"
+                                type="search"
+                                autocomplete="off"
+                                class="mt-1 h-10 w-full rounded-lg border-slate-300 text-sm shadow-sm"
+                                placeholder="{{ __('Serie, código, marca, calibre, cliente, responsable...') }}"
+                            >
+                        </div>
                     </div>
                     <div>
-                        <div class="mb-2 flex items-center justify-between">
-                            <span class="text-sm font-medium text-slate-700">{{ __('Armas visibles para este acceso') }}</span>
-                            <label class="text-xs text-slate-600"><input type="checkbox" id="revista-select-all-weapons" class="rounded border-slate-300"> {{ __('Seleccionar todas') }}</label>
+                        <div class="mb-2 flex flex-wrap items-center justify-between gap-4">
+                            <div class="flex flex-wrap items-end gap-6">
+                                <div>
+                                    <span class="text-sm font-medium text-slate-700">{{ __('Armas') }}</span>
+                                    <p id="revista-weapons-filter-count" class="text-xs text-slate-500"></p>
+                                </div>
+                                <div>
+                                    <span class="text-sm font-medium text-slate-700">{{ __('Seleccionadas') }}</span>
+                                    <p id="revista-weapons-selected-count" class="text-sm font-semibold tabular-nums text-[#0b6fb6]">0</p>
+                                </div>
+                            </div>
+                            <label class="flex items-center gap-2 text-xs text-slate-600 shrink-0">
+                                <input type="checkbox" id="revista-select-all-weapons" class="rounded border-slate-300">
+                                {{ __('Seleccionar todas visibles') }}
+                            </label>
                         </div>
-                        <div class="max-h-52 overflow-y-auto rounded-lg border border-slate-200 p-2 space-y-1">
+                        <div id="revista-weapons-list" class="max-h-52 overflow-y-auto rounded-lg border border-slate-200 p-2 space-y-1">
                             @foreach ($rows as $row)
                                 @php($w = $row['weapon'])
-                                <label class="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-slate-50">
+                                @php(
+                                    $weaponSearchHaystack = mb_strtolower(implode(' ', array_filter([
+                                        $w->internal_code,
+                                        $w->serial_number,
+                                        $w->weapon_type,
+                                        $w->caliber,
+                                        $w->brand,
+                                        $w->permit_type,
+                                        $w->permit_number,
+                                        $w->activeClientAssignment?->client?->name,
+                                        $w->activeClientAssignment?->responsible?->name,
+                                        $w->activePostAssignment?->post?->name,
+                                        $w->activeWorkerAssignment?->worker?->name,
+                                        $w->activeWorkerAssignment?->worker?->document,
+                                    ], fn ($v) => filled($v))), 'UTF-8')
+                                )
+                                <label
+                                    class="revista-weapon-row flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-slate-50"
+                                    data-search="{{ $weaponSearchHaystack }}"
+                                >
                                     <input type="checkbox" name="weapon_ids[]" value="{{ $w->id }}" class="revista-weapon-cb rounded border-slate-300">
-                                    <span>{{ $w->serial_number }} — {{ $w->weapon_type }} {{ $w->brand }}</span>
+                                    <span class="min-w-0">{{ $w->serial_number }} — {{ $w->weapon_type }} {{ $w->brand }}</span>
                                 </label>
                             @endforeach
                         </div>
+                        <p id="revista-weapons-filter-empty" class="mt-2 hidden text-center text-sm text-slate-500">
+                            {{ __('Ningún arma coincide con la búsqueda.') }}
+                        </p>
                     </div>
                 </div>
                 <div class="flex justify-end gap-2 border-t px-4 py-3">
@@ -203,20 +297,162 @@
     @push('scripts')
     <script>
         (() => {
+            const tableFilter = document.getElementById('revista-table-filter');
+            const tableFilterCount = document.getElementById('revista-table-filter-count');
+            const tableFilterEmpty = document.getElementById('revista-table-filter-empty');
+            const tableBody = document.getElementById('revista-table-body');
+            const tableRows = () => Array.from(tableBody?.querySelectorAll('.revista-table-row') ?? []);
+
+            const applyTableFilter = () => {
+                const term = (tableFilter?.value ?? '').trim().toLowerCase();
+                const rows = tableRows();
+                let visible = 0;
+
+                rows.forEach((row) => {
+                    const haystack = row.dataset.search ?? '';
+                    const matches = term === '' || haystack.includes(term);
+                    row.style.display = matches ? '' : 'none';
+                    if (matches) {
+                        visible += 1;
+                    }
+                });
+
+                const total = rows.length;
+                if (tableFilterCount) {
+                    if (total === 0) {
+                        tableFilterCount.textContent = '';
+                    } else if (term === '') {
+                        tableFilterCount.textContent = `{{ __('Total:') }} ${total}`;
+                    } else {
+                        tableFilterCount.textContent = `{{ __('Mostrando') }} ${visible} / ${total}`;
+                    }
+                }
+
+                if (tableFilterEmpty) {
+                    tableFilterEmpty.classList.toggle('hidden', visible > 0 || total === 0);
+                }
+            };
+
+            tableFilter?.addEventListener('input', applyTableFilter);
+            applyTableFilter();
+        })();
+    </script>
+    <script>
+        (() => {
             const requiredPhotoCount = @json(\App\Support\RevistaWeaponPhotoSlots::requiredCount());
 
             const assignModal = document.getElementById('revista-assign-modal');
+            const weaponsFilter = document.getElementById('revista-weapons-filter');
+            const weaponsList = document.getElementById('revista-weapons-list');
+            const weaponsFilterCount = document.getElementById('revista-weapons-filter-count');
+            const weaponsSelectedCount = document.getElementById('revista-weapons-selected-count');
+            const weaponsFilterEmpty = document.getElementById('revista-weapons-filter-empty');
+            const selectAllWeapons = document.getElementById('revista-select-all-weapons');
+            const weaponRows = () => Array.from(weaponsList?.querySelectorAll('.revista-weapon-row') ?? []);
+
+            const resetAssignModalFilters = () => {
+                if (weaponsFilter) {
+                    weaponsFilter.value = '';
+                }
+                weaponsList?.querySelectorAll('.revista-weapon-cb').forEach((cb) => {
+                    cb.checked = false;
+                });
+                if (selectAllWeapons) {
+                    selectAllWeapons.checked = false;
+                    selectAllWeapons.indeterminate = false;
+                }
+                applyWeaponsFilter();
+            };
+
+            const updateSelectedCount = () => {
+                if (!weaponsSelectedCount) {
+                    return;
+                }
+                const selected = weaponsList?.querySelectorAll('.revista-weapon-cb:checked').length ?? 0;
+                weaponsSelectedCount.textContent = String(selected);
+            };
+
+            const applyWeaponsFilter = () => {
+                const term = (weaponsFilter?.value ?? '').trim().toLowerCase();
+                let visible = 0;
+                const total = weaponRows().length;
+
+                weaponRows().forEach((row) => {
+                    const haystack = row.dataset.search ?? '';
+                    const matches = term === '' || haystack.includes(term);
+                    row.style.display = matches ? '' : 'none';
+                    if (matches) {
+                        visible += 1;
+                    }
+                });
+
+                if (weaponsFilterCount) {
+                    if (term === '') {
+                        weaponsFilterCount.textContent = total > 0
+                            ? `{{ __('Total:') }} ${total}`
+                            : '';
+                    } else {
+                        weaponsFilterCount.textContent = `{{ __('Mostrando') }} ${visible} / ${total}`;
+                    }
+                }
+
+                if (weaponsFilterEmpty) {
+                    weaponsFilterEmpty.classList.toggle('hidden', visible > 0 || total === 0);
+                }
+
+                if (weaponsList) {
+                    weaponsList.classList.toggle('hidden', visible === 0 && term !== '');
+                }
+
+                if (selectAllWeapons) {
+                    const visibleCheckboxes = weaponRows()
+                        .filter((row) => row.style.display !== 'none')
+                        .map((row) => row.querySelector('.revista-weapon-cb'))
+                        .filter(Boolean);
+                    const allChecked = visibleCheckboxes.length > 0 && visibleCheckboxes.every((cb) => cb.checked);
+                    selectAllWeapons.checked = allChecked;
+                    selectAllWeapons.indeterminate = visibleCheckboxes.some((cb) => cb.checked) && !allChecked;
+                }
+
+                updateSelectedCount();
+            };
+
             document.getElementById('revista-open-assign')?.addEventListener('click', () => {
+                resetAssignModalFilters();
                 assignModal?.classList.remove('hidden');
                 assignModal?.classList.add('flex');
             });
-            document.querySelector('[data-revista-assign-cancel]')?.addEventListener('click', () => {
+
+            const closeAssignModal = () => {
                 assignModal?.classList.add('hidden');
                 assignModal?.classList.remove('flex');
+                resetAssignModalFilters();
+            };
+
+            document.querySelector('[data-revista-assign-cancel]')?.addEventListener('click', closeAssignModal);
+
+            weaponsFilter?.addEventListener('input', applyWeaponsFilter);
+
+            selectAllWeapons?.addEventListener('change', (e) => {
+                const checked = e.target.checked;
+                weaponRows().forEach((row) => {
+                    if (row.style.display === 'none') {
+                        return;
+                    }
+                    const cb = row.querySelector('.revista-weapon-cb');
+                    if (cb) {
+                        cb.checked = checked;
+                    }
+                });
+                selectAllWeapons.indeterminate = false;
+                updateSelectedCount();
             });
-            document.getElementById('revista-select-all-weapons')?.addEventListener('change', (e) => {
-                document.querySelectorAll('.revista-weapon-cb').forEach((cb) => { cb.checked = e.target.checked; });
+
+            weaponRows().forEach((row) => {
+                row.querySelector('.revista-weapon-cb')?.addEventListener('change', () => applyWeaponsFilter());
             });
+
+            applyWeaponsFilter();
             document.getElementById('revista-copy-success')?.addEventListener('click', () => {
                 const ta = document.getElementById('revista-success-copy');
                 ta?.select();

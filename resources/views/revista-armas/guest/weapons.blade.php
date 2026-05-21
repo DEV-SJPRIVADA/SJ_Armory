@@ -52,8 +52,9 @@
     </div>
 
     <div id="revista-guest-upload-modal" class="fixed inset-0 z-[1050] hidden items-center justify-center bg-black/40 p-4">
-        <div class="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">
+        <div class="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">
             <div class="border-b px-4 py-3 font-semibold">{{ __('Fotos del arma') }} — <span id="revista-guest-serial"></span></div>
+            <p id="revista-guest-grid-hint" class="hidden border-b border-slate-100 bg-slate-50 px-4 py-2 text-center text-xs text-slate-500"></p>
             <div id="revista-guest-slot-grid" class="grid grid-cols-2 gap-3 overflow-y-auto p-4"></div>
             <div class="flex justify-end border-t px-4 py-3">
                 <button type="button" data-revista-guest-close class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">{{ __('Cerrar') }}</button>
@@ -81,31 +82,73 @@
                     : '<span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-red-500/15 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.45)]">✕</span>';
             };
 
+            const gridHint = document.getElementById('revista-guest-grid-hint');
+            const txtRefreshing = @json(__('Actualizando fotos…'));
+            const txtGridError = @json(__('No se pudieron actualizar las miniaturas. Cierre y vuelva a abrir.'));
+
+            const setGridBusy = (busy) => {
+                slotGrid?.querySelectorAll('.revista-slot-card').forEach((cell) => {
+                    cell.disabled = busy;
+                });
+            };
+
             const reloadGuestGrid = async () => {
                 if (!stateUrl) return;
-                const res = await fetch(stateUrl, { headers: { 'Accept': 'application/json' } });
-                const data = await res.json();
-                renderSlots(data);
-                if (activeWeaponId) {
-                    updateRowStatus(activeWeaponId, data.is_complete);
+                setGridBusy(true);
+                if (gridHint) {
+                    gridHint.textContent = txtRefreshing;
+                    gridHint.classList.remove('hidden');
+                }
+                try {
+                    const res = await fetch(stateUrl, {
+                        headers: { 'Accept': 'application/json' },
+                        credentials: 'same-origin',
+                    });
+                    if (!res.ok) {
+                        throw new Error('state failed');
+                    }
+                    const data = await res.json();
+                    renderSlots(data);
+                    if (activeWeaponId) {
+                        updateRowStatus(activeWeaponId, data.is_complete);
+                    }
+                    if (gridHint) {
+                        gridHint.classList.add('hidden');
+                    }
+                } catch (e) {
+                    if (gridHint) {
+                        gridHint.textContent = txtGridError;
+                        gridHint.classList.remove('hidden');
+                    }
+                } finally {
+                    setGridBusy(false);
                 }
             };
 
             const capture = window.initRevistaPhotoCapture({
                 csrfToken: @json(csrf_token()),
                 onSuccess: reloadGuestGrid,
+                onUploadingChange: (busy) => setGridBusy(busy),
             });
 
             const renderSlots = (data) => {
+                if (!slotGrid) return;
                 slotGrid.innerHTML = '';
                 (data.slots || []).forEach((slot) => {
                     const cell = document.createElement('button');
                     cell.type = 'button';
                     cell.className = 'revista-slot-card rounded-lg border border-slate-200 p-2 text-left';
+                    const label = slot.label || '';
+                    const thumbUrl = slot.url
+                        ? `${slot.url}${slot.url.includes('?') ? '&' : '?'}t=${Date.now()}`
+                        : '';
                     cell.innerHTML = slot.url
-                        ? `<img src="${slot.url}" class="h-32 w-full rounded object-contain bg-slate-50"><div class="mt-1 text-xs font-semibold">${slot.label}</div>`
-                        : `<div class="flex h-32 items-center justify-center rounded border border-dashed border-slate-300 text-xs text-slate-500">${slot.label}<br>{{ __('Tocar para capturar') }}</div>`;
-                    cell.addEventListener('click', () => capture.openSlot(activeStoreUrl, slot.description));
+                        ? `<img src="${thumbUrl}" alt="" loading="lazy" class="h-32 w-full rounded object-contain bg-slate-50"><div class="mt-1 text-xs font-semibold">${label}</div>`
+                        : `<div class="flex h-32 items-center justify-center rounded border border-dashed border-slate-300 text-xs text-slate-500">${label}<br>{{ __('Tocar para capturar') }}</div>`;
+                    cell.addEventListener('click', () => {
+                        if (capture.isUploading?.()) return;
+                        capture.openSlot(activeStoreUrl, slot.description);
+                    });
                     slotGrid.appendChild(cell);
                 });
             };

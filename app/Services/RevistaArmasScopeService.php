@@ -13,6 +13,9 @@ class RevistaArmasScopeService
         $query = Weapon::query()
             ->with([
                 'activeClientAssignment.client',
+                'activeClientAssignment.responsible',
+                'activePostAssignment.post',
+                'activeWorkerAssignment.worker',
             ])
             ->orderBy('serial_number');
 

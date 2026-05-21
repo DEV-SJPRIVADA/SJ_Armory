@@ -169,6 +169,58 @@ class RevistaArmasTest extends TestCase
         ]);
     }
 
+    public function test_index_with_temporary_user_shows_only_weapons_from_active_grant(): void
+    {
+        [$responsible, $weaponAssigned] = $this->createResponsibleWithWeapon();
+
+        $weaponOther = Weapon::create([
+            'internal_code' => 'SJ-REV-002',
+            'serial_number' => 'REV-OTHER-999',
+            'weapon_type' => 'Pistola',
+            'caliber' => '9MM',
+            'brand' => 'Other',
+            'capacity' => '15',
+            'ownership_type' => 'company_owned',
+            'permit_type' => 'porte',
+        ]);
+
+        WeaponClientAssignment::create([
+            'weapon_id' => $weaponOther->id,
+            'client_id' => $weaponAssigned->activeClientAssignment?->client_id
+                ?? Client::query()->first()->id,
+            'responsible_user_id' => $responsible->id,
+            'start_at' => now()->toDateString(),
+            'is_active' => true,
+            'assigned_by' => $responsible->id,
+        ]);
+
+        $temporaryUser = TemporaryPhotoUser::create([
+            'owner_responsible_user_id' => $responsible->id,
+            'created_by_user_id' => $responsible->id,
+            'name' => 'Filtro Grant',
+            'email' => 'grant-filter@example.com',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($responsible)
+            ->post(route('revista-armas.access.store'), [
+                'temporary_photo_user_id' => $temporaryUser->id,
+                'weapon_ids' => [$weaponAssigned->id],
+            ]);
+
+        $this->actingAs($responsible)
+            ->get(route('revista-armas.index', ['temporary_photo_user_id' => $temporaryUser->id]))
+            ->assertOk()
+            ->assertSee('REV-001', false)
+            ->assertDontSee('REV-OTHER-999');
+
+        $this->actingAs($responsible)
+            ->get(route('revista-armas.index'))
+            ->assertOk()
+            ->assertSee('REV-001', false)
+            ->assertSee('REV-OTHER-999', false);
+    }
+
     public function test_approve_staging_photos_records_weapon_history(): void
     {
         Storage::fake('public');

@@ -122,6 +122,16 @@ class TemporaryPhotoAccessService
         return $grant->weapons()->pluck('weapon_id');
     }
 
+    public function activeGrantFor(TemporaryPhotoUser $temporaryUser): ?TemporaryPhotoAccessGrant
+    {
+        return TemporaryPhotoAccessGrant::query()
+            ->where('temporary_photo_user_id', $temporaryUser->id)
+            ->whereNull('revoked_at')
+            ->where('expires_at', '>', now())
+            ->latest('id')
+            ->first();
+    }
+
     private function revokeActiveGrants(TemporaryPhotoUser $temporaryUser): void
     {
         TemporaryPhotoAccessGrant::query()

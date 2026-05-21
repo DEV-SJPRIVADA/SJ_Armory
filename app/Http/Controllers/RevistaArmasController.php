@@ -6,6 +6,7 @@ use App\Models\TemporaryPhotoUser;
 use App\Models\Weapon;
 use App\Support\RevistaWeaponPhotoSlots;
 use App\Services\RevistaArmasScopeService;
+use App\Services\TemporaryPhotoAccessService;
 use App\Services\WeaponPhotoStagingService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -15,6 +16,7 @@ class RevistaArmasController extends Controller
     public function __construct(
         private readonly RevistaArmasScopeService $scopeService,
         private readonly WeaponPhotoStagingService $stagingService,
+        private readonly TemporaryPhotoAccessService $accessService,
     ) {
         $this->middleware(['auth', 'revista.staff']);
     }
@@ -29,7 +31,26 @@ class RevistaArmasController extends Controller
             ->orderBy('name')
             ->get();
 
-        $weapons = $this->scopeService->weaponsQueryForStaff($user)->get();
+        $activeGrantMissing = false;
+        $weaponsQuery = $this->scopeService->weaponsQueryForStaff($user);
+
+        if ($temporaryPhotoUserId) {
+            $temporaryUser = $temporaryUsers->firstWhere('id', $temporaryPhotoUserId);
+
+            if ($temporaryUser) {
+                $grant = $this->accessService->activeGrantFor($temporaryUser);
+
+                if ($grant) {
+                    $weaponIds = $this->accessService->grantWeaponIds($grant);
+                    $weaponsQuery->whereIn('weapons.id', $weaponIds);
+                } else {
+                    $activeGrantMissing = true;
+                    $weaponsQuery->whereRaw('0 = 1');
+                }
+            }
+        }
+
+        $weapons = $weaponsQuery->get();
 
         $rows = $weapons->map(function (Weapon $weapon) use ($temporaryPhotoUserId, $temporaryUsers) {
             $completions = [];
@@ -55,6 +76,7 @@ class RevistaArmasController extends Controller
             'rows' => $rows,
             'temporaryUsers' => $temporaryUsers,
             'selectedTemporaryUserId' => $temporaryPhotoUserId,
+            'activeGrantMissing' => $activeGrantMissing,
             'isAdmin' => $user->isAdmin(),
         ]);
     }

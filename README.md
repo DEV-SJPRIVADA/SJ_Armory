@@ -821,7 +821,8 @@ Nombres de ruta staff relevantes: prefijo `revista-armas.*`; CRUD de temporales 
 
 - Tabla de armas asignadas al grant vigente; **Realizado** ✓/✕ según 4/4 en staging.
 - **Ver** abre modal de captura (Cropper: cámara o galería) vía `revista-armas.partials.photo-capture-kit`.
-- Tras cada foto guardada: el modal de fotos **permanece abierto**; se refrescan las miniaturas y la columna **Realizado** de la fila sin recargar la página.
+- Tras cada foto guardada: el modal de fotos **permanece abierto**; toast verde **«Imagen guardada»** (~4,5 s); se refrescan las miniaturas y la columna **Realizado** sin recargar la página.
+- Captura móvil (`photo-capture-kit`): exporta JPEG redimensionado (máx. 1920 px), botón **Guardar** con estado **Guardando…** (evita clics repetidos), Cropper tras `onload`, errores en modal propio (no `alert` del navegador).
 - Layout invitado: `layouts/revista-guest.blade.php` incluye `@stack('styles')` y `@stack('scripts')` (requerido para el JS del modal).
 
 #### Staging y slots
