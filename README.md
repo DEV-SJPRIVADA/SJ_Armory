@@ -643,10 +643,11 @@ Estados permitidos:
 Controlador: `app/Http/Controllers/WeaponPhotoController.php`
 
 - Carga y reemplazo por tipo de foto.
-- Al actualizar o borrar, elimina archivo anterior.
+- Al actualizar o reemplazar, crea el nuevo `files` y asigna `weapon_photos.file_id` **antes** de borrar el archivo anterior (la FK `weapon_photos.file_id → files` usa `cascadeOnDelete`: borrar el `files` viejo primero eliminaba la fila de la foto).
+- Al eliminar (`destroy`), borra primero la fila `weapon_photos` y después el archivo.
 - Sincroniza renovacion despues de cambios.
 - **Autorización por `WeaponPolicy::updatePhotos`**: ADMIN siempre puede; RESPONSABLE Nivel 1 puede subir/reemplazar/eliminar fotos solo en armas donde es responsable activo. La edición de la información del arma (`update`) sigue siendo exclusiva del ADMIN.
-- **Recortar foto existente:** `WeaponPhotoController::update` asigna primero el nuevo `file_id` y luego borra el archivo anterior (evita borrado en cascada de `weapon_photos`). El editor en ficha exporta JPEG redimensionado, muestra toast «Imagen guardada» y bloquea clics repetidos en **Guardar**.
+- **Recortar o mover** (ficha, modo edición): modal de acciones → Cropper → **Guardar** vía `PATCH weapons.photos.update` (JSON `{ ok: true }`). Mismo orden seguro en servidor; en cliente: JPEG redimensionado (máx. 1920 px), toast verde **«Imagen guardada»**, botón **Guardando…**, errores en modal propio (no `alert` del navegador).
 - La actualización de la **foto del permiso** (`WeaponController::updatePermitPhoto`) usa la misma policy `updatePhotos`, así el responsable Nivel 1 puede mantener actualizada la imagen del permiso desde la grilla de fotos.
 - UI: el toggle **Modo edición** en la tarjeta de fotos aparece para los usuarios autorizados; el switch usa estilos propios (`.sj-toggle*`) embebidos en el partial, sin dependencia de clases Tailwind dinámicas (no requiere recompilar Vite).
 - **Móvil (cámara + galería):** al subir o cambiar una imagen (ficha del arma `resources/views/weapons/partials/photos.blade.php` y formulario crear/editar `form.blade.php`), se muestra un modal **Agregar imagen** con **Tomar foto** (`input` con `capture="environment"`) y **Elegir de galería** (`accept="image/*"` sin `capture`). Tras elegir, el flujo sigue con el editor Cropper y la subida por AJAX o formulario. En escritorio se mantienen arrastrar y pegar. Requiere **HTTPS** en producción para usar la cámara desde el navegador.
@@ -799,17 +800,18 @@ Nombres de ruta staff relevantes: prefijo `revista-armas.*`; CRUD de temporales 
 #### Asignación de acceso
 
 - Tablas: `temporary_photo_access_grants` + `temporary_photo_access_weapons`.
-- Modal **Asignar acceso temporal** en el listado staff: elige usuario temporal + armas (checkboxes).
+- Modal **Asignar acceso temporal** en el listado staff: fila **Usuario temporal** | **Buscar armas** (filtro local en checkboxes) | asignación; contador **Seleccionadas** y **Seleccionar todas visibles**.
 - Código válido **12 h**, correo `RevistaTemporaryAccessMail`; modal de éxito con enlace, correo y código copiable.
 - Revocar acceso no elimina staging ya subido.
 
 #### Vista staff (`/revista-armas`)
 
 - Lista armas según alcance (`RevistaArmasScopeService`: global para **ADMIN**, cartera/responsable activo para **RESPONSABLE** nivel 1).
-- Filtro **Usuario temporal (columna Realizado)** + botón **Filtrar** (`?temporary_photo_user_id=`).
-  - Sin usuario temporal seleccionado: columna **Realizado** muestra `—` y **Acciones** va vacía (comportamiento esperado).
+- Barra de filtro en **una fila horizontal**: **Usuario temporal** | **Buscar armas** (filtro local en la tabla, sin recargar) | **Filtrar** (`?temporary_photo_user_id=`).
+  - Sin usuario temporal seleccionado: todas las armas del alcance del responsable; columna **Realizado** muestra `—` y **Acciones** vacía.
+  - Con usuario temporal seleccionado: solo armas del **acceso vigente** (`TemporaryPhotoAccessService::activeGrantFor` + `grantWeaponIds`); si no hay grant activo, aviso y tabla vacía.
   - Con filtro aplicado: **Realizado** = ✓ si 4/4 fotos en staging de **ese** colaborador; ✕ si falta alguna; botón **Ver** abre modal de revisión.
-  - El filtro es necesario porque el progreso y la revisión son por par **(arma, usuario temporal)**, no por arma sola.
+  - El filtro de usuario temporal es necesario porque el progreso y la revisión son por par **(arma, usuario temporal)**, no por arma sola.
 - Modal **Ver**: muestra las **4 casillas** (con o sin imagen); API `revista-armas.review` devuelve `slots`, `uploaded_count`, `pending_count`, `is_complete`.
 - **Actualizar**:
   - Si faltan fotos (`is_complete === false`): modal de **aviso** centrado — *«No se pueden actualizar las imágenes oficiales porque faltan N foto(s) pendiente(s).»* (sin `confirm` del navegador).
@@ -832,7 +834,7 @@ Nombres de ruta staff relevantes: prefijo `revista-armas.*`; CRUD de temporales 
 - Servicios: `WeaponPhotoStagingService` (inyecta `WeaponHistoryService` al aprobar), `TemporaryPhotoAccessService`, `RevistaArmasScopeService`.
 - Controladores: `RevistaArmasController`, `RevistaPhotoReviewController` (`approve` / `reject`).
 - Migraciones: `2026_05_19_140000_create_revista_armas_tables.php` (índices/FK cortos para MySQL ≤ 64 caracteres); `2026_05_19_180000_create_weapon_histories_table.php`.
-- Tests: `tests/Feature/RevistaArmasTest.php`, `tests/Feature/WeaponHistoryTest.php`.
+- Tests: `tests/Feature/RevistaArmasTest.php` (incl. filtro index por grant activo), `tests/Feature/WeaponHistoryTest.php`, `tests/Feature/WeaponPhotoTest.php` (actualización por recorte sin borrar `weapon_photos`).
 
 ### 5.15 Dashboard operativo
 
@@ -934,6 +936,7 @@ Se registran, entre otros:
 - Unicidad de `weapons.internal_code` y `weapons.serial_number`.
 - Unicidad de `user_clients (user_id, client_id)`.
 - Unicidad de foto por tipo en arma: `weapon_photos (weapon_id, description)`.
+- `weapon_photos.file_id` → `files` con **`cascadeOnDelete`**: al borrar un `files` referenciado se elimina la fila `weapon_photos`; por eso `WeaponPhotoController::update`/`store` reemplazo deben actualizar `file_id` antes de borrar el archivo viejo.
 - `weapon_import_batches.type` clasifica el lote (`weapon`, `client`).
 - `weapon_import_rows.client_id` referencia opcional a `clients`.
 - Indexado por lote/accion y lote/fila en `weapon_import_rows`.
