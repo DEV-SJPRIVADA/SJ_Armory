@@ -69,12 +69,12 @@ class RevistaArmasTest extends TestCase
             ->post(route('revista-armas.temporary-users.store'), [
                 'name' => 'Escolta Campo',
                 'email' => 'escolta@example.com',
-                'owner_responsible_user_id' => $responsible->id,
             ])
             ->assertRedirect(route('revista-armas.temporary-users.index'));
 
         $temporaryUser = TemporaryPhotoUser::query()->where('email', 'escolta@example.com')->first();
         $this->assertNotNull($temporaryUser);
+        $this->assertSame($responsible->id, $temporaryUser->owner_responsible_user_id);
 
         $this->actingAs($responsible)
             ->post(route('revista-armas.access.store'), [

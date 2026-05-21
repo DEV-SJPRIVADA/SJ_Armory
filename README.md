@@ -795,7 +795,7 @@ Nombres de ruta staff relevantes: prefijo `revista-armas.*`; CRUD de temporales 
 - CRUD reutilizable en `/revista-armas/usuarios-temporales`.
 - Campo **Responsable dueño** (`owner_responsible_user_id`): solo usuarios del sistema con rol `RESPONSABLE` (el **ADMIN** elige en el formulario; el responsable nivel 1 queda asignado a sí mismo).
 - Desactivar usuario temporal o revocar acceso **no borra** filas en `weapon_photo_staging`.
-- **ADMIN**: ve y gestiona todos los temporales activos. **RESPONSABLE nivel 1**: solo los que tiene como dueño.
+- **ADMIN**: ve y gestiona todos los temporales activos. **RESPONSABLE nivel 1**: solo los que tiene como dueño; al crear/editar el `owner_responsible_user_id` se asigna automáticamente a su usuario (formulario con campo oculto + merge en `TemporaryPhotoUserController::validated`).
 
 #### Asignación de acceso
 

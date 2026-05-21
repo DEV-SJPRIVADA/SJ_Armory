@@ -113,6 +113,12 @@ class TemporaryPhotoUserController extends Controller
      */
     private function validated(Request $request, User $actor, ?TemporaryPhotoUser $existing = null): array
     {
+        if ($actor->isResponsibleLevelOne()) {
+            $request->merge([
+                'owner_responsible_user_id' => $actor->id,
+            ]);
+        }
+
         $ownerRule = Rule::exists('users', 'id')->where('role', 'RESPONSABLE');
 
         $rules = [
@@ -127,11 +133,6 @@ class TemporaryPhotoUserController extends Controller
         ];
 
         $data = $request->validate($rules);
-
-        if ($actor->isResponsibleLevelOne()) {
-            $data['owner_responsible_user_id'] = $actor->id;
-        }
-
         $data['email'] = mb_strtolower(trim($data['email']));
 
         return $data;
