@@ -30,17 +30,6 @@ class WeaponPhotoController extends Controller
 
         try {
             DB::transaction(function () use ($data, $file, $path, $request, $weapon) {
-                $existingPhoto = $weapon->photos()->with('file')
-                    ->where('description', $data['description'])
-                    ->first();
-                if ($existingPhoto) {
-                    if ($existingPhoto->file) {
-                        Storage::disk($existingPhoto->file->disk)->delete($existingPhoto->file->path);
-                        $existingPhoto->file->delete();
-                    }
-                    $existingPhoto->delete();
-                }
-
                 $storedFile = File::create([
                     'disk' => 'public',
                     'path' => $path,
@@ -51,14 +40,32 @@ class WeaponPhotoController extends Controller
                     'uploaded_by' => $request->user()?->id,
                 ]);
 
-                $photo = $weapon->photos()->create([
-                    'file_id' => $storedFile->id,
-                    'description' => $data['description'],
-                ]);
+                $existingPhoto = $weapon->photos()->with('file')
+                    ->where('description', $data['description'])
+                    ->first();
+
+                if ($existingPhoto) {
+                    $oldFile = $existingPhoto->file;
+                    $existingPhoto->update(['file_id' => $storedFile->id]);
+
+                    if ($oldFile) {
+                        Storage::disk($oldFile->disk)->delete($oldFile->path);
+                        $oldFile->delete();
+                    }
+
+                    $photo = $existingPhoto->fresh();
+                    $action = 'update_photo';
+                } else {
+                    $photo = $weapon->photos()->create([
+                        'file_id' => $storedFile->id,
+                        'description' => $data['description'],
+                    ]);
+                    $action = 'upload_photo';
+                }
 
                 AuditLog::create([
                     'user_id' => $request->user()?->id,
-                    'action' => 'upload_photo',
+                    'action' => $action,
                     'auditable_type' => Weapon::class,
                     'auditable_id' => $weapon->id,
                     'before' => null,
@@ -117,12 +124,6 @@ class WeaponPhotoController extends Controller
 
         try {
             DB::transaction(function () use ($file, $path, $request, $photo) {
-                $oldFile = $photo->file;
-                if ($oldFile) {
-                    Storage::disk($oldFile->disk)->delete($oldFile->path);
-                    $oldFile->delete();
-                }
-
                 $storedFile = File::create([
                     'disk' => 'public',
                     'path' => $path,
@@ -133,9 +134,15 @@ class WeaponPhotoController extends Controller
                     'uploaded_by' => $request->user()?->id,
                 ]);
 
+                $oldFile = $photo->file;
                 $photo->update([
                     'file_id' => $storedFile->id,
                 ]);
+
+                if ($oldFile) {
+                    Storage::disk($oldFile->disk)->delete($oldFile->path);
+                    $oldFile->delete();
+                }
 
                 AuditLog::create([
                     'user_id' => $request->user()?->id,

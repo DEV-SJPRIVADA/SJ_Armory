@@ -226,7 +226,7 @@
                             <button id="image_editor_cancel" type="button" class="min-h-11 flex-1 rounded-md border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 sm:min-h-0 sm:flex-none sm:border-0 sm:bg-transparent sm:py-1">
                                 {{ __('Cancelar') }}
                             </button>
-                            <button id="image_editor_crop" type="button" class="min-h-11 flex-1 rounded-md bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 sm:min-h-0 sm:flex-none sm:py-1">
+                            <button id="image_editor_crop" type="button" class="min-h-11 flex-1 rounded-md bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-60 sm:min-h-0 sm:flex-none sm:py-1">
                                 {{ __('Guardar') }}
                             </button>
                         </div>
@@ -235,8 +235,20 @@
             </div>
         </div>
 
-        <input id="photo_pick_gallery" type="file" accept="image/*" class="hidden">
-        <input id="photo_pick_camera" type="file" accept="image/*" capture="environment" class="hidden">
+        <div id="weapon-photo-toast" class="pointer-events-none fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[60] mx-auto hidden max-w-md rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm font-semibold text-emerald-800 shadow-lg sm:inset-x-auto sm:right-4 sm:mx-0" role="status" aria-live="polite"></div>
+
+        <div id="weapon-photo-alert-modal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-black/40 p-4">
+            <div class="w-full max-w-md rounded-xl bg-white p-5 shadow-xl" role="alertdialog" aria-modal="true">
+                <h3 class="text-lg font-bold text-slate-900">{{ __('Aviso') }}</h3>
+                <p id="weapon-photo-alert-message" class="mt-3 text-sm text-slate-600"></p>
+                <div class="mt-5 flex justify-end">
+                    <button type="button" id="weapon-photo-alert-ok" class="rounded-lg bg-[#0b6fb6] px-4 py-2 text-sm font-bold text-white">{{ __('Entendido') }}</button>
+                </div>
+            </div>
+        </div>
+
+        <input id="photo_pick_gallery" type="file" accept="image/jpeg,image/png,image/webp,image/*" class="hidden">
+        <input id="photo_pick_camera" type="file" accept="image/jpeg,image/png,image/webp,image/*" capture="environment" class="hidden">
 
         @once
             @push('styles')
@@ -430,8 +442,28 @@
             let cropper = null;
             let editorFineRotation = 0;
             let hoveredPasteZone = null;
+            let isPhotoUploading = false;
+            let photoToastTimer = null;
+
+            const photoToast = document.getElementById('weapon-photo-toast');
+            const photoAlertModal = document.getElementById('weapon-photo-alert-modal');
+            const photoAlertMessage = document.getElementById('weapon-photo-alert-message');
+            const photoAlertOk = document.getElementById('weapon-photo-alert-ok');
+
+            const MAX_EXPORT_WIDTH = 1920;
+            const MAX_EXPORT_HEIGHT = 1920;
+            const JPEG_QUALITY = 0.88;
+            const TOAST_MS = 4500;
+
+            const txtSaving = @json(__('Guardando…'));
+            const txtSave = @json(__('Guardar'));
+            const txtSaved = @json(__('Imagen guardada'));
+            const txtGenericError = @json(__('No se pudo actualizar la foto.'));
+            const txtCanvasError = @json(__('No se pudo procesar la imagen. Intente otra foto o reduzca el zoom.'));
+            const txtNetworkError = @json(__('Sin conexión o la subida tardó demasiado. Espere y vuelva a intentar una sola vez.'));
 
             const csrfToken = @json(csrf_token());
+            const csrfHeader = () => document.querySelector('meta[name="csrf-token"]')?.content || csrfToken;
             const storeUrl = @json(route('weapons.photos.store', $weapon));
             const updateUrlBase = @json(route('weapons.photos.update', [$weapon, 0]));
             const updatePermitUrl = @json(route('weapons.permit.update', $weapon));
@@ -565,15 +597,70 @@
                 }
             };
 
+            const showPhotoAlert = (message) => {
+                if (photoAlertMessage) {
+                    photoAlertMessage.textContent = message;
+                }
+                photoAlertModal?.classList.remove('hidden');
+                photoAlertModal?.classList.add('flex');
+            };
+
+            photoAlertOk?.addEventListener('click', () => {
+                photoAlertModal?.classList.add('hidden');
+                photoAlertModal?.classList.remove('flex');
+            });
+
+            const showPhotoToast = (message) => {
+                if (!photoToast) {
+                    return;
+                }
+                photoToast.textContent = message;
+                photoToast.classList.remove('hidden');
+                if (photoToastTimer) {
+                    clearTimeout(photoToastTimer);
+                }
+                photoToastTimer = setTimeout(() => {
+                    photoToast.classList.add('hidden');
+                    photoToastTimer = null;
+                }, TOAST_MS);
+            };
+
+            const setPhotoUploading = (active) => {
+                isPhotoUploading = active;
+                if (cropButton) {
+                    cropButton.disabled = active;
+                    cropButton.textContent = active ? txtSaving : txtSave;
+                }
+                [closeButton, cancelButton].forEach((btn) => {
+                    if (btn) {
+                        btn.disabled = active;
+                    }
+                });
+            };
+
+            const initCropper = () => {
+                if (cropper) {
+                    cropper.destroy();
+                }
+                cropper = new Cropper(editorImage, {
+                    viewMode: 0,
+                    autoCropArea: 1,
+                    toggleDragModeOnDblclick: false,
+                    responsive: true,
+                });
+            };
+
             const openEditor = (source, revokeAfter = false) => {
                 if (editorImage.dataset.objectUrl) {
                     URL.revokeObjectURL(editorImage.dataset.objectUrl);
                     delete editorImage.dataset.objectUrl;
                 }
 
-                editorImage.src = source;
                 if (revokeAfter) {
+                    editorImage.removeAttribute('crossorigin');
                     editorImage.dataset.objectUrl = source;
+                } else {
+                    editorImage.crossOrigin = 'anonymous';
                 }
 
                 editorModal.classList.remove('hidden');
@@ -583,14 +670,24 @@
 
                 if (cropper) {
                     cropper.destroy();
+                    cropper = null;
                 }
 
-                cropper = new Cropper(editorImage, {
-                    viewMode: 0,
-                    autoCropArea: 1,
-                    toggleDragModeOnDblclick: false,
-                    responsive: true,
-                });
+                const onReady = () => {
+                    editorImage.removeEventListener('load', onReady);
+                    editorImage.removeEventListener('error', onError);
+                    initCropper();
+                };
+                const onError = () => {
+                    editorImage.removeEventListener('load', onReady);
+                    editorImage.removeEventListener('error', onError);
+                    showPhotoAlert(txtCanvasError);
+                    closeEditor();
+                };
+
+                editorImage.addEventListener('load', onReady);
+                editorImage.addEventListener('error', onError);
+                editorImage.src = source;
             };
 
             const closeEditor = () => {
@@ -609,20 +706,65 @@
                 syncFineRotationUi();
             };
 
-            const uploadCropped = (blob) => {
-                if (!blob) {
+            const parsePhotoUploadError = async (response) => {
+                const contentType = response.headers.get('content-type') || '';
+                if (response.status === 419) {
+                    return @json(__('Su sesión expiró. Recargue la página e intente de nuevo.'));
+                }
+                if (contentType.includes('application/json')) {
+                    try {
+                        const data = await response.json();
+                        const first = data?.message
+                            || data?.errors?.photo?.[0]
+                            || Object.values(data?.errors || {}).flat()?.[0];
+                        if (first) {
+                            return String(first);
+                        }
+                    } catch (e) {
+                        /* ignore */
+                    }
+                }
+                return txtGenericError;
+            };
+
+            const exportCroppedBlob = () => new Promise((resolve, reject) => {
+                if (!cropper) {
+                    reject(new Error(txtCanvasError));
                     return;
                 }
 
+                const canvas = cropper.getCroppedCanvas({
+                    maxWidth: MAX_EXPORT_WIDTH,
+                    maxHeight: MAX_EXPORT_HEIGHT,
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high',
+                    fillColor: '#ffffff',
+                });
+
+                if (!canvas) {
+                    reject(new Error(txtCanvasError));
+                    return;
+                }
+
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        reject(new Error(txtCanvasError));
+                        return;
+                    }
+                    resolve(blob);
+                }, 'image/jpeg', JPEG_QUALITY);
+            });
+
+            const uploadCropped = async (blob) => {
                 const formData = new FormData();
                 const fileName = activePhotoType === 'permit'
                     ? 'permit.jpg'
                     : `photo_${activePhotoDescription || activePhotoId || 'new'}.jpg`;
-                const file = new File([blob], fileName, { type: blob.type });
+                const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
                 formData.append('photo', file);
 
                 let url = storeUrl;
-                let method = 'POST';
+                const method = 'POST';
 
                 if (activePhotoType === 'permit') {
                     formData.append('_method', 'PATCH');
@@ -634,47 +776,61 @@
                     formData.append('description', activePhotoDescription || '');
                 }
 
-                fetch(url, {
-                    method,
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken,
-                    },
-                    body: formData,
-                })
-                    .then((response) => {
-                        if (!response.ok) {
-                            throw new Error('Upload failed');
-                        }
-
-                        const contentType = response.headers.get('content-type') || '';
-                        if (contentType.includes('application/json')) {
-                            return response.json();
-                        }
-
-                        return null;
-                    })
-                    .then(() => {
-                        window.location.reload();
-                    })
-                    .catch(() => {
-                        alert(@json(__('No se pudo actualizar la foto.')));
+                let response;
+                try {
+                    response = await fetch(url, {
+                        method,
+                        headers: {
+                            'X-CSRF-TOKEN': csrfHeader(),
+                            'Accept': 'application/json',
+                        },
+                        body: formData,
+                        credentials: 'same-origin',
                     });
-            };
+                } catch (e) {
+                    throw new Error(txtNetworkError);
+                }
 
-            const applyCrop = () => {
-                if (!cropper) {
-                    closeEditor();
+                const contentType = response.headers.get('content-type') || '';
+
+                if (!response.ok) {
+                    throw new Error(await parsePhotoUploadError(response));
+                }
+
+                if (contentType.includes('application/json')) {
+                    const data = await response.json();
+                    if (data?.ok !== true) {
+                        throw new Error(txtGenericError);
+                    }
                     return;
                 }
 
-                cropper.getCroppedCanvas().toBlob((blob) => {
-                    if (!blob) {
-                        closeEditor();
-                        return;
-                    }
-                    uploadCropped(blob);
+                if (!activePhotoId && activePhotoType !== 'permit') {
+                    return;
+                }
+
+                throw new Error(txtGenericError);
+            };
+
+            const applyCrop = async () => {
+                if (!cropper || isPhotoUploading) {
+                    return;
+                }
+
+                setPhotoUploading(true);
+
+                try {
+                    const blob = await exportCroppedBlob();
+                    await uploadCropped(blob);
                     closeEditor();
-                }, 'image/jpeg', 0.92);
+                    showPhotoToast(txtSaved);
+                    window.setTimeout(() => window.location.reload(), 400);
+                } catch (error) {
+                    closeEditor();
+                    showPhotoAlert(error?.message || txtGenericError);
+                } finally {
+                    setPhotoUploading(false);
+                }
             };
 
             if (photoEditToggle) {
