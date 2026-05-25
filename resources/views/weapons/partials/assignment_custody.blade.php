@@ -46,9 +46,9 @@
                 <p class="mt-1 text-xs text-amber-900">{{ __('Armerillo del responsable; fuera de operación.') }}</p>
                 <button
                     type="submit"
-                    class="mt-3 w-full rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+                    class="mt-3 w-full rounded-lg border border-[#fcd34d] bg-[#fde68a] px-3 py-2 text-xs font-bold text-[#78350f] shadow-sm hover:bg-[#fcd34d] focus:outline-none focus:ring-2 focus:ring-[#fbbf24] focus:ring-offset-1"
                 >
-                    {{ __('Marcar pendiente') }}
+                    {{ __('Para mantenimiento') }}
                 </button>
             </form>
         </div>
