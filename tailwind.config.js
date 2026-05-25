@@ -19,6 +19,9 @@ export default {
         'bg-yellow-200',
         'text-amber-900',
         'text-green-700',
+        'bg-amber-600',
+        'hover:bg-amber-700',
+        'border-amber-700',
     ],
 
     theme: {

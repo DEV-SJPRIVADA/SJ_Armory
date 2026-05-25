@@ -40,11 +40,14 @@
                 </button>
             </form>
 
-            <form method="POST" action="{{ route('weapons.custody.para_mantenimiento', $weapon) }}" class="rounded-lg border border-sky-200 bg-sky-50/50 p-3">
+            <form method="POST" action="{{ route('weapons.custody.para_mantenimiento', $weapon) }}" class="rounded-lg border border-amber-200 bg-amber-50 p-3">
                 @csrf
-                <div class="text-sm font-semibold text-sky-900">{{ __('Para mantenimiento') }}</div>
-                <p class="mt-1 text-xs text-sky-800">{{ __('Armerillo del responsable; fuera de operación.') }}</p>
-                <button type="submit" class="mt-3 w-full rounded-lg bg-sky-600 px-3 py-2 text-xs font-bold text-white hover:bg-sky-700">
+                <div class="text-sm font-semibold text-amber-950">{{ __('Para mantenimiento') }}</div>
+                <p class="mt-1 text-xs text-amber-900">{{ __('Armerillo del responsable; fuera de operación.') }}</p>
+                <button
+                    type="submit"
+                    class="mt-3 w-full rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+                >
                     {{ __('Marcar pendiente') }}
                 </button>
             </form>
@@ -63,7 +66,11 @@
                         @endforeach
                     </select>
                 </div>
-                <button type="submit" class="w-full rounded-lg bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700" @disabled($armeroPosts->isEmpty())>
+                <button
+                    type="submit"
+                    class="w-full rounded-lg border border-[#085a93] bg-[#0b6fb6] px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#085a93] focus:outline-none focus:ring-2 focus:ring-[#0b6fb6] focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
+                    @disabled($armeroPosts->isEmpty())
+                >
                     {{ __('Enviar a armero') }}
                 </button>
             </form>
