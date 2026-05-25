@@ -9,7 +9,7 @@
     $kindLabels = \App\Models\WeaponHistory::kindLabels();
 @endphp
 
-<div class="max-h-96 overflow-y-auto pr-1 -mr-1 space-y-4">
+<div class="sj-weapon-detail-notes__list min-h-0 flex-1 overflow-y-auto pr-1 -mr-1 space-y-3">
     @forelse ($historyEntries as $entry)
         <article class="bg-white rounded-lg border border-gray-200 p-4">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-2">

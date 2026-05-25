@@ -28,8 +28,12 @@
 
                 <!-- Page Heading -->
                 @if (isset($header))
-                    <header class="sj-page-header">
-                        <div class="sj-page-shell sj-page-shell--wide py-6">
+                    <header @class(['sj-page-header', 'sj-page-header--compact' => $headerCompact])>
+                        <div @class([
+                            'sj-page-shell sj-page-shell--wide',
+                            'py-2.5' => $headerCompact,
+                            'py-6' => ! $headerCompact,
+                        ])>
                             {{ $header }}
                         </div>
                     </header>

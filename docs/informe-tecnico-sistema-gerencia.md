@@ -39,7 +39,7 @@ La empresa contaba con el registro del armamento en **hojas de cálculo (Excel)*
 
 | Área | Descripción breve |
 |------|-------------------|
-| **Armas** | Alta, consulta, edición de datos; fotos técnicas y de permiso (**modo edición**: subir, **recortar o mover**, reemplazar); documentos; exportación; sin borrado físico de armas; **historial de notas** en la ficha (cronológico: asignaciones, novedades, documentos, transferencias, cambios de datos y actualización de fotos vía Revista armas). |
+| **Armas** | Alta, consulta, edición de datos; **ficha de detalle** reorganizada (datos y documentos a la izquierda; destino y asignación a la derecha; fotos abajo en una fila); fotos técnicas y de permiso (**modo edición**: subir, **recortar o mover**, reemplazar); documentos; exportación; sin borrado físico de armas; **historial de notas** en la ficha (cronológico: asignaciones, novedades, documentos, transferencias, cambios de datos y actualización de fotos vía Revista armas). |
 | **Asignaciones** | Operativa (arma–cliente–responsable) e interna (arma–puesto y/o trabajador). |
 | **Transferencias** | Envío, aceptación, cancelación; historial; campos opcionales de munición/proveedores según reglas del sistema. |
 | **Clientes, puestos, trabajadores** | Gestión con archivo/historial donde aplica; políticas por rol. |
@@ -120,7 +120,7 @@ Use las figuras siguientes para ilustrar el informe. Sustituya cada bloque por l
 > *Listado de **armas** (vista índice) con filtros o columnas principales visibles.*
 
 > **Figura 10 — [Insertar imagen]**  
-> *Ficha de un **arma** (detalle): datos generales o pestaña visible.*
+> *Ficha de un **arma** (detalle `/weapons/{id}`): columnas izquierda (características, permisos, propiedad, notas, documentos) y derecha (destino operativo, asignación interna); franja inferior de **Fotos**.*
 
 ### 7.4 Operación en campo
 
@@ -135,7 +135,7 @@ Módulo **Alertas documentales**: tres tarjetas resumen (vencidos, por vencer en
 > *Pantalla de **alertas** (tarjetas de vencidos / por vencer / sin alertas) con el panel **Meses** abierto mostrando checkboxes por mes.*
 
 > **Figura 13 — [Insertar imagen]**  
-> *Detalle de **documentos** en la ficha de un arma (o lista de documentos), si aplica.*
+> *Bloque **Documentos** en la columna izquierda de la ficha (subida + tabla), debajo de **Notas**.*
 
 ### 7.6 Transferencias
 
@@ -228,14 +228,16 @@ La tarjeta **Notas** del detalle del arma (`/weapons/{id}`) es un **historial cr
 | Documento | Carga manual de documentos |
 | Fotografías | Aprobación de las 4 fotos de **Revista armas** (fecha, cantidad, colaborador temporal) |
 
-El listado tiene **desplazamiento vertical** cuando hay muchas entradas. Si existía texto antiguo en `weapons.notes` antes del historial, puede mostrarse como **nota heredada** hasta que haya registros nuevos.
+El listado tiene **desplazamiento vertical** dentro del recuadro de Notas. En pantallas anchas el bloque **Notas crece en altura** para que el pie de la columna izquierda (borde inferior de **Documentos**) quede alineado con el de **Asignación interna** en la columna derecha. Si existía texto antiguo en `weapons.notes` antes del historial, puede mostrarse como **nota heredada** hasta que haya registros nuevos.
 
 > **Figura 25 — [Insertar imagen]**  
 > *Tarjeta **Notas** en ficha de arma con varias entradas del historial (etiqueta de tipo, fecha, usuario, texto).*
 
 ### 7.12 Fotos en la ficha del arma (modo edición y recorte)
 
-En el detalle del arma (`/weapons/{id}`), la tarjeta **Fotos** permite a usuarios autorizados (**ADMIN** o **responsable nivel 1** sobre esa arma) activar **Modo edición** y, en cada casilla con imagen, elegir **Recortar o mover** o **Cambiar imagen**.
+En el detalle del arma (`/weapons/{id}`), la sección **Fotos** ocupa **todo el ancho** debajo de las dos columnas. Muestra **siete casillas en una fila** en pantallas grandes: cinco fotos técnicas (lados, cañón/marca, serie, impronta), **Permiso (frente)** y **Permiso autenticado** (imagen de referencia global, no editable desde la ficha).
+
+Usuarios autorizados (**ADMIN** o **responsable nivel 1** sobre esa arma) pueden activar **Modo edición** y, en cada casilla editable con imagen, elegir **Recortar o mover** o **Cambiar imagen**.
 
 **Comportamiento corregido (mayo 2026)**
 
@@ -249,7 +251,23 @@ En el detalle del arma (`/weapons/{id}`), la tarjeta **Fotos** permite a usuario
 - Si una foto se perdió antes de esta corrección, debe **volverse a cargar** en esa casilla (el sistema no recupera archivos ya borrados).
 
 > **Figura 26 — [Insertar imagen]**  
-> *Ficha del arma — tarjeta **Fotos** con **Modo edición** activo y modal **Recortar o mover** (opcional).*
+> *Ficha del arma — franja **Fotos** con las siete casillas en una fila (opcional: **Modo edición** o modal **Recortar o mover**).*
+
+### 7.13 Organización de la ficha de detalle (mayo 2026)
+
+La pantalla **Detalle de arma** dejó de usar un único bloque grande “Información y gestión” y se organizó para operación diaria:
+
+| Zona | Contenido |
+|------|-----------|
+| Encabezado | Título, **Editar arma**, **Volver al listado** (más compacto que otras pantallas) |
+| Columna izquierda | Características, permisos y propiedad en **filas de campos** (solo lectura); **Notas** (historial); **Documentos** (cargar y tabla) |
+| Columna derecha | **Destino operativo** y **Asignación interna** (incluye custodia: armerillo, para mantenimiento, armero) |
+| Pie de página | **Fotos** a ancho completo |
+
+**Beneficio para el usuario:** consulta y acciones en un solo vistazo; más espacio para el historial de notas; documentos alineados con la gestión de la derecha sin hueco vacío bajo la tabla.
+
+> **Figura 27 — [Insertar imagen]**  
+> *Captura completa de la ficha mostrando las dos columnas y la franja de fotos (recomendada para el informe).*
 
 ---
 
@@ -303,6 +321,7 @@ En el detalle del arma (`/weapons/{id}`), la tarjeta **Fotos** permite a usuario
 | 0.3 | mayo 2026 | Wilder Rivera | Historial de notas en ficha de arma (§7.11); Revista armas: modales de confirmación/aviso y registro en Notas; README alineado |
 | 0.4 | mayo 2026 | Wilder Rivera | Revista armas: filtro por acceso vigente, búsqueda local y captura móvil robusta (§7.10); ficha de arma: recorte sin pérdida de foto (§7.12); README técnico actualizado |
 | 0.5 | mayo 2026 | Wilder Rivera | Revista staff: listado por último acceso aunque el código haya vencido; revisión de fotos en staging sin reasignar obligatoria |
+| 0.6 | mayo 2026 | Wilder Rivera | Ficha de detalle: layout en dos columnas, notas/documentos alineados, fotos en franja de 7 casillas; §7.13; README §5.9.0 |
 
 ---
 

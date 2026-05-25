@@ -8,7 +8,7 @@ Sistema web para **gestión de armamento**, **asignaciones operativas**, **trans
 
 ## 📌 Alcance funcional
 
-- ✅ **Armas**: alta/edición, fotos (técnicas y permiso; en móvil **Tomar foto** o **Elegir de galería**; reverso autenticado según plantillas globales **porte** / **tenencia**), documentos (descarga del **permiso** como PDF frente + reverso), exportación, inventario; **historial cronológico de notas** en la ficha (asignaciones, novedades, documentos, transferencias, actualización de datos y fotos desde Revista armas).
+- ✅ **Armas**: alta/edición; **ficha de detalle** en dos columnas (datos readonly, notas, documentos, destino, asignación interna; fotos en franja inferior); fotos (técnicas y permiso; en móvil **Tomar foto** o **Elegir de galería**; reverso autenticado según plantillas globales **porte** / **tenencia**), documentos (descarga del **permiso** como PDF frente + reverso), exportación, inventario; **historial cronológico de notas** en la ficha (asignaciones, novedades, documentos, transferencias, actualización de datos y fotos desde Revista armas).
 - ✅ **Asignaciones**:
   - **Operativa** (arma ↔ cliente/responsable)
   - **Interna** (arma ↔ puesto y/o trabajador; ubicación en mapa prioriza puesto si existe; la columna de destino en el listado refleja principalmente al trabajador cuando hay trabajador activo)
@@ -712,6 +712,35 @@ Descripciones tecnicas soportadas (`WeaponPhoto::DESCRIPTIONS`):
 - `serie`
 - `impronta`
 
+### 5.9.0 Ficha de detalle del arma (`weapons/show`) — layout (mayo 2026)
+
+Vista: `resources/views/weapons/show.blade.php` y partials en `resources/views/weapons/partials/show/`.
+
+**Encabezado de página**
+
+- Slot `header-compact` en `<x-app-layout>` (`AppLayout::$headerCompact`): padding reducido (`.sj-page-header--compact`, shell `py-2.5`) solo en esta pantalla; título **Detalle de arma** + **Editar** / **Volver al listado**.
+
+**Cuerpo (grid `lg:grid-cols-2`, `items-stretch`)**
+
+| Columna izquierda | Columna derecha (ADMIN / RESPONSABLE) |
+|-------------------|--------------------------------------|
+| **Características**, **Permisos**, **Propiedad** — filas de campos tipo formulario (solo lectura, componente `x-weapon-detail-field`) | **Destino operativo** (`assignment_client`: cliente actual, fila cliente / responsable / actualizar, observaciones) |
+| **Notas** — historial cronológico; el bloque **crece en altura** (`flex-1`) para alinear el pie de la columna con la derecha | **Asignación interna** — custodia (`assignment_custody`) + puesto/trabajador (`assignment_internal`) |
+| **Documentos** — fila de subida + tabla (`documents` con `embedded => true`) | |
+
+**Fotos (ancho completo debajo del grid)**
+
+- Partial `photos` con `compact => true`: cabecera ligera + **7 casillas en una fila** en `xl` (5 técnicas + permiso frente + permiso autenticado de referencia); imágenes `h-32` en esta vista. CSS: `.sj-weapon-detail-photos #weapon-photo-grid { grid-template-columns: repeat(7, …) }` en `app.css`.
+
+**Archivos clave**
+
+- `resources/views/components/weapon-detail-field.blade.php`
+- `resources/views/weapons/partials/show/{characteristics,permits,ownership,notes}.blade.php`
+- `resources/views/weapons/partials/documents.blade.php` (`$embedded`)
+- `resources/views/weapons/partials/photos.blade.php` (`$compact`)
+
+Tras cambios en `app.css`, recompilar Vite (`npm run build` local / `npm run build:deploy` hosting).
+
 ### 5.9.1 Historial de notas (ficha del arma)
 
 La tarjeta **Notas** en `weapons/show` (`resources/views/weapons/partials/history-panel.blade.php`) muestra un **historial cronológico append-only** (`weapon_histories`), no el texto único de `weapons.notes` como panel principal.
@@ -722,7 +751,7 @@ La tarjeta **Notas** en `weapons/show` (`resources/views/weapons/partials/histor
 | Modelo | `App\Models\WeaponHistory` — tipos: `created`, `note`, `update`, `destination`, `internal`, `incident`, `transfer`, `document`, `photos` |
 | Servicio | `App\Services\WeaponHistoryService` |
 | Relación | `Weapon::histories()` |
-| Vista | `resources/views/weapons/partials/history-panel.blade.php` (scroll `max-h-96`) |
+| Vista | `resources/views/weapons/partials/history-panel.blade.php` (scroll dentro de `.sj-weapon-detail-notes`; altura flexible en desktop) |
 
 **Qué genera entradas automáticamente**
 

@@ -1,19 +1,19 @@
-<div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-    <div class="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200 px-6 py-5">
-        <div class="flex items-center justify-between">
+@php
+    $compact = $compact ?? false;
+@endphp
+
+<div @class([
+    'sj-weapon-detail-section sj-weapon-detail-photos' => $compact,
+    'bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200' => ! $compact,
+])>
+    @if ($compact)
+        <div class="sj-weapon-detail-section__head">
             <div>
-                <h3 class="text-xl font-bold text-gray-900 flex items-center gap-3">
-                    <div class="bg-blue-100 p-2 rounded-lg">
-                        <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                        </svg>
-                    </div>
-                    {{ __('Fotos') }}
-                </h3>
-                <p class="mt-1 text-sm text-gray-600">{{ __('Fotografías del arma y permisos asociados') }}</p>
+                <h4 class="sj-weapon-detail-section__title mb-0">{{ __('Fotos') }}</h4>
+                <p class="sj-weapon-detail-section__hint mt-1 mb-0">{{ __('Fotografías del arma y permisos asociados') }}</p>
             </div>
             @can('updatePhotos', $weapon)
-                <label class="sj-toggle">
+                <label class="sj-toggle shrink-0">
                     <input id="photo_edit_toggle" type="checkbox" class="sj-toggle-input">
                     <span class="sj-toggle-track" aria-hidden="true">
                         <span class="sj-toggle-knob">
@@ -29,9 +29,41 @@
                 </label>
             @endcan
         </div>
-    </div>
-    
-    <div class="p-6">
+    @else
+        <div class="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200 px-6 py-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900 flex items-center gap-3">
+                        <div class="bg-blue-100 p-2 rounded-lg">
+                            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        {{ __('Fotos') }}
+                    </h3>
+                    <p class="mt-1 text-sm text-gray-600">{{ __('Fotografías del arma y permisos asociados') }}</p>
+                </div>
+                @can('updatePhotos', $weapon)
+                    <label class="sj-toggle">
+                        <input id="photo_edit_toggle" type="checkbox" class="sj-toggle-input">
+                        <span class="sj-toggle-track" aria-hidden="true">
+                            <span class="sj-toggle-knob">
+                                <svg class="sj-toggle-icon sj-toggle-icon-off" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                                <svg class="sj-toggle-icon sj-toggle-icon-on" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </span>
+                        </span>
+                        <span class="sj-toggle-label">{{ __('Modo edición') }}</span>
+                    </label>
+                @endcan
+            </div>
+        </div>
+    @endif
+
+    <div @class(['p-6' => ! $compact])>
 
         @if ($errors->has('photo'))
             <div class="mt-2 text-sm text-red-600">{{ $errors->first('photo') }}</div>
@@ -41,16 +73,24 @@
             $weaponPermitAuthTemplate = $weaponPermitAuthTemplate ?? null;
             $photoDescriptions = \App\Models\WeaponPhoto::DESCRIPTIONS;
             $photosByDescription = $weapon->photos->keyBy('description');
+            $photoSurfaceClass = $compact ? 'h-32' : 'h-40';
+            $photoCardPadding = $compact ? 'p-2' : 'p-3';
+            $photoMetaClass = $compact ? 'text-xs' : 'text-sm';
         @endphp
 
-        <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3" id="weapon-photo-grid">
+        <div @class([
+            'mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4',
+            'xl:grid-cols-7' => $compact,
+            'xl:grid-cols-6' => ! $compact,
+            'mt-0' => $compact,
+        ]) id="weapon-photo-grid">
             @foreach ($photoDescriptions as $description => $label)
                 @php
                     $photo = $photosByDescription->get($description);
                     $photoUrl = $photo?->file ? Storage::disk($photo->file->disk)->url($photo->file->path) : null;
                 @endphp
                 <div
-                    class="relative border rounded-lg p-3 weapon-photo-card"
+                    class="relative border rounded-lg {{ $photoCardPadding }} weapon-photo-card"
                     data-photo-type="weapon"
                     data-photo-id="{{ $photo?->id }}"
                     data-photo-description="{{ $description }}"
@@ -67,9 +107,9 @@
                         <div class="sj-paste-proxy" data-paste-proxy contenteditable="true" spellcheck="false"></div>
                     @endcan
                     @if ($photoUrl)
-                        <img src="{{ $photoUrl }}" alt="{{ $label }}" class="h-40 w-full rounded object-contain bg-gray-50" data-drop-surface>
+                        <img src="{{ $photoUrl }}" alt="{{ $label }}" class="{{ $photoSurfaceClass }} w-full rounded object-contain bg-gray-50" data-drop-surface>
                     @else
-                        <div class="flex h-40 w-full items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400 transition" data-drop-surface>
+                        <div class="flex {{ $photoSurfaceClass }} w-full items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400 transition" data-drop-surface>
                             <div>
                                 <div class="font-medium">{{ __('Foto pendiente') }}</div>
                                 <div class="mt-1 text-xs text-gray-400">{{ $label }}</div>
@@ -77,10 +117,10 @@
                         </div>
                     @endif
 
-                    <div class="mt-2 flex items-center justify-between text-sm">
-                        <div class="text-gray-600">
-                            <div class="flex items-center gap-2">
-                                <span>{{ $label }}</span>
+                    <div class="mt-2 flex items-center justify-between {{ $photoMetaClass }}">
+                        <div class="text-gray-600 min-w-0">
+                            <div class="flex flex-col gap-0.5 xl:flex-row xl:items-center xl:gap-2">
+                                <span class="truncate">{{ $label }}</span>
                                 <span class="text-xs text-gray-500">{{ $photo?->created_at?->format('Y-m-d') ?? __('Pendiente') }}</span>
                             </div>
                         </div>
@@ -101,7 +141,7 @@
             @endforeach
 
             <div
-                class="relative border rounded-lg p-3 weapon-photo-card"
+                class="relative border rounded-lg {{ $photoCardPadding }} weapon-photo-card"
                 data-photo-type="permit"
                 data-photo-src="{{ $weapon->permitFile ? route('weapons.permit', $weapon) : '' }}"
                 data-photo-empty="{{ $weapon->permitFile ? '0' : '1' }}"
@@ -116,18 +156,18 @@
                     <div class="sj-paste-proxy" data-paste-proxy contenteditable="true" spellcheck="false"></div>
                 @endcan
                 @if ($weapon->permitFile)
-                    <img src="{{ route('weapons.permit', $weapon) }}" alt="Permiso" class="h-40 w-full rounded object-contain bg-gray-50" data-drop-surface>
+                    <img src="{{ route('weapons.permit', $weapon) }}" alt="Permiso" class="{{ $photoSurfaceClass }} w-full rounded object-contain bg-gray-50" data-drop-surface>
                 @else
-                    <div class="flex h-40 w-full items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400 transition" data-drop-surface>
+                    <div class="flex {{ $photoSurfaceClass }} w-full items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400 transition" data-drop-surface>
                         <div>
                             <div class="font-medium">{{ __('Foto pendiente') }}</div>
                             <div class="mt-1 text-xs text-gray-400">{{ __('Permiso (frente)') }}</div>
                         </div>
                     </div>
                 @endif
-                <div class="mt-2 text-sm text-gray-600">
-                    <div class="flex items-center gap-2">
-                        <span>{{ __('Permiso (frente)') }}</span>
+                <div class="mt-2 {{ $photoMetaClass }} text-gray-600">
+                    <div class="flex flex-col gap-0.5 xl:flex-row xl:items-center xl:gap-2 min-w-0">
+                        <span class="truncate">{{ __('Permiso (frente)') }}</span>
                         <span class="text-xs text-gray-500">{{ $weapon->permitFile?->created_at?->format('Y-m-d') ?? __('Pendiente') }}</span>
                     </div>
                 </div>
@@ -138,19 +178,19 @@
                     ? route('authenticated-permit-images.show', ['permit_kind' => $weapon->permit_type])
                     : '';
             @endphp
-            <div class="relative rounded-lg border border-slate-200 bg-slate-50/50 p-3" title="{{ __('Imagen de referencia global (no editable desde esta ficha)') }}">
+            <div class="relative rounded-lg border border-slate-200 bg-slate-50/50 {{ $photoCardPadding }}" title="{{ __('Imagen de referencia global (no editable desde esta ficha)') }}">
                 @if ($globalAuthPermitUrl !== '')
-                    <img src="{{ $globalAuthPermitUrl }}" alt="{{ __('Permiso autenticado (referencia)') }}" class="h-40 w-full rounded object-contain bg-white">
+                    <img src="{{ $globalAuthPermitUrl }}" alt="{{ __('Permiso autenticado (referencia)') }}" class="{{ $photoSurfaceClass }} w-full rounded object-contain bg-white">
                 @else
-                    <div class="flex h-40 w-full items-center justify-center rounded border border-dashed border-gray-300 bg-white text-center text-sm text-gray-400">
+                    <div class="flex {{ $photoSurfaceClass }} w-full items-center justify-center rounded border border-dashed border-gray-300 bg-white text-center text-sm text-gray-400">
                         <div>
                             <div class="font-medium">{{ __('Sin imagen de referencia') }}</div>
                             <div class="mt-1 text-xs text-gray-400">{{ __('Tipo de permiso del arma: :tipo', ['tipo' => $weapon->permit_type ?: '—']) }}</div>
                         </div>
                     </div>
                 @endif
-                <div class="mt-2 text-sm text-gray-600">
-                    <span>{{ __('Permiso autenticado') }}</span>
+                <div class="mt-2 {{ $photoMetaClass }} text-gray-600">
+                    <span class="truncate block">{{ __('Permiso autenticado') }}</span>
                 </div>
             </div>
         </div>
