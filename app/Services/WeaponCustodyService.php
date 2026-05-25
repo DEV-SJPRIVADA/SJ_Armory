@@ -171,14 +171,23 @@ class WeaponCustodyService
 
     private function closeActiveAssignments(Weapon $weapon): void
     {
-        $weapon->activePostAssignment()?->update([
-            'is_active' => false,
-            'end_at' => now()->toDateString(),
-        ]);
-        $weapon->activeWorkerAssignment()?->update([
-            'is_active' => false,
-            'end_at' => now()->toDateString(),
-        ]);
+        $now = now()->toDateString();
+
+        $activePost = $weapon->activePostAssignment()->first();
+        if ($activePost) {
+            $activePost->update([
+                'end_at' => $now,
+                'is_active' => null,
+            ]);
+        }
+
+        $activeWorker = $weapon->activeWorkerAssignment()->first();
+        if ($activeWorker) {
+            $activeWorker->update([
+                'end_at' => $now,
+                'is_active' => null,
+            ]);
+        }
     }
 
     /**

@@ -58,6 +58,36 @@ class WeaponCustodyTest extends TestCase
         $this->assertFalse($weapon->isOperationalForInventory());
     }
 
+    public function test_move_to_para_mantenimiento_after_prior_closed_assignment(): void
+    {
+        [$weapon, $responsible, $client] = $this->createWeaponContext('SER-CUST-2');
+        $armerillo = app(\App\Services\ResponsibleCustodyPostService::class)->armerilloPost($responsible, $client);
+
+        \App\Models\WeaponPostAssignment::query()->create([
+            'weapon_id' => $weapon->id,
+            'post_id' => $armerillo->id,
+            'assigned_by' => $responsible->id,
+            'start_at' => now()->subDays(10)->toDateString(),
+            'end_at' => now()->subDays(5)->toDateString(),
+            'is_active' => null,
+        ]);
+
+        $this->actingAs($responsible)
+            ->post(route('weapons.custody.armerillo', $weapon))
+            ->assertRedirect();
+
+        $this->actingAs($responsible)
+            ->post(route('weapons.custody.para_mantenimiento', $weapon))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $weapon->refresh()->load('activePostAssignment.post');
+        $this->assertSame(
+            PostCustodyRole::ARMERILLO_PARA_MANTENIMIENTO,
+            $weapon->activePostAssignment?->post?->custody_role,
+        );
+    }
+
     public function test_maps_endpoint_excludes_non_operational_custody(): void
     {
         [$weapon, $responsible, $client] = $this->createWeaponContext('SER-CUST-1');
