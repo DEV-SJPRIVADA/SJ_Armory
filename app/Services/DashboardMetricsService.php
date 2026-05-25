@@ -33,17 +33,16 @@ class DashboardMetricsService
                 'activeClientAssignment.responsible',
                 'activePostAssignment.post',
                 'activeWorkerAssignment',
-                'operationalBlockingIncidents',
+                'revalidationDocumentExcludingIncidents',
             ])
             ->get();
 
         $weaponIds = $weapons->pluck('id');
 
-        // Crear un mapa de armas con incidentes bloqueantes
-        $weaponsWithBlockingIncidents = $weapons
-            ->filter(fn (Weapon $weapon) => $weapon->operationalBlockingIncidents->isNotEmpty())
+        $weaponsExcludedFromRevalidation = $weapons
+            ->filter(fn (Weapon $weapon) => $weapon->isExcludedFromRevalidationDocuments())
             ->pluck('id')
-            ->toArray();
+            ->all();
 
         $renewalDocuments = $this->renewalDocumentsQuery($user, $weaponIds)
             ->orderByDesc('id')
@@ -59,6 +58,10 @@ class DashboardMetricsService
         ];
 
         foreach ($renewalDocuments as $document) {
+            if (in_array($document->weapon_id, $weaponsExcludedFromRevalidation, true)) {
+                continue;
+            }
+
             $alert = WeaponDocumentAlert::forComplianceDocument($document);
 
             if ($alert['state'] === 'Vencido') {
@@ -107,17 +110,16 @@ class DashboardMetricsService
             ))
             ->groupBy(fn (WeaponDocument $document) => $document->valid_until->format('Y-m'))
             ->sortKeys()
-            ->map(function (Collection $group, string $monthKey) use ($weaponsWithBlockingIncidents) {
+            ->map(function (Collection $group, string $monthKey) use ($weaponsExcludedFromRevalidation) {
                 $month = Carbon::createFromFormat('Y-m-d', $monthKey . '-01')
                     ->locale(app()->getLocale());
 
-                // Contar documentos con y sin novedad
-                $sinNovedad = $group->filter(fn (WeaponDocument $document) => 
-                    !in_array($document->weapon_id, $weaponsWithBlockingIncidents)
+                $sinNovedad = $group->filter(fn (WeaponDocument $document) =>
+                    ! in_array($document->weapon_id, $weaponsExcludedFromRevalidation, true)
                 )->count();
-                
-                $conNovedad = $group->filter(fn (WeaponDocument $document) => 
-                    in_array($document->weapon_id, $weaponsWithBlockingIncidents)
+
+                $conNovedad = $group->filter(fn (WeaponDocument $document) =>
+                    in_array($document->weapon_id, $weaponsExcludedFromRevalidation, true)
                 )->count();
 
                 return [
@@ -230,7 +232,7 @@ class DashboardMetricsService
                     'label' => 'Documentos vencidos',
                     'value' => $riskCounts['Vencidas'],
                     'tone' => 'red',
-                    'helper' => 'Requieren atención inmediata',
+                    'helper' => 'Solo armas revalidables (sin hurtada, pérdida, baja ni incautación definitiva)',
                 ],
                 [
                     'label' => 'Por vencer',

@@ -129,7 +129,7 @@ Use las figuras siguientes para ilustrar el informe. Sustituya cada bloque por l
 
 ### 7.5 Documentación y alertas
 
-Módulo **Alertas documentales**: tres tarjetas resumen (vencidos, por vencer en ventana de 120 días, sin alertas). El filtro **Meses** permite marcar varios períodos en un panel con checkboxes (cambio de año con flechas); al pulsar **Filtrar** se acota la consulta. Desde cada tarjeta se abre un modal con búsqueda, exclusión de armas con novedad bloqueante, selección de armas y **Descargar relación** (Word) o vista previa (PDF). El archivo descargado se nombra automáticamente, por ejemplo `Revalidacion_mayo_2025.docx`.
+Módulo **Alertas documentales**: tres tarjetas resumen (vencidos, por vencer en ventana de 120 días, sin alertas). Los contadores cuentan solo **armas revalidables** (excluyen hurtada, pérdida, dar de baja e **incautación definitiva**; **incautada en trámite sí entra**). El filtro **Meses** permite marcar varios períodos en un panel con checkboxes (cambio de año con flechas); al pulsar **Filtrar** se acota la consulta. Desde cada tarjeta se abre un modal con búsqueda, opción **Excluir armas no revalidables**, selección de armas y **Descargar relación** (Word) o vista previa (PDF). El archivo descargado se nombra automáticamente, por ejemplo `Revalidacion_mayo_2025.docx`. El KPI **Documentos vencidos** del **dashboard** usa la misma regla (`WeaponIncident::scopeRevalidationDocumentExclusions`).
 
 > **Figura 12 — [Insertar imagen]**  
 > *Pantalla de **alertas** (tarjetas de vencidos / por vencer / sin alertas) con el panel **Meses** abierto mostrando checkboxes por mes.*
@@ -322,6 +322,7 @@ La pantalla **Detalle de arma** dejó de usar un único bloque grande “Informa
 | 0.4 | mayo 2026 | Wilder Rivera | Revista armas: filtro por acceso vigente, búsqueda local y captura móvil robusta (§7.10); ficha de arma: recorte sin pérdida de foto (§7.12); README técnico actualizado |
 | 0.5 | mayo 2026 | Wilder Rivera | Revista staff: listado por último acceso aunque el código haya vencido; revisión de fotos en staging sin reasignar obligatoria |
 | 0.6 | mayo 2026 | Wilder Rivera | Ficha de detalle: layout en dos columnas, notas/documentos alineados, fotos en franja de 7 casillas; §7.13; README §5.9.0 |
+| 0.7 | mayo 2026 | Wilder Rivera | KPI y alertas documentales: conteo solo armas revalidables (excl. hurtada/pérdida/baja e incautación definitiva; incautada en trámite incluida) |
 
 ---
 

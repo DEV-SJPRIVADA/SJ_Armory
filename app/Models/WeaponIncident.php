@@ -114,28 +114,67 @@ class WeaponIncident extends Model
         return $query->whereIn('status', [self::STATUS_OPEN, self::STATUS_IN_PROGRESS]);
     }
 
-    public function scopeOperationalBlockers(Builder $query): Builder
+    /**
+     * @return list<string>
+     */
+    public static function revalidationExcludingTypeCodes(): array
+    {
+        return [
+            'hurtada',
+            'perdida',
+            'dar_de_baja',
+        ];
+    }
+
+    public function scopeBlockingStatus(Builder $query): Builder
     {
         $persistentOutcomes = self::persistentClosureOutcomes();
 
+        return $query->where(function (Builder $statusQuery) use ($persistentOutcomes) {
+            $statusQuery->whereIn('status', [self::STATUS_OPEN, self::STATUS_IN_PROGRESS])
+                ->orWhere(function (Builder $terminalQuery) use ($persistentOutcomes) {
+                    $terminalQuery
+                        ->where('status', self::STATUS_RESOLVED)
+                        ->where(function (Builder $resolvedQuery) use ($persistentOutcomes) {
+                            $resolvedQuery
+                                ->whereIn('closure_outcome', $persistentOutcomes)
+                                ->orWhere(function (Builder $legacyQuery) {
+                                    $legacyQuery
+                                        ->whereNull('closure_outcome')
+                                        ->whereHas('type', fn (Builder $typeQuery) => $typeQuery->where('persists_operational_block', true));
+                                });
+                        });
+                });
+        });
+    }
+
+    public function scopeOperationalBlockers(Builder $query): Builder
+    {
         return $query
             ->whereHas('type', fn (Builder $typeQuery) => $typeQuery->where('blocks_operation', true))
-            ->where(function (Builder $statusQuery) use ($persistentOutcomes) {
-                $statusQuery->whereIn('status', [self::STATUS_OPEN, self::STATUS_IN_PROGRESS])
-                    ->orWhere(function (Builder $terminalQuery) use ($persistentOutcomes) {
-                        $terminalQuery
-                            ->where('status', self::STATUS_RESOLVED)
-                            ->where(function (Builder $resolvedQuery) use ($persistentOutcomes) {
-                                $resolvedQuery
-                                    ->whereIn('closure_outcome', $persistentOutcomes)
-                                    ->orWhere(function (Builder $legacyQuery) {
-                                        $legacyQuery
-                                            ->whereNull('closure_outcome')
-                                            ->whereHas('type', fn (Builder $typeQuery) => $typeQuery->where('persists_operational_block', true));
-                                    });
-                            });
-                    });
-            });
+            ->blockingStatus();
+    }
+
+    /**
+     * Incidentes que excluyen el arma del conteo de revalidación documental:
+     * hurtada / perdida / dar de baja (bloqueo activo) o incautada con cierre definitivo.
+     */
+    public function scopeRevalidationDocumentExclusions(Builder $query): Builder
+    {
+        return $query->where(function (Builder $outer) {
+            $outer
+                ->where(function (Builder $typedBlock) {
+                    $typedBlock
+                        ->whereHas('type', fn (Builder $typeQuery) => $typeQuery->whereIn('code', self::revalidationExcludingTypeCodes()))
+                        ->blockingStatus();
+                })
+                ->orWhere(function (Builder $seizure) {
+                    $seizure
+                        ->whereHas('type', fn (Builder $typeQuery) => $typeQuery->where('code', 'incautada'))
+                        ->where('status', self::STATUS_RESOLVED)
+                        ->where('closure_outcome', self::OUTCOME_SEIZURE_DEFINITIVE);
+                });
+        });
     }
 
     public static function closureOutcomeDefinitions(): array

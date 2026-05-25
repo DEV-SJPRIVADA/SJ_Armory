@@ -228,7 +228,7 @@
                                         <span id="expired-visible-count" class="alerts-modal-panel__count" data-alerts-visible-count data-target-body="expired-alerts-body">0 {{ __('armas en la lista') }}</span>
                                         <label class="alerts-modal-panel__toggle">
                                             <input type="checkbox" class="alerts-exclude-novedades" data-target-body="expired-alerts-body">
-                                            <span>{{ __('Excluir armas con novedad') }}</span>
+                                            <span>{{ __('Excluir armas no revalidables') }}</span>
                                         </label>
                                     </div>
                                 </div>
@@ -256,8 +256,8 @@
                                         <tbody id="expired-alerts-body">
                                             @forelse ($expired as $doc)
                                                 @php($alert = \App\Support\WeaponDocumentAlert::forComplianceDocument($doc))
-                                                @php($hasBlockingNovedad = $doc->weapon?->operationalBlockingIncidents?->isNotEmpty() ?? false)
-                                                <tr class="alert-document-row {{ $alert['row_class'] }}" data-blocking-novedad="{{ $hasBlockingNovedad ? '1' : '0' }}" data-alert-search="{{ strtolower(trim(($doc->weapon?->activeClientAssignment?->client?->name ?? 'Sin cliente') . ' ' . ($doc->weapon?->weapon_type ?? '') . ' ' . ($doc->weapon?->serial_number ?? '') . ' ' . ($doc->valid_until?->format('Y-m-d') ?? '') . ' ' . ($alert['state'] ?? '') . ' ' . ($alert['observation'] ?? ''))) }}">
+                                                @php($excludedFromRevalidation = $doc->weapon?->isExcludedFromRevalidationDocuments() ?? false)
+                                                <tr class="alert-document-row {{ $alert['row_class'] }}" data-blocking-novedad="{{ $excludedFromRevalidation ? '1' : '0' }}" data-alert-search="{{ strtolower(trim(($doc->weapon?->activeClientAssignment?->client?->name ?? 'Sin cliente') . ' ' . ($doc->weapon?->weapon_type ?? '') . ' ' . ($doc->weapon?->serial_number ?? '') . ' ' . ($doc->valid_until?->format('Y-m-d') ?? '') . ' ' . ($alert['state'] ?? '') . ' ' . ($alert['observation'] ?? ''))) }}">
                                                     <td class="px-3 py-2">
                                                         <label class="inline-flex items-center gap-2">
                                                             <input type="checkbox" name="weapon_ids[]" value="{{ $doc->weapon_id }}" class="alert-weapon-checkbox rounded border-gray-300 text-indigo-600">
@@ -289,7 +289,7 @@
                                         <span id="expiring-visible-count" class="alerts-modal-panel__count" data-alerts-visible-count data-target-body="expiring-alerts-body">0 {{ __('armas en la lista') }}</span>
                                         <label class="alerts-modal-panel__toggle">
                                             <input type="checkbox" class="alerts-exclude-novedades" data-target-body="expiring-alerts-body">
-                                            <span>{{ __('Excluir armas con novedad') }}</span>
+                                            <span>{{ __('Excluir armas no revalidables') }}</span>
                                         </label>
                                     </div>
                                 </div>
@@ -317,8 +317,8 @@
                                         <tbody id="expiring-alerts-body">
                                             @forelse ($expiring as $doc)
                                                 @php($alert = \App\Support\WeaponDocumentAlert::forComplianceDocument($doc))
-                                                @php($hasBlockingNovedad = $doc->weapon?->operationalBlockingIncidents?->isNotEmpty() ?? false)
-                                                <tr class="alert-document-row {{ $alert['row_class'] }}" data-blocking-novedad="{{ $hasBlockingNovedad ? '1' : '0' }}" data-alert-search="{{ strtolower(trim(($doc->weapon?->activeClientAssignment?->client?->name ?? 'Sin cliente') . ' ' . ($doc->weapon?->weapon_type ?? '') . ' ' . ($doc->weapon?->serial_number ?? '') . ' ' . ($doc->valid_until?->format('Y-m-d') ?? '') . ' ' . ($alert['state'] ?? '') . ' ' . ($alert['observation'] ?? ''))) }}">
+                                                @php($excludedFromRevalidation = $doc->weapon?->isExcludedFromRevalidationDocuments() ?? false)
+                                                <tr class="alert-document-row {{ $alert['row_class'] }}" data-blocking-novedad="{{ $excludedFromRevalidation ? '1' : '0' }}" data-alert-search="{{ strtolower(trim(($doc->weapon?->activeClientAssignment?->client?->name ?? 'Sin cliente') . ' ' . ($doc->weapon?->weapon_type ?? '') . ' ' . ($doc->weapon?->serial_number ?? '') . ' ' . ($doc->valid_until?->format('Y-m-d') ?? '') . ' ' . ($alert['state'] ?? '') . ' ' . ($alert['observation'] ?? ''))) }}">
                                                     <td class="px-3 py-2">
                                                         <label class="inline-flex items-center gap-2">
                                                             <input type="checkbox" name="weapon_ids[]" value="{{ $doc->weapon_id }}" class="alert-weapon-checkbox rounded border-gray-300 text-indigo-600">
@@ -350,7 +350,7 @@
                                         <span id="no-alerts-visible-count" class="alerts-modal-panel__count" data-alerts-visible-count data-target-body="no-alerts-body">0 {{ __('armas en la lista') }}</span>
                                         <label class="alerts-modal-panel__toggle">
                                             <input type="checkbox" class="alerts-exclude-novedades" data-target-body="no-alerts-body">
-                                            <span>{{ __('Excluir armas con novedad') }}</span>
+                                            <span>{{ __('Excluir armas no revalidables') }}</span>
                                         </label>
                                     </div>
                                 </div>
@@ -377,9 +377,9 @@
                                         </thead>
                                         <tbody id="no-alerts-body">
                                             @forelse ($noAlerts as $doc)
-                                                @php($hasBlockingNovedad = $doc->weapon?->operationalBlockingIncidents?->isNotEmpty() ?? false)
+                                                @php($excludedFromRevalidation = $doc->weapon?->isExcludedFromRevalidationDocuments() ?? false)
                                                 @php($searchText = strtolower(trim(($doc->weapon?->activeClientAssignment?->client?->name ?? 'Sin cliente') . ' ' . ($doc->weapon?->weapon_type ?? '') . ' ' . ($doc->weapon?->serial_number ?? '') . ' ' . ($doc->valid_until?->format('Y-m-d') ?? '') . ' sin alerta fuera de la ventana de 120 días')))
-                                                <tr class="alert-document-row" data-blocking-novedad="{{ $hasBlockingNovedad ? '1' : '0' }}" data-alert-search="{{ $searchText }}">
+                                                <tr class="alert-document-row" data-blocking-novedad="{{ $excludedFromRevalidation ? '1' : '0' }}" data-alert-search="{{ $searchText }}">
                                                     <td class="px-3 py-2">
                                                         <label class="inline-flex items-center gap-2">
                                                             <input type="checkbox" name="weapon_ids[]" value="{{ $doc->weapon_id }}" class="alert-weapon-checkbox rounded border-gray-300 text-indigo-600">

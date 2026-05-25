@@ -73,6 +73,23 @@ class Weapon extends Model
             ->orderByDesc('id');
     }
 
+    public function revalidationDocumentExcludingIncidents()
+    {
+        return $this->hasMany(WeaponIncident::class)
+            ->revalidationDocumentExclusions()
+            ->orderByDesc('event_at')
+            ->orderByDesc('id');
+    }
+
+    public function isExcludedFromRevalidationDocuments(): bool
+    {
+        if ($this->relationLoaded('revalidationDocumentExcludingIncidents')) {
+            return $this->revalidationDocumentExcludingIncidents->isNotEmpty();
+        }
+
+        return $this->revalidationDocumentExcludingIncidents()->exists();
+    }
+
     public function clientAssignments()
     {
         return $this->hasMany(WeaponClientAssignment::class);

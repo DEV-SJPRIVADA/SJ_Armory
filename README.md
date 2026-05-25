@@ -833,7 +833,7 @@ Alertas:
 
 - Rutas: `GET alerts/documents`, `POST alerts/documents/preview`, `POST alerts/documents/download` (`alerts.documents*`).
 - Soporte: `app/Support/AlertDocumentPeriod.php` (validación `months[]`, filtro OR por `valid_until`, etiqueta de períodos y nombre de archivo).
-- Vista general por tarjetas:
+- Vista general por tarjetas (conteo de **armas revalidables** únicas; excluye hurtada, perdida, dar de baja e **incautación definitiva**; **incautada en trámite sí cuenta**):
   - Documentos vencidos
   - Documentos por vencer
   - Armas sin alertas
@@ -856,7 +856,7 @@ Alertas:
   - descargar la relacion filtrada en `.docx`.
 - Cada modal (vencidos, por vencer y sin alertas) incluye:
   - un contador dinamico `N armas en la lista` que reacciona a la busqueda y a los filtros,
-  - un toggle `Excluir armas con novedad` que oculta las armas con incidentes bloqueantes activos y las retira automaticamente de la seleccion, vista previa y descarga.
+  - un toggle `Excluir armas no revalidables` que oculta hurtada / perdida / baja / incautación definitiva y las retira de la seleccion, vista previa y descarga (misma regla que el KPI del dashboard).
 - La ventana de alerta preventiva opera sobre 120 dias.
 
 ### 5.14 Revista armas (fotos en campo)
@@ -932,8 +932,8 @@ El dashboard principal ya no es una pantalla de accesos rapidos. Ahora muestra i
   - total de armas
   - con destino activo
   - sin destino
-  - documentos vencidos
-  - por vencer
+  - documentos vencidos (solo armas revalidables; ver `WeaponIncident::scopeRevalidationDocumentExclusions`)
+  - por vencer (misma regla de exclusión en documentos de revalidación)
   - transferencias pendientes
 - Metricas auxiliares:
   - clientes

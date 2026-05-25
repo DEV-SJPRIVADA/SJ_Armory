@@ -24,7 +24,7 @@ class AlertsController extends Controller
 
         $documentsQuery = WeaponDocument::with([
             'weapon.activeClientAssignment.client',
-            'weapon.operationalBlockingIncidents',
+            'weapon.revalidationDocumentExcludingIncidents',
             'file',
         ])
             ->where('is_renewal', true)
@@ -50,29 +50,36 @@ class AlertsController extends Controller
             ->filter(fn (WeaponDocument $document) => $document->valid_until?->copy()->endOfDay()->gt($alertWindowEnd))
             ->values();
 
+        $revalidatableWeaponCount = fn ($collection) => $collection
+            ->filter(fn (WeaponDocument $document) => $document->weapon !== null && ! $document->weapon->isExcludedFromRevalidationDocuments())
+            ->pluck('weapon_id')
+            ->filter()
+            ->unique()
+            ->count();
+
         $summaryCards = [
             'expired' => [
-                'count' => $expired->pluck('weapon_id')->filter()->unique()->count(),
+                'count' => $revalidatableWeaponCount($expired),
                 'label' => 'Documentos vencidos',
                 'subtitle' => $hasMonthFilter
-                    ? 'Armas vencidas en ' . $monthLabel
-                    : 'Armas vencidas registradas en el sistema',
+                    ? 'Armas revalidables vencidas en ' . $monthLabel
+                    : 'Armas revalidables con documento vencido',
                 'empty' => $hasMonthFilter
                     ? 'No hay armas vencidas para los meses seleccionados.'
                     : 'No hay armas vencidas registradas.',
             ],
             'expiring' => [
-                'count' => $expiring->pluck('weapon_id')->filter()->unique()->count(),
+                'count' => $revalidatableWeaponCount($expiring),
                 'label' => 'Documentos por vencer',
                 'subtitle' => $hasMonthFilter
-                    ? 'Alertas activas dentro de 120 días en ' . $monthLabel
-                    : 'Alertas activas dentro de 120 días en el sistema',
+                    ? 'Armas revalidables por vencer en ' . $monthLabel
+                    : 'Armas revalidables dentro de 120 días',
                 'empty' => $hasMonthFilter
                     ? 'No hay armas por vencer dentro de la ventana de 120 días para los meses seleccionados.'
                     : 'No hay armas por vencer dentro de la ventana de 120 días.',
             ],
             'no_alerts' => [
-                'count' => $noAlerts->pluck('weapon_id')->filter()->unique()->count(),
+                'count' => $revalidatableWeaponCount($noAlerts),
                 'label' => 'Armas sin alertas',
                 'subtitle' => $hasMonthFilter
                     ? 'Armas de los meses seleccionados fuera de la ventana de alerta'
