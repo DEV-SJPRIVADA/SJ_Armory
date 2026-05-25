@@ -116,83 +116,139 @@
                 </div>
             @endif
 
+            @php
+                $permitFrom = $filters['permit_expires_from'] ?? '';
+                $permitTo = $filters['permit_expires_to'] ?? '';
+                $permitRangeLabel = __('Seleccione rango');
+                if ($permitFrom !== '' || $permitTo !== '') {
+                    $formatPermitFilterDate = static function (string $value): string {
+                        if ($value === '') {
+                            return '…';
+                        }
+
+                        try {
+                            return \Illuminate\Support\Carbon::parse($value)->format('d/m/Y');
+                        } catch (\Throwable) {
+                            return $value;
+                        }
+                    };
+                    $permitRangeLabel = $formatPermitFilterDate($permitFrom).' – '.$formatPermitFilterDate($permitTo);
+                }
+            @endphp
+
             <div
                 id="weapons-filters-panel"
-                class="{{ $hasWeaponFilters ? '' : 'hidden' }} mb-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                class="sj-weapons-filter-panel {{ $hasWeaponFilters ? '' : 'hidden' }} mb-4"
             >
-                <div class="mb-4 flex items-center justify-between gap-4">
-                    <div>
-                        <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">{{ __('Filtros') }}</h3>
-                        <p class="mt-1 text-sm text-slate-500">{{ __('Refina el listado sin cargar el encabezado con controles permanentes.') }}</p>
-                    </div>
-                </div>
+                <form id="weapons-filters-form" class="sj-weapons-filter-bar">
+                    <div class="sj-weapons-filter-bar__fields">
+                        <div class="sj-weapons-filter-field">
+                            <label for="filter-inventory-scope" class="sj-weapons-filter-field__label">{{ __('Inventario') }}</label>
+                            <select id="filter-inventory-scope" name="inventory_scope" class="sj-weapons-filter-field__control">
+                                <option value="operational" @selected(($filters['inventory_scope'] ?? 'operational') === 'operational')>{{ __('Operativas') }}</option>
+                                <option value="all" @selected(($filters['inventory_scope'] ?? null) === 'all')>{{ __('Todas') }}</option>
+                                <option value="non_operational" @selected(($filters['inventory_scope'] ?? null) === 'non_operational')>{{ __('No operativas') }}</option>
+                            </select>
+                        </div>
 
-                <form id="weapons-filters-form" class="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-                    <div>
-                        <label for="filter-inventory-scope" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Inventario') }}</label>
-                        <select id="filter-inventory-scope" name="inventory_scope" class="w-full rounded-xl border-slate-300 text-sm shadow-sm">
-                            <option value="operational" @selected(($filters['inventory_scope'] ?? 'operational') === 'operational')>{{ __('Operativas') }}</option>
-                            <option value="all" @selected(($filters['inventory_scope'] ?? null) === 'all')>{{ __('Todas') }}</option>
-                            <option value="non_operational" @selected(($filters['inventory_scope'] ?? null) === 'non_operational')>{{ __('No operativas') }}</option>
-                        </select>
+                        <div class="sj-weapons-filter-field">
+                            <label for="filter-weapon-type" class="sj-weapons-filter-field__label">{{ __('Tipo') }}</label>
+                            <select id="filter-weapon-type" name="weapon_type" class="sj-weapons-filter-field__control">
+                                <option value="">{{ __('Todos') }}</option>
+                                @foreach ($weaponTypes as $weaponType)
+                                    <option value="{{ $weaponType }}" @selected(($filters['weapon_type'] ?? null) === $weaponType)>{{ $weaponType }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="sj-weapons-filter-field sj-weapons-filter-field--wide">
+                            <label for="filter-client" class="sj-weapons-filter-field__label">{{ __('Cliente') }}</label>
+                            <select id="filter-client" name="client_id" class="sj-weapons-filter-field__control">
+                                <option value="">{{ __('Todos') }}</option>
+                                @foreach ($clients as $client)
+                                    <option value="{{ $client->id }}" @selected(($filters['client_id'] ?? null) === $client->id)>{{ $client->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="sj-weapons-filter-field">
+                            <label for="filter-responsible" class="sj-weapons-filter-field__label">{{ __('Responsable') }}</label>
+                            <select id="filter-responsible" name="responsible_user_id" class="sj-weapons-filter-field__control">
+                                <option value="">{{ __('Todos') }}</option>
+                                @foreach ($responsibles as $responsible)
+                                    <option value="{{ $responsible->id }}" @selected(($filters['responsible_user_id'] ?? null) === $responsible->id)>{{ $responsible->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="sj-weapons-filter-field">
+                            <label for="filter-destination" class="sj-weapons-filter-field__label">{{ __('Destino') }}</label>
+                            <select id="filter-destination" name="destination" class="sj-weapons-filter-field__control">
+                                <option value="">{{ __('Todos') }}</option>
+                                @foreach ($destinationOptions as $value => $label)
+                                    <option value="{{ $value }}" @selected(($filters['destination'] ?? null) === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="sj-weapons-filter-field sj-weapons-filter-field--date">
+                            <span class="sj-weapons-filter-field__label" id="filter-permit-range-label">{{ __('Fecha') }}</span>
+                            <input type="hidden" id="filter-permit-from" name="permit_expires_from" value="{{ $permitFrom }}">
+                            <input type="hidden" id="filter-permit-to" name="permit_expires_to" value="{{ $permitTo }}">
+                            <div class="sj-weapons-filter-date-anchor">
+                                <button
+                                    type="button"
+                                    id="filter-permit-range-trigger"
+                                    class="sj-weapons-filter-field__control sj-weapons-filter-range-trigger {{ ($permitFrom !== '' || $permitTo !== '') ? 'is-active' : '' }}"
+                                    aria-labelledby="filter-permit-range-label"
+                                    aria-haspopup="dialog"
+                                    aria-controls="weapons-filter-date-popover"
+                                    aria-expanded="false"
+                                    data-placeholder="{{ __('Seleccione rango') }}"
+                                >
+                                    <span id="filter-permit-range-trigger-text" class="sj-weapons-filter-range-trigger__text">{{ $permitRangeLabel }}</span>
+                                    <svg class="sj-weapons-filter-range-trigger__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.75A2.75 2.75 0 0118 6.75v10.5A2.75 2.75 0 0115.25 20H4.75A2.75 2.75 0 012 17.25V6.75A2.75 2.75 0 014.75 4h.75V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clip-rule="evenodd"/>
+                                    </svg>
+                                </button>
+
+                                <div
+                                    id="weapons-filter-date-popover"
+                                    class="sj-weapons-filter-date-popover hidden"
+                                    role="dialog"
+                                    aria-hidden="true"
+                                    aria-labelledby="weapons-filter-date-popover-title"
+                                >
+                                    <p id="weapons-filter-date-popover-title" class="sj-weapons-filter-date-popover__title">{{ __('Vencimiento del permiso') }}</p>
+                                    <p
+                                        id="weapons-filter-date-hint"
+                                        class="sj-weapons-filter-date-popover__hint"
+                                        data-default-hint="{{ __('Seleccione la fecha de inicio (calendario izquierdo) y la de fin (derecho).') }}"
+                                        data-start-only-hint="{{ __('Inicio elegido. Elija la fecha final (igual o posterior; puede ser otro mes o año).') }}"
+                                        data-complete-hint="{{ __('Rango listo. Pulse Listo para confirmar.') }}"
+                                    >{{ __('Seleccione la fecha de inicio (calendario izquierdo) y la de fin (derecho).') }}</p>
+                                    <input type="text" id="filter-permit-picker-anchor" class="sj-weapons-filter-date-popover__anchor" tabindex="-1" aria-hidden="true" readonly>
+                                    <div id="filter-permit-picker-mount" class="sj-weapons-filter-date-popover__mount"></div>
+                                    <p id="weapons-filter-date-error" class="sj-weapons-filter-date-popover__error hidden" role="alert"></p>
+                                    <div class="sj-weapons-filter-date-popover__footer">
+                                        <button type="button" id="weapons-filter-date-clear" class="sj-weapons-filter-date-popover__btn sj-weapons-filter-date-popover__btn--ghost">
+                                            {{ __('Limpiar') }}
+                                        </button>
+                                        <button type="button" id="weapons-filter-date-done" class="sj-weapons-filter-date-popover__btn sj-weapons-filter-date-popover__btn--primary">
+                                            {{ __('Listo') }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="xl:col-span-2">
-                        <label for="filter-client" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Cliente') }}</label>
-                        <select id="filter-client" name="client_id" class="w-full rounded-xl border-slate-300 text-sm shadow-sm">
-                            <option value="">{{ __('Todos') }}</option>
-                            @foreach ($clients as $client)
-                                <option value="{{ $client->id }}" @selected(($filters['client_id'] ?? null) === $client->id)>{{ $client->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="xl:col-span-2">
-                        <label for="filter-responsible" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Responsable') }}</label>
-                        <select id="filter-responsible" name="responsible_user_id" class="w-full rounded-xl border-slate-300 text-sm shadow-sm">
-                            <option value="">{{ __('Todos') }}</option>
-                            @foreach ($responsibles as $responsible)
-                                <option value="{{ $responsible->id }}" @selected(($filters['responsible_user_id'] ?? null) === $responsible->id)>{{ $responsible->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div>
-                        <label for="filter-weapon-type" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Tipo') }}</label>
-                        <select id="filter-weapon-type" name="weapon_type" class="w-full rounded-xl border-slate-300 text-sm shadow-sm">
-                            <option value="">{{ __('Todos') }}</option>
-                            @foreach ($weaponTypes as $weaponType)
-                                <option value="{{ $weaponType }}" @selected(($filters['weapon_type'] ?? null) === $weaponType)>{{ $weaponType }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div>
-                        <label for="filter-destination" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Destino') }}</label>
-                        <select id="filter-destination" name="destination" class="w-full rounded-xl border-slate-300 text-sm shadow-sm">
-                            <option value="">{{ __('Todos') }}</option>
-                            @foreach ($destinationOptions as $value => $label)
-                                <option value="{{ $value }}" @selected(($filters['destination'] ?? null) === $value)>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div>
-                        <label for="filter-permit-from" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Vence desde') }}</label>
-                        <input id="filter-permit-from" type="date" name="permit_expires_from" value="{{ $filters['permit_expires_from'] ?? '' }}" class="w-full rounded-xl border-slate-300 text-sm shadow-sm">
-                    </div>
-
-                    <div>
-                        <label for="filter-permit-to" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Vence hasta') }}</label>
-                        <input id="filter-permit-to" type="date" name="permit_expires_to" value="{{ $filters['permit_expires_to'] ?? '' }}" class="w-full rounded-xl border-slate-300 text-sm shadow-sm">
-                    </div>
-
-                    <div class="md:col-span-2 xl:col-span-6 flex flex-wrap items-center justify-end gap-2 pt-2">
-                        <button type="button" id="weapons-filters-reset" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-                            {{ __('Limpiar filtros') }}
+                    <div class="sj-weapons-filter-bar__actions">
+                        <button type="button" id="weapons-filters-reset" class="sj-weapons-filter-bar__button sj-weapons-filter-bar__button--ghost">
+                            {{ __('Limpiar filtro') }}
                         </button>
-                        <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800">
-                            {{ __('Aplicar filtros') }}
+                        <button type="submit" class="sj-weapons-filter-bar__button sj-weapons-filter-bar__button--primary">
+                            {{ __('Aplicar filtro') }}
                         </button>
                     </div>
                 </form>
@@ -1078,6 +1134,11 @@
 
         filtersReset.addEventListener('click', () => {
             filtersForm.reset();
+            const inventoryScope = filtersForm.elements.namedItem('inventory_scope');
+            if (inventoryScope) {
+                inventoryScope.value = 'operational';
+            }
+            window.sjWeaponsPermitDatePicker?.clear();
             const url = new URL(window.location.href);
             applyStateToUrl(url, { resetPage: true });
             window.history.replaceState({}, '', url.toString());

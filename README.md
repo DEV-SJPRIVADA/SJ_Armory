@@ -8,7 +8,7 @@ Sistema web para **gestión de armamento**, **asignaciones operativas**, **trans
 
 ## 📌 Alcance funcional
 
-- ✅ **Armas**: alta/edición; **ficha de detalle** en dos columnas (datos readonly, notas, documentos, destino, asignación interna; fotos en franja inferior); fotos (técnicas y permiso; en móvil **Tomar foto** o **Elegir de galería**; reverso autenticado según plantillas globales **porte** / **tenencia**), documentos (descarga del **permiso** como PDF frente + reverso), exportación, inventario; **historial cronológico de notas** en la ficha (asignaciones, novedades, documentos, transferencias, actualización de datos y fotos desde Revista armas).
+- ✅ **Armas**: alta/edición; **ficha de detalle** en dos columnas (datos readonly, notas, documentos, destino, asignación interna; fotos en franja inferior); fotos (técnicas y permiso; en móvil **Tomar foto** o **Elegir de galería**; reverso autenticado según plantillas globales **porte** / **tenencia**), documentos (descarga del **permiso** como PDF frente + reverso), **listado con filtros en barra** (rango de vencimiento con Litepicker) y **exportación XLSX** con filas coloreadas por completitud de fotos + hoja leyenda; inventario; **historial cronológico de notas** en la ficha (asignaciones, novedades, documentos, transferencias, actualización de datos y fotos desde Revista armas).
 - ✅ **Asignaciones**:
   - **Operativa** (arma ↔ cliente/responsable)
   - **Interna** (arma ↔ puesto y/o trabajador; ubicación en mapa prioriza puesto si existe; la columna de destino en el listado refleja principalmente al trabajador cuando hay trabajador activo)
@@ -537,6 +537,7 @@ Listado de armas (`resources/views/weapons/partials/index_rows.blade.php`):
 
 - Columna **Puesto o trabajador**: si hay trabajador activo, muestra el **nombre** del trabajador (tambien cuando hay puesto combinado); si solo hay puesto, el nombre del puesto.
 - Columna **Cedula**: documento del trabajador activo, o `-` si no hay trabajador.
+- **Filtros del listado** (`weapons/index`): panel sin título; fila 1 con **Inventario, Tipo, Cliente, Responsable, Destino, Fecha** (rango de vencimiento del permiso con **Litepicker**: popover anclado, dos calendarios independientes `splitView`, desplegables de mes/año, `selectForward` para que el fin sea ≥ inicio; confirmación solo con **Listo** del popover); fila 2 con **Limpiar filtro** / **Aplicar filtro**. JS: `resources/js/weapons-filter-date.js`. Grid proporcional en escritorio (sin scroll horizontal).
 - **Exportación** (misma página `resources/views/weapons/index.blade.php`): modales **Exportar filtrado** y **Exportar selección** con preview y formatos xlsx/csv; ver **§5.3.0**.
 
 ### 5.3.0 Exportación del listado (XLSX / CSV)
@@ -567,6 +568,17 @@ La hoja **Criterios de color** repite los mismos tonos con columnas *Muestra* / 
 - La columna **Impronta** del Excel sigue siendo el campo operativo `imprint_month` (recibida/pendiente), no la foto de impronta; el amarillo/verde usan la foto `impronta` de la galería.
 - La exportación carga `photos` y `permitFile` (`exportRelationships()`) para evaluar el color sin N+1.
 - Clase: `app/Support/WeaponPhotoExportHighlight.php`. Tests: `tests/Unit/WeaponPhotoExportHighlightTest.php`.
+
+**Filtro Fecha (vencimiento del permiso)** — dependencia npm `litepicker` (`resources/js/weapons-filter-date.js`):
+
+| Paso | Acción |
+|------|--------|
+| 1 | Clic en **Fecha** → popover con dos calendarios (`splitView`, mes/año en desplegables). |
+| 2 | Primer día = inicio; segundo día = fin (≥ inicio; puede ser otro mes o año). |
+| 3 | **Listo** en el popover guarda el rango en el botón (aún no filtra la tabla). |
+| 4 | **Aplicar filtro** en la fila 2 ejecuta el listado. |
+
+Sin pie duplicado de Litepicker (solo **Limpiar** / **Listo** del popover). Tras cambios en JS/CSS: `npm run build` o `npm run build:deploy`.
 
 ### 5.3.1 Custodia y taller (puestos especiales)
 
@@ -1119,8 +1131,9 @@ Grupos funcionales:
 
 Entradas Vite:
 
-- **`vite.config.js`** (local): `resources/css/app.css`, `resources/js/app.js`, `resources/js/map.js`, `resources/js/location-picker.js`.
+- **`vite.config.js`** (local): `resources/css/app.css`, `resources/js/app.js` (incluye `weapons-filter-date.js` → Litepicker en listado de armas), `resources/js/map.js`, `resources/js/location-picker.js`.
 - **`vite.hosting.config.js`** (deploy): mismas entradas; `envDir` = `build_hosting/`, salida bajo `build_hosting/build/` (no modifica `public/build` local).
+- **Litepicker** (`litepicker` en `package.json`): selector de rango en filtros del armamento; CSS del paquete importado desde `weapons-filter-date.js`.
 
 Caracteristicas:
 
