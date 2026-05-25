@@ -26,6 +26,11 @@ class WeaponIncidentService
     public function create(Weapon $weapon, array $data, User $actor): WeaponIncident
     {
         $type = IncidentType::query()->findOrFail($data['incident_type_id']);
+
+        if (! $type->is_reportable) {
+            throw new InvalidArgumentException(__('Este tipo ya no se registra como novedad operativa. Use custodia y puestos en la ficha del arma.'));
+        }
+
         $modality = $this->resolveModality($type, Arr::get($data, 'incident_modality_id'));
         $attachment = Arr::pull($data, 'attachment');
         $storedPath = null;

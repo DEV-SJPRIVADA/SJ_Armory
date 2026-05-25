@@ -25,6 +25,10 @@ class WeaponIncidentReportController extends Controller
 
     public function show(Request $request, IncidentType $incidentType)
     {
+        if (! $incidentType->is_reportable) {
+            abort(404);
+        }
+
         return $this->renderPage($request, $incidentType);
     }
 
@@ -49,6 +53,7 @@ class WeaponIncidentReportController extends Controller
         $types = IncidentType::query()
             ->with(['modalities' => fn ($query) => $query->where('is_active', true)])
             ->where('is_active', true)
+            ->reportable()
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();

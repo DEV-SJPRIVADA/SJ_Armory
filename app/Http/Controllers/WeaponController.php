@@ -55,7 +55,12 @@ class WeaponController extends Controller
         [$clients, $responsibles] = $this->indexFilterOptions($request->user());
         $weaponTypes = $this->weaponTypeOptions();
         $destinationOptions = $this->destinationOptions();
-        $incidentTypes = IncidentType::query()->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get();
+        $incidentTypes = IncidentType::query()
+            ->where('is_active', true)
+            ->reportable()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
         $incidentStatusOptions = WeaponIncident::statusOptions();
 
         return view('weapons.index', compact(
@@ -372,12 +377,20 @@ class WeaponController extends Controller
         $activeClientId = $weapon->activeClientAssignment?->client_id;
         if ($activeClientId) {
             if (request()->user()?->isAdmin()) {
-                $posts = \App\Models\Post::where('client_id', $activeClientId)->active()->orderBy('name')->get();
+                $posts = \App\Models\Post::where('client_id', $activeClientId)
+                    ->active()
+                    ->selectableForInternalAssignment()
+                    ->orderBy('name')
+                    ->get();
                 $workers = \App\Models\Worker::where('client_id', $activeClientId)->active()->orderBy('name')->get();
             } elseif (request()->user()?->isResponsible()) {
                 $inPortfolio = request()->user()?->clients()->whereKey($activeClientId)->exists() ?? false;
                 if ($inPortfolio) {
-                    $posts = \App\Models\Post::where('client_id', $activeClientId)->active()->orderBy('name')->get();
+                    $posts = \App\Models\Post::where('client_id', $activeClientId)
+                        ->active()
+                        ->selectableForInternalAssignment()
+                        ->orderBy('name')
+                        ->get();
                     $workers = \App\Models\Worker::where('client_id', $activeClientId)
                         ->active()
                         ->where('responsible_user_id', request()->user()?->id)
@@ -397,6 +410,13 @@ class WeaponController extends Controller
 
         $pendingTransferForWeapon = $weapon->pendingTransfer();
 
+        $custodyResponsible = $weapon->activeClientAssignment?->responsible;
+        $armeroPosts = collect();
+        if ($custodyResponsible && $activeClientId) {
+            $armeroPosts = app(\App\Services\ResponsibleCustodyPostService::class)
+                ->armeroPostsForResponsible($custodyResponsible, $activeClientId);
+        }
+
         $weaponPermitAuthTemplate = null;
         if (in_array($weapon->permit_type, ['porte', 'tenencia'], true)) {
             $weaponPermitAuthTemplate = PermitAuthenticatedTemplate::with('file')
@@ -414,6 +434,8 @@ class WeaponController extends Controller
             'clientOptions',
             'clientResponsibleMap',
             'pendingTransferForWeapon',
+            'armeroPosts',
+            'custodyResponsible',
         ));
     }
 

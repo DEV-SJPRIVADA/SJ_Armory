@@ -314,8 +314,8 @@
                                         <h4 class="text-lg font-semibold text-gray-900">{{ __('Asignación interna') }}</h4>
                                     </div>
                                     
-                                    <!-- Include the functional partial -->
-                                    <div class="mt-4">
+                                    <div class="mt-4 space-y-6">
+                                        @include('weapons.partials.assignment_custody')
                                         @include('weapons.partials.assignment_internal')
                                     </div>
                                 </div>

@@ -23,6 +23,7 @@ class IncidentType extends Model
         'blocks_operation',
         'persists_operational_block',
         'is_active',
+        'is_reportable',
     ];
 
     protected $casts = [
@@ -33,6 +34,7 @@ class IncidentType extends Model
         'blocks_operation' => 'boolean',
         'persists_operational_block' => 'boolean',
         'is_active' => 'boolean',
+        'is_reportable' => 'boolean',
     ];
 
     public function modalities()
@@ -48,6 +50,16 @@ class IncidentType extends Model
     public function scopeOperationalBlocking(Builder $query): Builder
     {
         return $query->where('blocks_operation', true);
+    }
+
+    public function scopeReportable(Builder $query): Builder
+    {
+        return $query->where('is_reportable', true);
+    }
+
+    public function scopeNonReportable(Builder $query): Builder
+    {
+        return $query->where('is_reportable', false);
     }
 
     public function getRouteKeyName(): string

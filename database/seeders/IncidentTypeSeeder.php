@@ -23,6 +23,7 @@ class IncidentTypeSeeder extends Seeder
                 'sla_hours' => 4,
                 'blocks_operation' => true,
                 'persists_operational_block' => false,
+                'is_reportable' => true,
             ],
             [
                 'code' => 'perdida',
@@ -36,6 +37,7 @@ class IncidentTypeSeeder extends Seeder
                 'sla_hours' => 8,
                 'blocks_operation' => true,
                 'persists_operational_block' => false,
+                'is_reportable' => true,
             ],
             [
                 'code' => 'incautada',
@@ -49,6 +51,7 @@ class IncidentTypeSeeder extends Seeder
                 'sla_hours' => 12,
                 'blocks_operation' => true,
                 'persists_operational_block' => false,
+                'is_reportable' => true,
             ],
             [
                 'code' => 'en_mantenimiento',
@@ -62,6 +65,7 @@ class IncidentTypeSeeder extends Seeder
                 'sla_hours' => 72,
                 'blocks_operation' => false,
                 'persists_operational_block' => false,
+                'is_reportable' => false,
             ],
             [
                 'code' => 'para_mantenimiento',
@@ -75,6 +79,7 @@ class IncidentTypeSeeder extends Seeder
                 'sla_hours' => 48,
                 'blocks_operation' => false,
                 'persists_operational_block' => false,
+                'is_reportable' => false,
             ],
             [
                 'code' => 'en_armerillo',
@@ -88,6 +93,7 @@ class IncidentTypeSeeder extends Seeder
                 'sla_hours' => 24,
                 'blocks_operation' => false,
                 'persists_operational_block' => false,
+                'is_reportable' => false,
             ],
             [
                 'code' => 'dar_de_baja',
@@ -101,6 +107,7 @@ class IncidentTypeSeeder extends Seeder
                 'sla_hours' => 120,
                 'blocks_operation' => true,
                 'persists_operational_block' => true,
+                'is_reportable' => true,
             ],
         ];
 

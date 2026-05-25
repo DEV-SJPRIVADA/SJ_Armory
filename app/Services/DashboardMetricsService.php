@@ -22,9 +22,6 @@ class DashboardMetricsService
         'Hurtada',
         'Perdida',
         'Incautada',
-        'En Mantenimiento',
-        'Para Mantenimiento',
-        'En Armerillo',
         'Dar de Baja',
     ];
 
@@ -34,7 +31,7 @@ class DashboardMetricsService
             ->with([
                 'activeClientAssignment.client',
                 'activeClientAssignment.responsible',
-                'activePostAssignment',
+                'activePostAssignment.post',
                 'activeWorkerAssignment',
                 'operationalBlockingIncidents',
             ])
@@ -137,9 +134,11 @@ class DashboardMetricsService
             ->with('type')
             ->whereIn('weapon_id', $weaponIds->all())
             ->whereIn('status', [WeaponIncident::STATUS_OPEN, WeaponIncident::STATUS_IN_PROGRESS])
+            ->whereHas('type', fn (Builder $typeQuery) => $typeQuery->reportable())
             ->get();
 
         $incidentTypeMap = IncidentType::query()
+            ->reportable()
             ->whereIn('name', self::INCIDENT_ORDER)
             ->get()
             ->keyBy('name');
@@ -162,7 +161,7 @@ class DashboardMetricsService
             ->values();
 
         $operationalWeaponsCount = $weapons
-            ->filter(fn (Weapon $weapon) => $weapon->operationalBlockingIncidents->isEmpty())
+            ->filter(fn (Weapon $weapon) => $weapon->isOperationalForInventory())
             ->count();
 
         $nonOperationalWeaponsCount = $weapons->count() - $operationalWeaponsCount;
@@ -275,9 +274,6 @@ class DashboardMetricsService
                         'Hurtada' => '#be123c',
                         'Perdida' => '#b91c1c',
                         'Incautada' => '#7c2d12',
-                        'En Mantenimiento' => '#0f766e',
-                        'Para Mantenimiento' => '#0ea5e9',
-                        'En Armerillo' => '#7c3aed',
                         'Dar de Baja' => '#4b5563',
                     ];
 

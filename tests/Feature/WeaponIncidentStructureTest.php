@@ -55,6 +55,12 @@ class WeaponIncidentStructureTest extends TestCase
         $this->assertTrue($incautada->requires_resolution_note);
         $this->assertTrue($incautada->blocks_operation);
         $this->assertFalse($incautada->persists_operational_block);
+
+        $this->assertTrue($hurtada->is_reportable);
+        $this->assertTrue($perdida->is_reportable);
+        $this->assertTrue($incautada->is_reportable);
+        $this->assertFalse($maintenance->is_reportable);
+        $this->assertFalse(IncidentType::query()->where('code', 'en_armerillo')->value('is_reportable'));
         $this->assertSame(WeaponIncident::STATUS_OPEN, $incautada->default_status);
         $this->assertSame(12, $incautada->sla_hours);
         $this->assertSame(10, $incautada->modalities()->count());

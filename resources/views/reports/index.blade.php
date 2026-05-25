@@ -45,9 +45,15 @@
                 </a>
 
                 <a href="{{ route('reports.weapon-incidents.index') }}" class="sj-report-card sj-report-card--accent">
-                    <div class="sj-report-card__title">{{ __('Análisis Estratégico de Incidentes') }}</div>
-                    <div class="sj-report-card__subtitle">{{ __('Distribución y caracterización de eventos por tipología, modalidad y medio empleado') }}</div>
+                    <div class="sj-report-card__title">{{ __('Novedades operativas') }}</div>
+                    <div class="sj-report-card__subtitle">{{ __('Hurtos, pérdidas, incautaciones y bajas. Excluye mantenimiento y armerillo.') }}</div>
                     <span class="sj-report-card__footer">{{ __('Ver análisis') }}</span>
+                </a>
+
+                <a href="{{ route('reports.weapon-custody.index') }}" class="sj-report-card">
+                    <span class="sj-report-card__eyebrow">{{ __('Operación') }}</span>
+                    <div class="sj-report-card__title">{{ __('Custodia y taller') }}</div>
+                    <div class="sj-report-card__subtitle">{{ __('Armerillo, pendiente de mantenimiento y armeros por responsable.') }}</div>
                 </a>
             </div>
         </div>

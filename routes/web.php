@@ -14,6 +14,8 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GeocodingController;
 use App\Http\Controllers\MapController;
+use App\Http\Controllers\WeaponCustodyController;
+use App\Http\Controllers\WeaponCustodyReportController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
@@ -164,6 +166,14 @@ Route::middleware('auth')->group(function () {
         ->name('weapons.internal_assignments.store');
     Route::patch('/weapons/{weapon}/internal-assignments/retire', [WeaponInternalAssignmentController::class, 'retire'])
         ->name('weapons.internal_assignments.retire');
+    Route::post('/weapons/{weapon}/custody/armerillo', [WeaponCustodyController::class, 'moveToArmerillo'])
+        ->name('weapons.custody.armerillo');
+    Route::post('/weapons/{weapon}/custody/para-mantenimiento', [WeaponCustodyController::class, 'moveToParaMantenimiento'])
+        ->name('weapons.custody.para_mantenimiento');
+    Route::post('/weapons/{weapon}/custody/armero', [WeaponCustodyController::class, 'moveToArmero'])
+        ->name('weapons.custody.armero');
+    Route::post('/weapons/{weapon}/custody/armero-posts', [WeaponCustodyController::class, 'storeArmeroPost'])
+        ->name('weapons.custody.armero_posts.store');
     Route::patch('/weapons/{weapon}/imprints', [WeaponController::class, 'toggleImprint'])
         ->name('weapons.imprints.toggle');
     Route::get('/transfers', [WeaponTransferController::class, 'index'])->name('transfers.index');
@@ -189,6 +199,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/weapon-incidents/weapons/search', [WeaponIncidentReportController::class, 'searchWeapons'])->name('reports.weapon-incidents.weapons.search');
     Route::get('/reports/weapon-incidents', [WeaponIncidentReportController::class, 'index'])->name('reports.weapon-incidents.index');
     Route::get('/reports/weapon-incidents/{incidentType}', [WeaponIncidentReportController::class, 'show'])->name('reports.weapon-incidents.show');
+    Route::get('/reports/weapon-custody', [WeaponCustodyReportController::class, 'index'])->name('reports.weapon-custody.index');
 
     Route::middleware('revista.staff')->prefix('revista-armas')->name('revista-armas.')->group(function () {
         Route::get('/', [RevistaArmasController::class, 'index'])->name('index');

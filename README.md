@@ -22,7 +22,9 @@ Sistema web para **gestión de armamento**, **asignaciones operativas**, **trans
 - ✅ **Auditoría**: registro de cambios y acciones críticas.
 - ✅ **Realtime (Broadcasting)**: Laravel Reverb + Echo (WebSockets) para sincronización en tiempo real.
 - ✅ **Notificaciones**: campana en barra superior con **solo no leídas**; menú de usuario con **Historial de notificaciones** (leídas y no leídas, mismo modal con `?history=1`); textos con actor y contexto (arma, cliente, puesto, etc.).
-- ✅ **Reportes — Novedades operativas** (`/reports/weapon-incidents`): dashboard por año y tipo; botón **Lista** abre un modal con la tabla completa (mismo alcance que los filtros); **buscador** en el modal filtra por cualquier texto visible en la fila; columna **Arma** muestra solo el **número de serie** (enlace a la ficha del arma).
+- ✅ **Reportes — Novedades operativas** (`/reports/weapon-incidents`): solo tipos reportables (**hurtada**, **perdida**, **incautada**, **dar de baja**); mantenimiento/armerillo históricos quedan en notas de la ficha pero no suman en gráficos ni KPIs.
+- ✅ **Reportes — Custodia y taller** (`/reports/weapon-custody`): armas en puestos de armerillo, armerillo para mantenimiento o armero por responsable.
+- ✅ **Custodia en ficha del arma**: acciones **Enviar a mi armerillo** (operativa), **Para mantenimiento** y **Enviar a armero** (no operativas, sin novedad); un armerillo y armeros por responsable, ubicación inicial del cliente.
 
 ---
 
@@ -698,7 +700,7 @@ Frontend: `resources/js/map.js`
 
 - Vista `/mapa` para ADMIN/RESPONSABLE/AUDITOR.
 - Endpoint JSON `/mapa/armas`.
-- Solo armas en **inventario operativo** (`operationalInventory`): se excluyen las que tienen novedad bloqueante abierta o cierre definitivo (hurtada, perdida, incautada, dar de baja, etc.), alineado con el listado de armamento por defecto.
+- Solo armas en **inventario operativo** (`operationalInventory`): sin novedad bloqueante y sin puesto de custodia no operativo (`armerillo_para_mantenimiento`, `armero`). **Armerillo** normal sí es operativo.
 - Coordenadas priorizadas por:
   1. Puesto activo.
   2. Cliente del trabajador activo.
@@ -744,7 +746,9 @@ Reportes:
 - Armas sin destino.
 - Historial por arma (asignaciones + documentos).
 - Auditoria filtrable por rango (30/90 dias) y modulo.
-- **Novedades operativas** (`WeaponIncidentReportController`, `WeaponIncidentReportService`): vista con KPIs, gráficos por tipo/modalidad y tendencia; el detalle tabular no ocupa el scroll principal: el botón **Lista** del encabezado abre un modal (`x-modal`) con la tabla (`resources/views/reports/weapon-incidents/partials/incidents-table.blade.php`), listado alineado al mismo criterio de consulta que el dashboard (colección completa para el periodo/tipo, sin paginación de 20); **Alpine.js** filtra filas por coincidencia en el texto visible; expediente **Gestionar** / **Ver caso** usa los modales existentes (`reports-incidents.js`), con **z-index** del modal de expediente por encima del modal Lista (`resources/css/app.css`).
+- **Novedades operativas** (`WeaponIncidentReportController`, `WeaponIncidentReportService`): solo `incident_types.is_reportable` (hurtada, perdida, incautada, dar de baja). Los tipos legados en mantenimiento/armerillo permanecen en historial de la ficha pero no entran en KPIs, gráficos ni alta nueva. Botón **Lista** → modal con tabla; **Alpine.js** filtra filas.
+- **Custodia y taller** (`WeaponCustodyReportController`, `WeaponCustodyReportService`): armas con `posts.custody_role` en armerillo, armerillo para mantenimiento o armero.
+- **Custodia en ficha** (`WeaponCustodyController`, `ResponsibleCustodyPostService`, `WeaponCustodyService`): rutas `weapons.custody.*`; crea puestos por responsable con coordenadas del cliente activo; asignación interna solo al puesto (sin trabajador).
 
 Alertas:
 

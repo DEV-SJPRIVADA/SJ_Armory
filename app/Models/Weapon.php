@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PostCustodyRole;
 use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -182,13 +183,58 @@ class Weapon extends Model
         return $this->belongsTo(File::class, 'permit_file_id');
     }
 
+    public function isOperationalForInventory(): bool
+    {
+        if ($this->relationLoaded('operationalBlockingIncidents')) {
+            if ($this->operationalBlockingIncidents->isNotEmpty()) {
+                return false;
+            }
+        } elseif ($this->operationalBlockingIncidents()->exists()) {
+            return false;
+        }
+
+        $post = $this->relationLoaded('activePostAssignment')
+            ? $this->activePostAssignment?->post
+            : $this->activePostAssignment()->with('post')->first()?->post;
+
+        if ($post?->isNonOperationalCustody()) {
+            return false;
+        }
+
+        return true;
+    }
+
     public function scopeOperationalInventory(Builder $query): Builder
     {
-        return $query->whereDoesntHave('incidents', fn (Builder $incidentQuery) => $incidentQuery->operationalBlockers());
+        return $query
+            ->whereDoesntHave('incidents', fn (Builder $incidentQuery) => $incidentQuery->operationalBlockers())
+            ->where(function (Builder $outer) {
+                $outer
+                    ->whereDoesntHave('activePostAssignment')
+                    ->orWhereHas('activePostAssignment.post', fn (Builder $postQuery) => $postQuery->operationalCustody());
+            });
     }
 
     public function scopeNonOperationalInventory(Builder $query): Builder
     {
-        return $query->whereHas('incidents', fn (Builder $incidentQuery) => $incidentQuery->operationalBlockers());
+        return $query->where(function (Builder $outer) {
+            $outer
+                ->whereHas('incidents', fn (Builder $incidentQuery) => $incidentQuery->operationalBlockers())
+                ->orWhereHas('activePostAssignment.post', fn (Builder $postQuery) => $postQuery->nonOperationalCustody());
+        });
+    }
+
+    public function activeCustodyRole(): ?string
+    {
+        $post = $this->activePostAssignment?->post;
+
+        return $post?->custody_role;
+    }
+
+    public function custodyStatusLabel(): ?string
+    {
+        $role = $this->activeCustodyRole();
+
+        return $role ? PostCustodyRole::label($role) : null;
     }
 }

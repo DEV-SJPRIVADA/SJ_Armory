@@ -22,9 +22,10 @@ class WeaponIncidentReportService
     public function availableYears(User $user, ?IncidentType $selectedType = null): Collection
     {
         $query = WeaponIncident::query()
-            ->whereNotNull('event_at');
+            ->whereNotNull('event_at')
+            ->whereHas('type', fn (Builder $typeQuery) => $typeQuery->reportable());
 
-        if ($selectedType) {
+        if ($selectedType?->is_reportable) {
             $query->where('incident_type_id', $selectedType->id);
         }
 
@@ -77,6 +78,7 @@ class WeaponIncidentReportService
 
         $allTypes = IncidentType::query()
             ->where('is_active', true)
+            ->reportable()
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
@@ -216,10 +218,15 @@ class WeaponIncidentReportService
 
     private function baseQuery(User $user, array $filters, ?IncidentType $selectedType = null): Builder
     {
-        $query = WeaponIncident::query();
+        $query = WeaponIncident::query()
+            ->whereHas('type', fn (Builder $typeQuery) => $typeQuery->reportable());
 
         if ($selectedType) {
-            $query->where('incident_type_id', $selectedType->id);
+            if (! $selectedType->is_reportable) {
+                $query->whereRaw('0 = 1');
+            } else {
+                $query->where('incident_type_id', $selectedType->id);
+            }
         }
 
         if (! empty($filters['year'])) {

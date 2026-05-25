@@ -25,7 +25,10 @@ class WeaponIncidentController extends Controller
 
         $data = $request->validate([
             'weapon_id' => ['required', 'exists:weapons,id'],
-            'incident_type_id' => ['required', 'exists:incident_types,id'],
+            'incident_type_id' => [
+                'required',
+                Rule::exists('incident_types', 'id')->where(fn ($query) => $query->where('is_reportable', true)),
+            ],
             'incident_modality_id' => ['nullable', 'exists:incident_modalities,id'],
             'status' => ['nullable', Rule::in(array_keys(WeaponIncident::initialStatusOptions()))],
             'observation' => ['required', 'string', 'max:255'],
