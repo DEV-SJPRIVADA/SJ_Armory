@@ -3,6 +3,18 @@
     $canManageCustody = $weapon->activeClientAssignment && ! $pendingTransferForWeapon;
 @endphp
 
+<style>
+    .sj-custody-maint-btn {
+        background-color: #fcd34d;
+        border: 2px solid #f59e0b;
+        color: #451a03;
+    }
+    .sj-custody-maint-btn:hover {
+        background-color: #fbbf24;
+        border-color: #d97706;
+    }
+</style>
+
 <div class="space-y-4">
     <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
         <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Estado de custodia / taller') }}</div>
@@ -40,14 +52,11 @@
                 </button>
             </form>
 
-            <form method="POST" action="{{ route('weapons.custody.para_mantenimiento', $weapon) }}" class="rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <form method="POST" action="{{ route('weapons.custody.para_mantenimiento', $weapon) }}" class="rounded-lg border-2 border-[#fcd34d] bg-amber-50 p-3">
                 @csrf
                 <div class="text-sm font-semibold text-amber-950">{{ __('Para mantenimiento') }}</div>
                 <p class="mt-1 text-xs text-amber-900">{{ __('Armerillo del responsable; fuera de operación.') }}</p>
-                <button
-                    type="submit"
-                    class="mt-3 w-full rounded-lg border border-[#fcd34d] bg-[#fde68a] px-3 py-2 text-xs font-bold text-[#78350f] shadow-sm hover:bg-[#fcd34d] focus:outline-none focus:ring-2 focus:ring-[#fbbf24] focus:ring-offset-1"
-                >
+                <button type="submit" class="sj-custody-maint-btn mt-3 w-full rounded-lg px-3 py-2 text-xs font-bold shadow-md">
                     {{ __('Para mantenimiento') }}
                 </button>
             </form>
