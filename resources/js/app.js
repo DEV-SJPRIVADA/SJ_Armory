@@ -9,6 +9,13 @@ import { initWeaponsFilterDatePicker } from './weapons-filter-date';
 
 document.addEventListener('DOMContentLoaded', () => {
     window.sjWeaponsPermitDatePicker = initWeaponsFilterDatePicker();
+
+    const alertsPage = document.querySelector('[data-alerts-page]');
+    if (alertsPage) {
+        import('./alerts-documents-modal.js').then(({ initAlertsDocumentsPage }) => {
+            initAlertsDocumentsPage(alertsPage);
+        });
+    }
 });
 
 import Alpine from 'alpinejs';

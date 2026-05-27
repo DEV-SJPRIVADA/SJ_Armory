@@ -1,4 +1,4 @@
-@push('styles')
+﻿@push('styles')
     <style>
         .sj-page-header { position: sticky; top: 4rem; z-index: 1100; }
         .alerts-toolbar-shell { margin: 0 auto; max-width: none; width: 100%; }
@@ -77,6 +77,33 @@
         .alerts-modal-panel__toggle input { width: 1rem; height: 1rem; border-radius: .25rem; }
         .alerts-modal-panel__toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1.25rem; margin-top: .5rem; }
         .alerts-modal-panel__count { font-size: .92rem; font-weight: 700; color: #334155; }
+        .alerts-modal-panel__clear-filters { padding: 0.35rem 0.7rem; border: 1px solid #cbd5e1; border-radius: 0.45rem; background: #fff; color: #0b6fb6; font-size: 0.82rem; font-weight: 700; cursor: pointer; }
+        .alerts-modal-panel__clear-filters:hover { background: #eff6ff; border-color: #93c5fd; }
+        .alerts-modal-panel__clear-filters.hidden { display: none; }
+        .alerts-table-head th { position: sticky; top: 0; z-index: 15; background: #0b3d6e; }
+        .alerts-col-filter-th { vertical-align: middle; }
+        .alerts-col-filter { display: flex; align-items: center; justify-content: space-between; gap: 0.35rem; min-width: 0; }
+        .alerts-col-filter__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.72rem; letter-spacing: 0.04em; }
+        .alerts-col-filter__trigger { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 1.65rem; height: 1.65rem; padding: 0; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 0.35rem; background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.85); cursor: pointer; transition: background .15s ease, border-color .15s ease, color .15s ease; }
+        .alerts-col-filter__trigger:hover { background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.55); color: #fff; }
+        .alerts-col-filter__trigger.is-active { background: #eff6ff; border-color: #38bdf8; color: #0b6fb6; box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35); }
+        .alerts-col-filter__trigger[aria-expanded="true"] { background: #eff6ff; border-color: #38bdf8; color: #0b6fb6; }
+        .alerts-col-filter__icon { width: 0.85rem; height: 0.85rem; }
+        #alerts-column-filter-popover { position: fixed; z-index: 1200; display: flex; flex-direction: column; max-height: min(22rem, calc(100vh - 8rem)); padding: 0.65rem; border: 1px solid #dbe5f1; border-radius: 0.65rem; background: #fff; box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18); }
+        #alerts-column-filter-popover.hidden { display: none; }
+        .alerts-col-filter-popover__search { width: 100%; margin-bottom: 0.55rem; padding: 0.45rem 0.6rem; border: 1px solid #cbd5e1; border-radius: 0.45rem; font-size: 0.85rem; color: #334155; }
+        .alerts-col-filter-popover__actions { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.45rem; padding-bottom: 0.45rem; border-bottom: 1px solid #e2e8f0; }
+        .alerts-col-filter-popover__actions button { padding: 0.2rem 0.35rem; border: none; border-radius: 0.35rem; background: transparent; color: #0b6fb6; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+        .alerts-col-filter-popover__actions button:hover { background: #eff6ff; }
+        .alerts-col-filter-popover__list { flex: 1 1 auto; overflow: auto; display: flex; flex-direction: column; gap: 0.2rem; min-height: 2rem; max-height: 11rem; }
+        .alerts-col-filter-option { display: flex; align-items: flex-start; gap: 0.45rem; padding: 0.35rem 0.4rem; border-radius: 0.4rem; color: #334155; font-size: 0.84rem; font-weight: 500; cursor: pointer; user-select: none; }
+        .alerts-col-filter-option:hover { background: #f8fafc; }
+        .alerts-col-filter-option input { width: 0.95rem; height: 0.95rem; margin-top: 0.1rem; flex-shrink: 0; accent-color: #0b6fb6; cursor: pointer; }
+        .alerts-col-filter-option span { line-height: 1.35; word-break: break-word; }
+        .alerts-col-filter-popover__empty { margin: 0.35rem 0; color: #64748b; font-size: 0.82rem; text-align: center; }
+        .alerts-col-filter-popover__footer { margin-top: 0.55rem; padding-top: 0.55rem; border-top: 1px solid #e2e8f0; }
+        .alerts-col-filter-popover__apply { width: 100%; padding: 0.45rem 0.75rem; border: none; border-radius: 0.45rem; background: #0b6fb6; color: #fff; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+        .alerts-col-filter-popover__apply:hover { background: #085a93; }
         @media (max-width: 1180px) {
             .alerts-toolbar__top { grid-template-columns: 1fr; justify-items: center; row-gap: .9rem; }
             .alerts-toolbar__title, .alerts-toolbar__back { justify-self: center; }
@@ -133,9 +160,9 @@
                                     hidden
                                 >
                                     <div class="alerts-period-panel__header">
-                                        <button type="button" class="alerts-period-panel__nav" data-period-year-step="-1" aria-label="{{ __('Año anterior') }}">&#8249;</button>
+                                        <button type="button" class="alerts-period-panel__nav" data-period-year-step="-1" aria-label="{{ __('AÃ±o anterior') }}">&#8249;</button>
                                         <span id="alerts-period-year" class="alerts-period-panel__year">{{ now()->year }}</span>
-                                        <button type="button" class="alerts-period-panel__nav" data-period-year-step="1" aria-label="{{ __('Año siguiente') }}">&#8250;</button>
+                                        <button type="button" class="alerts-period-panel__nav" data-period-year-step="1" aria-label="{{ __('AÃ±o siguiente') }}">&#8250;</button>
                                     </div>
                                     <div id="alerts-period-month-grid" class="alerts-period-panel__grid"></div>
                                     <div class="alerts-period-panel__footer">
@@ -161,12 +188,12 @@
                                 formtarget="_blank"
                                 class="alerts-toolbar__preview"
                                 @disabled(!$previewAvailable)
-                                title="{{ $previewAvailable ? __('Ver relación') : __('La vista previa PDF no está disponible') }}"
-                                aria-label="{{ __('Ver relación') }}"
+                                title="{{ $previewAvailable ? __('Ver relaciÃ³n') : __('La vista previa PDF no estÃ¡ disponible') }}"
+                                aria-label="{{ __('Ver relaciÃ³n') }}"
                             >
                                 <img src="{{ asset('images/Ojo.webp') }}" alt="" aria-hidden="true">
                             </button>
-                            <button id="alerts-download-button" type="submit" form="alerts-download-form" class="alerts-toolbar__download" disabled>{{ __('Descargar relación') }}</button>
+                            <button id="alerts-download-button" type="submit" form="alerts-download-form" class="alerts-toolbar__download" disabled>{{ __('Descargar relaciÃ³n') }}</button>
                         </form>
                     </div>
                     <a href="{{ route('reports.index') }}" class="alerts-toolbar__back">{{ __('Volver') }}</a>
@@ -226,6 +253,7 @@
                                     <div class="alerts-modal-panel__subtitle">{{ $summaryCards['expired']['subtitle'] }}</div>
                                     <div class="alerts-modal-panel__toolbar">
                                         <span id="expired-visible-count" class="alerts-modal-panel__count" data-alerts-visible-count data-target-body="expired-alerts-body">0 {{ __('armas en la lista') }}</span>
+                                        <button type="button" class="alerts-modal-panel__clear-filters hidden" data-clear-column-filters="expired-alerts-body">{{ __('Limpiar filtros de columna') }}</button>
                                         <label class="alerts-modal-panel__toggle">
                                             <input type="checkbox" class="alerts-exclude-novedades" data-target-body="expired-alerts-body">
                                             <span>{{ __('Excluir armas no revalidables') }}</span>
@@ -243,21 +271,20 @@
                             <div class="alerts-modal-panel__body">
                                 <div class="overflow-x-auto sj-table-wrap">
                                     <table class="sj-table sj-table--align-left min-w-full text-sm">
-                                        <thead>
-                                            <tr>
-                                                <th>{{ __('Cliente') }}</th>
-                                                <th>{{ __('Tipo') }}</th>
-                                                <th>{{ __('Serie') }}</th>
-                                                <th>{{ __('Vence') }}</th>
-                                                <th>{{ __('Estado') }}</th>
-                                                <th>{{ __('Observación') }}</th>
-                                            </tr>
-                                        </thead>
+                                        @include('alerts.partials.modal-table-head', ['targetBody' => 'expired-alerts-body'])
                                         <tbody id="expired-alerts-body">
                                             @forelse ($expired as $doc)
-                                                @php($alert = \App\Support\WeaponDocumentAlert::forComplianceDocument($doc))
-                                                @php($excludedFromRevalidation = $doc->weapon?->isExcludedFromRevalidationDocuments() ?? false)
-                                                <tr class="alert-document-row {{ $alert['row_class'] }}" data-blocking-novedad="{{ $excludedFromRevalidation ? '1' : '0' }}" data-alert-search="{{ strtolower(trim(($doc->weapon?->activeClientAssignment?->client?->name ?? 'Sin cliente') . ' ' . ($doc->weapon?->weapon_type ?? '') . ' ' . ($doc->weapon?->serial_number ?? '') . ' ' . ($doc->valid_until?->format('Y-m-d') ?? '') . ' ' . ($alert['state'] ?? '') . ' ' . ($alert['observation'] ?? ''))) }}">
+                                                @php
+                                                    $alert = \App\Support\WeaponDocumentAlert::forComplianceDocument($doc);
+                                                    $excludedFromRevalidation = $doc->weapon?->isExcludedFromRevalidationDocuments() ?? false;
+                                                    $colCliente = $doc->weapon?->activeClientAssignment?->client?->name ?? __('Sin cliente');
+                                                    $colTipo = $doc->weapon?->weapon_type ?? '-';
+                                                    $colSerie = $doc->weapon?->serial_number ?? '-';
+                                                    $colVence = $doc->valid_until?->format('Y-m-d') ?? '-';
+                                                    $colEstado = $alert['state'] ?? '-';
+                                                    $colObservacion = $alert['observation'] ?? '-';
+                                                @endphp
+                                                <tr class="alert-document-row {{ $alert['row_class'] }}" data-blocking-novedad="{{ $excludedFromRevalidation ? '1' : '0' }}" data-col-cliente="{{ $colCliente }}" data-col-tipo="{{ $colTipo }}" data-col-serie="{{ $colSerie }}" data-col-vence="{{ $colVence }}" data-col-estado="{{ $colEstado }}" data-col-observacion="{{ $colObservacion }}" data-alert-search="{{ strtolower(trim($colCliente . ' ' . $colTipo . ' ' . $colSerie . ' ' . $colVence . ' ' . $colEstado . ' ' . $colObservacion)) }}">
                                                     <td class="px-3 py-2">
                                                         <label class="inline-flex items-center gap-2">
                                                             <input type="checkbox" name="weapon_ids[]" value="{{ $doc->weapon_id }}" class="alert-weapon-checkbox rounded border-gray-300 text-indigo-600">
@@ -287,6 +314,7 @@
                                     <div class="alerts-modal-panel__subtitle">{{ $summaryCards['expiring']['subtitle'] }}</div>
                                     <div class="alerts-modal-panel__toolbar">
                                         <span id="expiring-visible-count" class="alerts-modal-panel__count" data-alerts-visible-count data-target-body="expiring-alerts-body">0 {{ __('armas en la lista') }}</span>
+                                        <button type="button" class="alerts-modal-panel__clear-filters hidden" data-clear-column-filters="expiring-alerts-body">{{ __('Limpiar filtros de columna') }}</button>
                                         <label class="alerts-modal-panel__toggle">
                                             <input type="checkbox" class="alerts-exclude-novedades" data-target-body="expiring-alerts-body">
                                             <span>{{ __('Excluir armas no revalidables') }}</span>
@@ -304,21 +332,20 @@
                             <div class="alerts-modal-panel__body">
                                 <div class="overflow-x-auto sj-table-wrap">
                                     <table class="sj-table sj-table--align-left min-w-full text-sm">
-                                        <thead>
-                                            <tr>
-                                                <th>{{ __('Cliente') }}</th>
-                                                <th>{{ __('Tipo') }}</th>
-                                                <th>{{ __('Serie') }}</th>
-                                                <th>{{ __('Vence') }}</th>
-                                                <th>{{ __('Estado') }}</th>
-                                                <th>{{ __('Observación') }}</th>
-                                            </tr>
-                                        </thead>
+                                        @include('alerts.partials.modal-table-head', ['targetBody' => 'expiring-alerts-body'])
                                         <tbody id="expiring-alerts-body">
                                             @forelse ($expiring as $doc)
-                                                @php($alert = \App\Support\WeaponDocumentAlert::forComplianceDocument($doc))
-                                                @php($excludedFromRevalidation = $doc->weapon?->isExcludedFromRevalidationDocuments() ?? false)
-                                                <tr class="alert-document-row {{ $alert['row_class'] }}" data-blocking-novedad="{{ $excludedFromRevalidation ? '1' : '0' }}" data-alert-search="{{ strtolower(trim(($doc->weapon?->activeClientAssignment?->client?->name ?? 'Sin cliente') . ' ' . ($doc->weapon?->weapon_type ?? '') . ' ' . ($doc->weapon?->serial_number ?? '') . ' ' . ($doc->valid_until?->format('Y-m-d') ?? '') . ' ' . ($alert['state'] ?? '') . ' ' . ($alert['observation'] ?? ''))) }}">
+                                                @php
+                                                    $alert = \App\Support\WeaponDocumentAlert::forComplianceDocument($doc);
+                                                    $excludedFromRevalidation = $doc->weapon?->isExcludedFromRevalidationDocuments() ?? false;
+                                                    $colCliente = $doc->weapon?->activeClientAssignment?->client?->name ?? __('Sin cliente');
+                                                    $colTipo = $doc->weapon?->weapon_type ?? '-';
+                                                    $colSerie = $doc->weapon?->serial_number ?? '-';
+                                                    $colVence = $doc->valid_until?->format('Y-m-d') ?? '-';
+                                                    $colEstado = $alert['state'] ?? '-';
+                                                    $colObservacion = $alert['observation'] ?? '-';
+                                                @endphp
+                                                <tr class="alert-document-row {{ $alert['row_class'] }}" data-blocking-novedad="{{ $excludedFromRevalidation ? '1' : '0' }}" data-col-cliente="{{ $colCliente }}" data-col-tipo="{{ $colTipo }}" data-col-serie="{{ $colSerie }}" data-col-vence="{{ $colVence }}" data-col-estado="{{ $colEstado }}" data-col-observacion="{{ $colObservacion }}" data-alert-search="{{ strtolower(trim($colCliente . ' ' . $colTipo . ' ' . $colSerie . ' ' . $colVence . ' ' . $colEstado . ' ' . $colObservacion)) }}">
                                                     <td class="px-3 py-2">
                                                         <label class="inline-flex items-center gap-2">
                                                             <input type="checkbox" name="weapon_ids[]" value="{{ $doc->weapon_id }}" class="alert-weapon-checkbox rounded border-gray-300 text-indigo-600">
@@ -348,6 +375,7 @@
                                     <div class="alerts-modal-panel__subtitle">{{ $summaryCards['no_alerts']['subtitle'] }}</div>
                                     <div class="alerts-modal-panel__toolbar">
                                         <span id="no-alerts-visible-count" class="alerts-modal-panel__count" data-alerts-visible-count data-target-body="no-alerts-body">0 {{ __('armas en la lista') }}</span>
+                                        <button type="button" class="alerts-modal-panel__clear-filters hidden" data-clear-column-filters="no-alerts-body">{{ __('Limpiar filtros de columna') }}</button>
                                         <label class="alerts-modal-panel__toggle">
                                             <input type="checkbox" class="alerts-exclude-novedades" data-target-body="no-alerts-body">
                                             <span>{{ __('Excluir armas no revalidables') }}</span>
@@ -365,21 +393,20 @@
                             <div class="alerts-modal-panel__body">
                                 <div class="overflow-x-auto sj-table-wrap">
                                     <table class="sj-table sj-table--align-left min-w-full text-sm">
-                                        <thead>
-                                            <tr>
-                                                <th>{{ __('Cliente') }}</th>
-                                                <th>{{ __('Tipo') }}</th>
-                                                <th>{{ __('Serie') }}</th>
-                                                <th>{{ __('Vence') }}</th>
-                                                <th>{{ __('Estado') }}</th>
-                                                <th>{{ __('Observación') }}</th>
-                                            </tr>
-                                        </thead>
+                                        @include('alerts.partials.modal-table-head', ['targetBody' => 'no-alerts-body'])
                                         <tbody id="no-alerts-body">
                                             @forelse ($noAlerts as $doc)
-                                                @php($excludedFromRevalidation = $doc->weapon?->isExcludedFromRevalidationDocuments() ?? false)
-                                                @php($searchText = strtolower(trim(($doc->weapon?->activeClientAssignment?->client?->name ?? 'Sin cliente') . ' ' . ($doc->weapon?->weapon_type ?? '') . ' ' . ($doc->weapon?->serial_number ?? '') . ' ' . ($doc->valid_until?->format('Y-m-d') ?? '') . ' sin alerta fuera de la ventana de 120 días')))
-                                                <tr class="alert-document-row" data-blocking-novedad="{{ $excludedFromRevalidation ? '1' : '0' }}" data-alert-search="{{ $searchText }}">
+                                                @php
+                                                    $excludedFromRevalidation = $doc->weapon?->isExcludedFromRevalidationDocuments() ?? false;
+                                                    $colCliente = $doc->weapon?->activeClientAssignment?->client?->name ?? __('Sin cliente');
+                                                    $colTipo = $doc->weapon?->weapon_type ?? '-';
+                                                    $colSerie = $doc->weapon?->serial_number ?? '-';
+                                                    $colVence = $doc->valid_until?->format('Y-m-d') ?? '-';
+                                                    $colEstado = __('Sin alerta');
+                                                    $colObservacion = __('Fuera de la ventana de 120 días');
+                                                    $searchText = strtolower(trim($colCliente . ' ' . $colTipo . ' ' . $colSerie . ' ' . $colVence . ' ' . $colEstado . ' ' . $colObservacion));
+                                                @endphp
+                                                <tr class="alert-document-row" data-blocking-novedad="{{ $excludedFromRevalidation ? '1' : '0' }}" data-col-cliente="{{ $colCliente }}" data-col-tipo="{{ $colTipo }}" data-col-serie="{{ $colSerie }}" data-col-vence="{{ $colVence }}" data-col-estado="{{ $colEstado }}" data-col-observacion="{{ $colObservacion }}" data-alert-search="{{ $searchText }}">
                                                     <td class="px-3 py-2">
                                                         <label class="inline-flex items-center gap-2">
                                                             <input type="checkbox" name="weapon_ids[]" value="{{ $doc->weapon_id }}" class="alert-weapon-checkbox rounded border-gray-300 text-indigo-600">
@@ -403,342 +430,58 @@
                         </section>
                     </div>
                 </div>
+                <div
+                    id="alerts-column-filter-popover"
+                    class="hidden"
+                    role="dialog"
+                    aria-modal="true"
+                    hidden
+                >
+                    <input
+                        type="search"
+                        class="alerts-col-filter-popover__search"
+                        data-col-filter-search
+                        placeholder="{{ __('Buscar en la listaâ€¦') }}"
+                        autocomplete="off"
+                    >
+                    <div class="alerts-col-filter-popover__actions">
+                        <button type="button" data-col-filter-select-all>{{ __('Seleccionar todo') }}</button>
+                        <button type="button" data-col-filter-clear>{{ __('Limpiar') }}</button>
+                    </div>
+                    <div class="alerts-col-filter-popover__list" data-col-filter-list></div>
+                    <div class="alerts-col-filter-popover__footer">
+                        <button type="button" class="alerts-col-filter-popover__apply" data-col-filter-apply>{{ __('Aplicar') }}</button>
+                    </div>
+                </div>
             </form>
         </div>
     </div>
-    @push('scripts')
-        <script>
-            (() => {
-        const periodToggle = document.getElementById('alerts-period-toggle');
-        const periodPanel = document.getElementById('alerts-period-panel');
-        const periodSummary = document.getElementById('alerts-period-summary');
-        const periodYearLabel = document.getElementById('alerts-period-year');
-        const periodMonthGrid = document.getElementById('alerts-period-month-grid');
-        const periodClearButton = document.getElementById('alerts-period-clear');
-        const periodHint = document.getElementById('alerts-period-hint');
-        const filterForm = document.getElementById('alerts-filter-form');
-        const monthHiddenInputs = document.getElementById('alerts-month-hidden-inputs');
-        const downloadMonthInputs = document.getElementById('alerts-download-month-inputs');
-        const locale = document.documentElement.lang || 'es';
 
-        const monthShortNames = @json($alertMonthShortNames);
-        const txtSelectMonths = @json(__('Seleccionar meses'));
-        const txtAllMonths = @json(__('Todos los meses'));
-        const txtPeriodsSelected = @json(__('períodos seleccionados'));
-        const txtPeriodHintEmpty = @json(__('Marque uno o varios meses y pulse Filtrar.'));
-        const txtPeriodHintCount = @json(__('seleccionado(s). Pulse Filtrar para aplicar.'));
+    <script type="application/json" id="alerts-page-config">
+        {!! json_encode([
+            'monthShortNames' => $alertMonthShortNames,
+            'selectedMonths' => $selectedMonths,
+            'previewAvailable' => $previewAvailable,
+            'locale' => str_replace('_', '-', app()->getLocale()),
+            'labels' => [
+                'selectMonths' => __('Seleccionar meses'),
+                'allMonths' => __('Todos los meses'),
+                'periodsSelected' => __('períodos seleccionados'),
+                'periodHintEmpty' => __('Marque uno o varios meses y pulse Filtrar.'),
+                'periodHintCount' => __('seleccionado(s). Pulse Filtrar para aplicar.'),
+                'armaEnLista' => __('arma en la lista'),
+                'armasEnLista' => __('armas en la lista'),
+                'descargarRelacion' => __('Descargar relaciÃ³n'),
+                'seleccionadas' => __('seleccionadas'),
+                'filterSearchPlaceholder' => __('Buscar en la listaâ€¦'),
+                'filterSelectAll' => __('Seleccionar todo'),
+                'filterClear' => __('Limpiar'),
+                'filterApply' => __('Aplicar'),
+                'clearColumnFilters' => __('Limpiar filtros de columna'),
+                'filterActive' => __('Filtro activo'),
+                'noFilterValues' => __('Sin valores para mostrar.'),
+            ],
+        ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) !!}
+    </script>
 
-        const selectedMonths = new Set(@json($selectedMonths));
-        let panelYear = (() => {
-            if (selectedMonths.size === 0) return new Date().getFullYear();
-            const sorted = [...selectedMonths].sort();
-            return Number.parseInt(sorted[sorted.length - 1].split('-')[0], 10);
-        })();
-        let panelOpen = false;
-
-        const formatMonthLabel = (monthValue) => {
-            const [year, month] = monthValue.split('-').map((part) => Number.parseInt(part, 10));
-            const date = new Date(year, month - 1, 1);
-            return date.toLocaleDateString(locale, { month: 'short', year: 'numeric' });
-        };
-
-        const syncMonthHiddenInputs = (container) => {
-            if (!container) return;
-            container.innerHTML = '';
-            [...selectedMonths].sort().forEach((monthValue) => {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'months[]';
-                input.value = monthValue;
-                container.appendChild(input);
-            });
-        };
-
-        const syncDownloadMonthInputs = () => {
-            syncMonthHiddenInputs(downloadMonthInputs);
-        };
-
-        const updatePeriodSummary = () => {
-            if (!periodSummary || !periodToggle) return;
-
-            const count = selectedMonths.size;
-            periodToggle.classList.toggle('has-selection', count > 0);
-
-            if (count === 0) {
-                periodSummary.textContent = txtSelectMonths;
-                if (periodHint) periodHint.textContent = txtPeriodHintEmpty;
-                return;
-            }
-
-            if (count === 1) {
-                periodSummary.textContent = formatMonthLabel([...selectedMonths][0]);
-            } else if (count <= 3) {
-                periodSummary.textContent = [...selectedMonths].sort().map(formatMonthLabel).join(', ');
-            } else {
-                periodSummary.textContent = `${count} ${txtPeriodsSelected}`;
-            }
-
-            if (periodHint) {
-                periodHint.textContent = `${count} ${txtPeriodHintCount}`;
-            }
-        };
-
-        const renderPeriodMonthGrid = () => {
-            if (!periodMonthGrid || !periodYearLabel) return;
-
-            periodYearLabel.textContent = String(panelYear);
-            periodMonthGrid.innerHTML = '';
-
-            for (let month = 1; month <= 12; month += 1) {
-                const monthValue = `${panelYear}-${String(month).padStart(2, '0')}`;
-                const label = document.createElement('label');
-                label.className = 'alerts-period-month';
-                if (selectedMonths.has(monthValue)) {
-                    label.classList.add('is-checked');
-                }
-
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.value = monthValue;
-                checkbox.checked = selectedMonths.has(monthValue);
-                checkbox.setAttribute('aria-label', formatMonthLabel(monthValue));
-
-                const text = document.createElement('span');
-                text.textContent = monthShortNames[month - 1] || String(month);
-
-                label.append(checkbox, text);
-                periodMonthGrid.append(label);
-            }
-        };
-
-        const syncPeriodSelection = () => {
-            syncMonthHiddenInputs(monthHiddenInputs);
-            syncDownloadMonthInputs();
-            updatePeriodSummary();
-            renderPeriodMonthGrid();
-        };
-
-        const setPanelOpen = (open) => {
-            panelOpen = open;
-            if (!periodPanel || !periodToggle) return;
-
-            periodPanel.classList.toggle('hidden', !open);
-            periodPanel.hidden = !open;
-            periodToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-        };
-
-        periodToggle?.addEventListener('click', () => {
-            setPanelOpen(!panelOpen);
-        });
-
-        periodMonthGrid?.addEventListener('change', (event) => {
-            const checkbox = event.target;
-            if (!(checkbox instanceof HTMLInputElement) || checkbox.type !== 'checkbox') return;
-
-            const monthValue = checkbox.value;
-            if (!/^\d{4}-\d{2}$/.test(monthValue)) return;
-
-            if (checkbox.checked) {
-                selectedMonths.add(monthValue);
-            } else {
-                selectedMonths.delete(monthValue);
-            }
-
-            syncPeriodSelection();
-        });
-
-        document.querySelectorAll('[data-period-year-step]').forEach((button) => {
-            button.addEventListener('click', () => {
-                const step = Number.parseInt(button.getAttribute('data-period-year-step') || '0', 10);
-                if (!step) return;
-                panelYear += step;
-                renderPeriodMonthGrid();
-            });
-        });
-
-        periodClearButton?.addEventListener('click', () => {
-            selectedMonths.clear();
-            syncPeriodSelection();
-        });
-
-        filterForm?.addEventListener('submit', () => {
-            syncMonthHiddenInputs(monthHiddenInputs);
-            setPanelOpen(false);
-        });
-
-        document.addEventListener('click', (event) => {
-            if (!panelOpen) return;
-            const target = event.target;
-            if (!(target instanceof Node)) return;
-            if (periodToggle?.contains(target) || periodPanel?.contains(target)) return;
-            setPanelOpen(false);
-        });
-
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && panelOpen) {
-                setPanelOpen(false);
-            }
-        });
-
-        syncPeriodSelection();
-
-        const searchInput = document.getElementById('alerts-search');
-        const countBadge = document.getElementById('alerts-selected-count');
-        const downloadButton = document.getElementById('alerts-download-button');
-        const previewButton = document.getElementById('alerts-preview-button');
-        const modalLayer = document.getElementById('alerts-modal-layer');
-        const modalPanels = Array.from(document.querySelectorAll('[data-alerts-modal]'));
-        const openButtons = Array.from(document.querySelectorAll('[data-open-modal]'));
-        const closeButtons = Array.from(document.querySelectorAll('[data-close-modal]'));
-        let activeModal = null;
-
-        const txtArmaEnLista = @json(__('arma en la lista'));
-        const txtArmasEnLista = @json(__('armas en la lista'));
-        const txtDescargarRelacion = @json(__('Descargar relación'));
-        const txtSeleccionadas = @json(__('seleccionadas'));
-
-        const sections = [
-            { bodyId: 'expired-alerts-body', rows: () => Array.from(document.querySelectorAll('#expired-alerts-body .alert-document-row')), noResults: document.getElementById('expired-alerts-no-results'), emptyRows: () => Array.from(document.querySelectorAll('#expired-alerts-body .alerts-empty-row')), selectAll: document.querySelector('.alert-select-all-toggle[data-target-body="expired-alerts-body"]'), excludeToggle: document.querySelector('.alerts-exclude-novedades[data-target-body="expired-alerts-body"]'), visibleCountEl: document.getElementById('expired-visible-count') },
-            { bodyId: 'expiring-alerts-body', rows: () => Array.from(document.querySelectorAll('#expiring-alerts-body .alert-document-row')), noResults: document.getElementById('expiring-alerts-no-results'), emptyRows: () => Array.from(document.querySelectorAll('#expiring-alerts-body .alerts-empty-row')), selectAll: document.querySelector('.alert-select-all-toggle[data-target-body="expiring-alerts-body"]'), excludeToggle: document.querySelector('.alerts-exclude-novedades[data-target-body="expiring-alerts-body"]'), visibleCountEl: document.getElementById('expiring-visible-count') },
-            { bodyId: 'no-alerts-body', rows: () => Array.from(document.querySelectorAll('#no-alerts-body .alert-document-row')), noResults: document.getElementById('no-alerts-no-results'), emptyRows: () => Array.from(document.querySelectorAll('#no-alerts-body .alerts-empty-row')), selectAll: document.querySelector('.alert-select-all-toggle[data-target-body="no-alerts-body"]'), excludeToggle: document.querySelector('.alerts-exclude-novedades[data-target-body="no-alerts-body"]'), visibleCountEl: document.getElementById('no-alerts-visible-count') },
-        ];
-
-        const checkboxes = () => Array.from(document.querySelectorAll('.alert-weapon-checkbox'));
-        const visibleRows = (section) => section.rows().filter((row) => !row.classList.contains('hidden'));
-        const visibleCheckboxes = (section) => visibleRows(section)
-            .map((row) => row.querySelector('.alert-weapon-checkbox'))
-            .filter((checkbox) => checkbox && !checkbox.disabled);
-
-        const updateSelectAllState = (section) => {
-            if (!section?.selectAll) return;
-
-            const visible = visibleCheckboxes(section);
-            const checked = visible.filter((checkbox) => checkbox.checked).length;
-
-            section.selectAll.checked = visible.length > 0 && checked === visible.length;
-            section.selectAll.indeterminate = checked > 0 && checked < visible.length;
-            section.selectAll.disabled = visible.length === 0;
-        };
-
-        const updateAllSelectAllStates = () => {
-            sections.forEach(updateSelectAllState);
-        };
-
-        const syncModalOffset = () => {
-            const header = document.querySelector('.sj-page-header');
-            const offset = header ? Math.ceil(header.getBoundingClientRect().bottom) : 180;
-            document.documentElement.style.setProperty('--alerts-modal-top', `${offset}px`);
-        };
-
-        const updateSelectionCount = () => {
-            const selected = checkboxes().filter((checkbox) => checkbox.checked && !checkbox.disabled).length;
-            if (countBadge) countBadge.textContent = `${selected} ${txtSeleccionadas}`;
-            if (downloadButton) {
-                downloadButton.disabled = selected === 0;
-                downloadButton.textContent = selected > 0 ? `${txtDescargarRelacion} (${selected})` : txtDescargarRelacion;
-                downloadButton.classList.toggle('is-ready', selected > 0);
-            }
-            if (previewButton) {
-                const canPreview = @json($previewAvailable) && selected > 0;
-                previewButton.disabled = !canPreview;
-                previewButton.classList.toggle('is-ready', canPreview);
-            }
-
-            updateAllSelectAllStates();
-        };
-
-        const applyFilters = () => {
-            const term = (searchInput?.value || '').trim().toLowerCase();
-            sections.forEach((section) => {
-                const excludeNovedad = section.excludeToggle?.checked ?? false;
-                const rows = section.rows();
-                let visibleCount = 0;
-                const hasActiveFilter = term !== '' || excludeNovedad;
-
-                rows.forEach((row) => {
-                    const haystack = row.dataset.alertSearch || row.textContent.toLowerCase();
-                    const matchesSearch = term === '' || haystack.includes(term);
-                    const blocking = row.dataset.blockingNovedad === '1';
-                    const matchesNovedad = !excludeNovedad || !blocking;
-                    const visible = matchesSearch && matchesNovedad;
-
-                    row.classList.toggle('hidden', !visible);
-                    if (visible) visibleCount += 1;
-
-                    const checkbox = row.querySelector('.alert-weapon-checkbox');
-                    if (checkbox) {
-                        if (!visible) {
-                            checkbox.checked = false;
-                            checkbox.disabled = true;
-                        } else {
-                            checkbox.disabled = false;
-                        }
-                    }
-                });
-
-                section.emptyRows().forEach((row) => row.classList.toggle('hidden', visibleCount > 0 || term !== ''));
-                if (section.noResults) {
-                    const showNoResults = rows.length > 0 && visibleCount === 0 && hasActiveFilter;
-                    section.noResults.classList.toggle('hidden', !showNoResults);
-                }
-                if (section.visibleCountEl) {
-                    section.visibleCountEl.textContent = `${visibleCount} ${visibleCount === 1 ? txtArmaEnLista : txtArmasEnLista}`;
-                }
-                updateSelectAllState(section);
-            });
-            updateSelectionCount();
-        };
-
-        const openModal = (key) => {
-            activeModal = key;
-            syncModalOffset();
-            modalLayer?.classList.remove('hidden');
-            modalLayer?.setAttribute('aria-hidden', 'false');
-            modalPanels.forEach((panel) => panel.classList.toggle('hidden', panel.dataset.alertsModal !== key));
-        };
-
-        const closeModal = () => {
-            activeModal = null;
-            modalLayer?.classList.add('hidden');
-            modalLayer?.setAttribute('aria-hidden', 'true');
-            modalPanels.forEach((panel) => panel.classList.add('hidden'));
-        };
-
-        const toggleSectionSelection = (bodyId, checked) => {
-            const section = sections.find((item) => item.bodyId === bodyId);
-            if (!section) return;
-
-            visibleCheckboxes(section).forEach((checkbox) => {
-                checkbox.checked = checked;
-            });
-
-            updateSelectionCount();
-        };
-
-        openButtons.forEach((button) => button.addEventListener('click', () => openModal(button.dataset.openModal)));
-        closeButtons.forEach((button) => button.addEventListener('click', closeModal));
-        searchInput?.addEventListener('input', applyFilters);
-        document.addEventListener('change', (event) => {
-            if (event.target.closest('.alert-weapon-checkbox')) {
-                updateSelectionCount();
-                return;
-            }
-
-            if (event.target.closest('.alert-select-all-toggle')) {
-                toggleSectionSelection(event.target.dataset.targetBody, event.target.checked);
-            }
-
-            if (event.target.classList?.contains('alerts-exclude-novedades')) {
-                applyFilters();
-            }
-        });
-        document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && activeModal) closeModal(); });
-        window.addEventListener('resize', syncModalOffset);
-        window.addEventListener('scroll', () => { if (activeModal) syncModalOffset(); }, { passive: true });
-
-            syncModalOffset();
-            applyFilters();
-        })();
-        </script>
-    @endpush
 </x-app-layout>
