@@ -49,7 +49,15 @@ class WeaponInternalAssignmentController extends Controller
         $replace = $request->boolean('replace');
 
         if (! $postId && ! $workerId) {
-            abort(422, 'Seleccione un puesto o un trabajador.');
+            $message = __('weapons.internal_assignment_requires_post_or_worker');
+
+            return back()
+                ->withErrors([
+                    'post_id' => $message,
+                    'worker_id' => $message,
+                    'assignment' => $message,
+                ])
+                ->withInput();
         }
 
         $activeClientAssignment = $weapon->activeClientAssignment()->first();

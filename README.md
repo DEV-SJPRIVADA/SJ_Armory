@@ -519,6 +519,7 @@ Reglas:
 
 - Requiere destino operativo activo (cliente asignado).
 - Debe indicarse al menos uno: `post_id` y/o `worker_id`.
+  - Si se intenta enviar vacio, el formulario muestra el error `Primero debes agregar puesto o trabajador.` (inline) y conserva los datos ingresados; no se lanza una excepcion HTTP.
   - **Solo puesto** o **puesto + trabajador**: en el mapa la coordenada se toma del **puesto** (si hay puesto activo).
   - **Solo trabajador**: en el mapa la coordenada se toma del **cliente** del trabajador.
 - Pueden coexistir **un** registro activo en `weapon_post_assignments` y **un** registro activo en `weapon_worker_assignments` para la misma arma (p. ej. trabajador como titular operativo y puesto para ubicacion).
