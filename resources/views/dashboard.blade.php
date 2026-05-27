@@ -1,20 +1,15 @@
 <x-app-layout>
     <x-slot name="header">
         <section class="sj-dashboard-header">
-            <div class="sj-dashboard-header__main sj-section-header__main">
-                <p class="sj-dashboard-header__eyebrow">Centro de monitoreo</p>
+            <div class="sj-dashboard-header__main">
                 <h1 class="sj-dashboard-header__title">SJ Seguridad Privada LTDA</h1>
-                <p class="sj-dashboard-header__subtitle">
-                    Vista global del sistema. Consolida inventario, renovación documental,
-                    transferencias y novedades operativas en una sola vista.
-                </p>
             </div>
 
             <div class="sj-dashboard-header__side">
                 <div class="sj-dashboard-stamp">
                     <span class="sj-dashboard-stamp__label">Actualizado</span>
                     <span class="sj-dashboard-stamp__value">
-                        {{ \Illuminate\Support\Carbon::parse(data_get($dashboard, 'as_of'))->locale('es')->timezone('America/Bogota')->translatedFormat('j \d\e F \d\e Y, h:i:s a') }}
+                        {{ \Illuminate\Support\Carbon::parse(data_get($dashboard, 'as_of'))->locale('es')->timezone('America/Bogota')->translatedFormat('j \d\e F \d\e Y, h:i a') }}
                     </span>
                 </div>
 
