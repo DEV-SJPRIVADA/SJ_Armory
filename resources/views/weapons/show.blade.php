@@ -47,15 +47,15 @@
                 {{ __('Última actualización:') }} {{ $weapon->updated_at->format('Y-m-d') }}
             </p>
 
-            <div class="sj-weapon-detail-layout grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
-                <div class="sj-weapon-detail-col-left flex flex-col gap-5">
-                    <div class="shrink-0 space-y-5">
+            <div class="sj-weapon-detail-layout grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-stretch">
+                <div class="sj-weapon-detail-col-left flex min-h-0 flex-col gap-5 lg:h-full">
+                    <div class="sj-weapon-detail-col-left__meta shrink-0 space-y-5">
                         @include('weapons.partials.show.characteristics')
                         @include('weapons.partials.show.permits')
                         @include('weapons.partials.show.ownership')
                     </div>
-                    @include('weapons.partials.show.notes')
-                    <div class="shrink-0">
+                    <div class="sj-weapon-detail-col-left__panels flex min-h-0 flex-col gap-5 lg:flex-1">
+                        @include('weapons.partials.show.notes')
                         @include('weapons.partials.documents', ['embedded' => true])
                     </div>
                 </div>

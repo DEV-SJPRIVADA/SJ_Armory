@@ -3,19 +3,22 @@
 @endphp
 
 <div @class([
-    'sj-weapon-detail-section' => $embedded,
+    'sj-weapon-detail-section sj-weapon-detail-section--documents' => $embedded,
+    'sj-weapon-detail-section' => ! $embedded,
     'bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200' => ! $embedded,
 ])>
     @if ($embedded)
-        <h4 class="sj-weapon-detail-section__title">{{ __('Documentos') }}</h4>
-        <p class="sj-weapon-detail-section__hint">
-            {{ __('Los documentos manuales soportan la operación interna. Para hurtos, pérdidas o bajas usa el módulo de Novedades.') }}
-        </p>
-        @can('update', $weapon)
-            <p class="text-xs text-gray-500 mb-3">
-                {{ __('Documentos cargados:') }} <span class="font-medium text-gray-700">{{ $weapon->documents->count() }}</span>
+        <div class="sj-weapon-detail-documents__static">
+            <h4 class="sj-weapon-detail-section__title">{{ __('Documentos') }}</h4>
+            <p class="sj-weapon-detail-section__hint">
+                {{ __('Los documentos manuales soportan la operación interna. Para hurtos, pérdidas o bajas usa el módulo de Novedades.') }}
             </p>
-        @endcan
+            @can('update', $weapon)
+                <p class="mb-0 text-xs text-gray-500">
+                    {{ __('Documentos cargados:') }} <span class="font-medium text-gray-700">{{ $weapon->documents->count() }}</span>
+                </p>
+            @endcan
+        </div>
     @else
         <div class="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200 px-6 py-5">
             <div class="flex items-center justify-between gap-4">
@@ -40,46 +43,96 @@
         </div>
     @endif
 
-    <div @class(['p-6' => ! $embedded])>
-        @can('update', $weapon)
-            @php
-                $statusOptions = [
-                    'Sin novedad',
-                    'En proceso',
-                ];
-            @endphp
-            <form method="POST" action="{{ route('weapons.documents.store', $weapon) }}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2">
-                @csrf
-                <label class="inline-flex cursor-pointer items-center rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50">
-                    <span class="mr-2">{{ __('Seleccionar archivo') }}</span>
-                    <span class="text-xs text-gray-500" data-document-file-name>{{ __('Ningún archivo') }}</span>
-                    <input type="file" name="document" required class="hidden" accept=".pdf,.doc,.docx,image/jpeg,image/png,image/webp" data-document-file-input>
-                </label>
-                <input type="date" name="valid_until" class="rounded-md border-gray-300 text-sm" placeholder="{{ __('Vence') }}">
-                <select name="status" class="rounded-md border-gray-300 text-sm" required>
-                    <option value="">{{ __('Estado') }}</option>
-                    @foreach ($statusOptions as $option)
-                        <option value="{{ $option }}" @selected(old('status') === $option)>{{ $option }}</option>
-                    @endforeach
-                </select>
-                <select name="observations" class="rounded-md border-gray-300 text-sm" required>
-                    <option value="">{{ __('Observaciones') }}</option>
-                    <option value="En Armerillo" @selected(old('observations') === 'En Armerillo')>{{ __('En Armerillo') }}</option>
-                    <option value="En Mantenimiento" @selected(old('observations') === 'En Mantenimiento')>{{ __('En Mantenimiento') }}</option>
-                    <option value="Para Mantenimiento" @selected(old('observations') === 'Para Mantenimiento')>{{ __('Para Mantenimiento') }}</option>
-                </select>
-                <x-primary-button class="text-xs">
-                    {{ __('Subir') }}
-                </x-primary-button>
-            </form>
-        @endcan
+    <div @class([
+        'p-6' => ! $embedded,
+        'sj-weapon-detail-documents__body flex min-h-0 flex-col' => $embedded,
+    ])>
+        @if ($embedded)
+            @can('update', $weapon)
+                @php
+                    $statusOptions = [
+                        'Sin novedad',
+                        'En proceso',
+                    ];
+                @endphp
+                <div class="sj-weapon-detail-documents__static mt-3">
+                    <form method="POST" action="{{ route('weapons.documents.store', $weapon) }}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2">
+                        @csrf
+                        <label class="inline-flex cursor-pointer items-center rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50">
+                            <span class="mr-2">{{ __('Seleccionar archivo') }}</span>
+                            <span class="text-xs text-gray-500" data-document-file-name>{{ __('Ningún archivo') }}</span>
+                            <input type="file" name="document" required class="hidden" accept=".pdf,.doc,.docx,image/jpeg,image/png,image/webp" data-document-file-input>
+                        </label>
+                        <input type="date" name="valid_until" class="rounded-md border-gray-300 text-sm" placeholder="{{ __('Vence') }}">
+                        <select name="status" class="rounded-md border-gray-300 text-sm" required>
+                            <option value="">{{ __('Estado') }}</option>
+                            @foreach ($statusOptions as $option)
+                                <option value="{{ $option }}" @selected(old('status') === $option)>{{ $option }}</option>
+                            @endforeach
+                        </select>
+                        <select name="observations" class="rounded-md border-gray-300 text-sm" required>
+                            <option value="">{{ __('Observaciones') }}</option>
+                            <option value="En Armerillo" @selected(old('observations') === 'En Armerillo')>{{ __('En Armerillo') }}</option>
+                            <option value="En Mantenimiento" @selected(old('observations') === 'En Mantenimiento')>{{ __('En Mantenimiento') }}</option>
+                            <option value="Para Mantenimiento" @selected(old('observations') === 'Para Mantenimiento')>{{ __('Para Mantenimiento') }}</option>
+                        </select>
+                        <x-primary-button class="text-xs">
+                            {{ __('Subir') }}
+                        </x-primary-button>
+                    </form>
+                </div>
+            @endcan
 
-        @if ($errors->has('document'))
-            <div class="mt-2 text-sm text-red-600">{{ $errors->first('document') }}</div>
+            @if ($errors->has('document'))
+                <div class="sj-weapon-detail-documents__static mt-2 text-sm text-red-600">{{ $errors->first('document') }}</div>
+            @endif
+        @else
+            @can('update', $weapon)
+                @php
+                    $statusOptions = [
+                        'Sin novedad',
+                        'En proceso',
+                    ];
+                @endphp
+                <form method="POST" action="{{ route('weapons.documents.store', $weapon) }}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2">
+                    @csrf
+                    <label class="inline-flex cursor-pointer items-center rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50">
+                        <span class="mr-2">{{ __('Seleccionar archivo') }}</span>
+                        <span class="text-xs text-gray-500" data-document-file-name>{{ __('Ningún archivo') }}</span>
+                        <input type="file" name="document" required class="hidden" accept=".pdf,.doc,.docx,image/jpeg,image/png,image/webp" data-document-file-input>
+                    </label>
+                    <input type="date" name="valid_until" class="rounded-md border-gray-300 text-sm" placeholder="{{ __('Vence') }}">
+                    <select name="status" class="rounded-md border-gray-300 text-sm" required>
+                        <option value="">{{ __('Estado') }}</option>
+                        @foreach ($statusOptions as $option)
+                            <option value="{{ $option }}" @selected(old('status') === $option)>{{ $option }}</option>
+                        @endforeach
+                    </select>
+                    <select name="observations" class="rounded-md border-gray-300 text-sm" required>
+                        <option value="">{{ __('Observaciones') }}</option>
+                        <option value="En Armerillo" @selected(old('observations') === 'En Armerillo')>{{ __('En Armerillo') }}</option>
+                        <option value="En Mantenimiento" @selected(old('observations') === 'En Mantenimiento')>{{ __('En Mantenimiento') }}</option>
+                        <option value="Para Mantenimiento" @selected(old('observations') === 'Para Mantenimiento')>{{ __('Para Mantenimiento') }}</option>
+                    </select>
+                    <x-primary-button class="text-xs">
+                        {{ __('Subir') }}
+                    </x-primary-button>
+                </form>
+            @endcan
+
+            @if ($errors->has('document'))
+                <div class="mt-2 text-sm text-red-600">{{ $errors->first('document') }}</div>
+            @endif
         @endif
 
-        <div class="mt-4 overflow-x-auto sj-table-wrap">
-            <table class="sj-table sj-table--align-left min-w-full text-sm">
+        <div @class([
+            'mt-4 overflow-x-auto sj-table-wrap' => ! $embedded,
+            'sj-weapon-detail-documents__table-scroll sj-table-wrap' => $embedded,
+        ])>
+            <table @class([
+                'sj-table sj-table--align-left min-w-full text-sm',
+                'sj-table--sticky-head' => $embedded,
+            ])>
                 <thead>
                     <tr>
                         <th>{{ __('Documento') }}</th>

@@ -325,14 +325,6 @@
         padding: 0.75rem;
     }
 
-    @media (min-width: 1024px) {
-        .sj-weapon-detail-notes {
-            max-height: clamp(10rem, 36vh, 26rem);
-            min-height: 10rem;
-            overflow: hidden;
-        }
-    }
-
     .sj-weapon-detail-notes__list {
         min-height: 0;
         overflow-y: auto;
@@ -342,6 +334,87 @@
 
     .sj-weapon-detail-notes__list article {
         background: #fff;
+    }
+
+    .sj-weapon-detail-section--documents {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .sj-weapon-detail-documents__static {
+        flex-shrink: 0;
+    }
+
+    .sj-weapon-detail-documents__table-scroll {
+        min-height: 0;
+    }
+
+    @media (min-width: 1024px) {
+        .sj-weapon-detail-col-left {
+            height: 100%;
+            min-height: 0;
+        }
+
+        .sj-weapon-detail-col-left__panels {
+            display: flex;
+            flex: 1 1 0;
+            flex-direction: column;
+            gap: 1.25rem;
+            min-height: 0;
+        }
+
+        .sj-weapon-detail-section--notes {
+            flex: 1 1 0;
+            min-height: 10rem;
+            overflow: hidden;
+        }
+
+        .sj-weapon-detail-section--notes .sj-weapon-detail-section__title {
+            flex-shrink: 0;
+        }
+
+        .sj-weapon-detail-notes {
+            flex: 1 1 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .sj-weapon-detail-notes__list {
+            flex: 1 1 0;
+        }
+
+        .sj-weapon-detail-section--documents {
+            flex: 0 0 auto;
+            overflow: hidden;
+        }
+
+        .sj-weapon-detail-documents__body {
+            display: flex;
+            flex: 0 0 auto;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .sj-weapon-detail-documents__table-scroll {
+            --sj-detail-doc-head-row: 2.75rem;
+            --sj-detail-doc-body-row: 4.25rem;
+            --sj-detail-doc-visible-rows: 2;
+            flex: 0 0 auto;
+            margin-top: 1rem;
+            max-height: calc(
+                var(--sj-detail-doc-head-row) + (var(--sj-detail-doc-visible-rows) * var(--sj-detail-doc-body-row))
+            );
+            overflow-x: auto;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+
+        .sj-weapon-detail-documents__table-scroll .sj-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
     }
 
     @media (min-width: 1280px) {
