@@ -790,7 +790,7 @@ Vista: `resources/views/weapons/show.blade.php` y partials en `resources/views/w
 
 - Slot `header-compact` en `<x-app-layout>` (`AppLayout::$headerCompact`): padding reducido (`.sj-page-header--compact`, shell `py-2.5`) solo en esta pantalla; título **Detalle de arma** + **Editar** / **Volver al listado**.
 
-**Cuerpo (grid `lg:grid-cols-2`, `items-stretch`)**
+**Cuerpo (grid `lg:grid-cols-2`, `items-start`)**
 
 | Columna izquierda | Columna derecha (ADMIN / RESPONSABLE) |
 |-------------------|--------------------------------------|
@@ -835,7 +835,7 @@ La tarjeta **Notas** en `weapons/show` (`resources/views/weapons/partials/histor
 | Modelo | `App\Models\WeaponHistory` — tipos: `created`, `note`, `update`, `destination`, `internal`, `incident`, `transfer`, `document`, `photos` |
 | Servicio | `App\Services\WeaponHistoryService` |
 | Relación | `Weapon::histories()` |
-| Vista | `resources/views/weapons/partials/history-panel.blade.php` (scroll dentro de `.sj-weapon-detail-notes`; altura flexible en desktop) |
+| Vista | `resources/views/weapons/partials/history-panel.blade.php` (scroll dentro de `.sj-weapon-detail-notes`; en desktop altura acotada `clamp` + `overflow-y` para no empujar **Documentos** ni estirar la columna derecha) |
 
 **Qué genera entradas automáticamente**
 

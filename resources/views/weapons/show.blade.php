@@ -47,8 +47,8 @@
                 {{ __('Última actualización:') }} {{ $weapon->updated_at->format('Y-m-d') }}
             </p>
 
-            <div class="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-stretch">
-                <div class="sj-weapon-detail-col-left flex flex-col gap-5 lg:h-full">
+            <div class="sj-weapon-detail-layout grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
+                <div class="sj-weapon-detail-col-left flex flex-col gap-5">
                     <div class="shrink-0 space-y-5">
                         @include('weapons.partials.show.characteristics')
                         @include('weapons.partials.show.permits')
@@ -60,7 +60,7 @@
                     </div>
                 </div>
 
-                <div class="flex flex-col gap-5 lg:h-full">
+                <div class="sj-weapon-detail-col-right flex flex-col gap-5">
                     @if (Auth::user()->isAdmin() || Auth::user()->isResponsible())
                         <section class="sj-weapon-detail-section">
                             <h4 class="sj-weapon-detail-section__title">{{ __('Destino operativo') }}</h4>
