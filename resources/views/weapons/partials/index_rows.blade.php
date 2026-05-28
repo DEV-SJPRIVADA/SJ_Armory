@@ -29,6 +29,21 @@
         data-export-permit-type="{{ $weapon->permit_type ? \Illuminate\Support\Str::ucfirst($weapon->permit_type) : '-' }}"
         data-export-permit-number="{{ $weapon->permit_number ?? '-' }}"
         data-export-expires-at="{{ $weapon->permit_expires_at?->format('Y-m-d') ?? '-' }}"
+        data-col-cliente="{{ $weapon->operationalDisplayClient()?->name ?? __('Sin destino') }}"
+        data-col-tipo="{{ $weapon->weapon_type }}"
+        data-col-marca="{{ $weapon->brand }}"
+        data-col-serie="{{ $weapon->serial_number }}"
+        data-col-calibre="{{ $weapon->caliber }}"
+        data-col-capacidad="{{ $weapon->capacity ?? '-' }}"
+        data-col-tipo_permiso="{{ $weapon->permit_type ? \Illuminate\Support\Str::ucfirst($weapon->permit_type) : '-' }}"
+        data-col-numero_permiso="{{ $weapon->permit_number ?? '-' }}"
+        data-col-vence="{{ $weapon->permit_expires_at?->format('Y-m-d') ?? '-' }}"
+        data-col-estado="{{ $statusText }}"
+        data-col-municion="{{ $internalAssignment?->ammo_count ?? '-' }}"
+        data-col-proveedor="{{ $internalAssignment?->provider_count ?? '-' }}"
+        data-col-responsable="{{ $weapon->operationalDisplayResponsible()?->name ?? '-' }}"
+        data-col-destino="{{ $destinationLabel }}"
+        data-col-cedula="{{ $weapon->activeWorkerAssignment?->worker?->document ?? '-' }}"
     >
         <td class="px-3 py-2 text-center whitespace-nowrap" data-searchable="false">
             <input

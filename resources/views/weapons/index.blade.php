@@ -52,14 +52,6 @@
                         {{ __('0 seleccionadas') }}
                     </span>
 
-                    <button
-                        type="button"
-                        id="weapons-filters-toggle"
-                        class="weapon-header__utility"
-                    >
-                        {{ __('Filtros') }}
-                    </button>
-
                     <details id="weapons-export-menu" class="relative">
                         <summary class="weapon-header__utility list-none">
                             {{ __('Exportar') }}
@@ -94,16 +86,6 @@
 
     <div class="py-8">
         <div class="w-full px-4 sm:px-6 lg:px-8 pb-20">
-            @php
-                $hasWeaponFilters = collect($filters)->reject(function ($value, $key) {
-                    if ($key === 'inventory_scope') {
-                        return ($value ?? 'operational') === 'operational';
-                    }
-
-                    return empty($value);
-                })->isNotEmpty();
-            @endphp
-
             @if (session('status'))
                 <div class="mb-4 rounded-xl bg-green-50 p-3 text-sm text-green-700">
                     {{ session('status') }}
@@ -116,146 +98,27 @@
                 </div>
             @endif
 
-            @php
-                $permitFrom = $filters['permit_expires_from'] ?? '';
-                $permitTo = $filters['permit_expires_to'] ?? '';
-                $permitRangeLabel = __('Seleccione rango');
-                if ($permitFrom !== '' || $permitTo !== '') {
-                    $formatPermitFilterDate = static function (string $value): string {
-                        if ($value === '') {
-                            return '…';
-                        }
-
-                        try {
-                            return \Illuminate\Support\Carbon::parse($value)->format('d/m/Y');
-                        } catch (\Throwable) {
-                            return $value;
-                        }
-                    };
-                    $permitRangeLabel = $formatPermitFilterDate($permitFrom).' – '.$formatPermitFilterDate($permitTo);
-                }
-            @endphp
-
-            <div
-                id="weapons-filters-panel"
-                class="sj-weapons-filter-panel {{ $hasWeaponFilters ? '' : 'hidden' }} mb-4"
-            >
-                <form id="weapons-filters-form" class="sj-weapons-filter-bar">
-                    <div class="sj-weapons-filter-bar__fields">
-                        <div class="sj-weapons-filter-field">
-                            <label for="filter-inventory-scope" class="sj-weapons-filter-field__label">{{ __('Inventario') }}</label>
-                            <select id="filter-inventory-scope" name="inventory_scope" class="sj-weapons-filter-field__control">
-                                <option value="operational" @selected(($filters['inventory_scope'] ?? 'operational') === 'operational')>{{ __('Operativas') }}</option>
-                                <option value="all" @selected(($filters['inventory_scope'] ?? null) === 'all')>{{ __('Todas') }}</option>
-                                <option value="non_operational" @selected(($filters['inventory_scope'] ?? null) === 'non_operational')>{{ __('No operativas') }}</option>
-                            </select>
-                        </div>
-
-                        <div class="sj-weapons-filter-field">
-                            <label for="filter-weapon-type" class="sj-weapons-filter-field__label">{{ __('Tipo') }}</label>
-                            <select id="filter-weapon-type" name="weapon_type" class="sj-weapons-filter-field__control">
-                                <option value="">{{ __('Todos') }}</option>
-                                @foreach ($weaponTypes as $weaponType)
-                                    <option value="{{ $weaponType }}" @selected(($filters['weapon_type'] ?? null) === $weaponType)>{{ $weaponType }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="sj-weapons-filter-field sj-weapons-filter-field--wide">
-                            <label for="filter-client" class="sj-weapons-filter-field__label">{{ __('Cliente') }}</label>
-                            <select id="filter-client" name="client_id" class="sj-weapons-filter-field__control">
-                                <option value="">{{ __('Todos') }}</option>
-                                @foreach ($clients as $client)
-                                    <option value="{{ $client->id }}" @selected(($filters['client_id'] ?? null) === $client->id)>{{ $client->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="sj-weapons-filter-field">
-                            <label for="filter-responsible" class="sj-weapons-filter-field__label">{{ __('Responsable') }}</label>
-                            <select id="filter-responsible" name="responsible_user_id" class="sj-weapons-filter-field__control">
-                                <option value="">{{ __('Todos') }}</option>
-                                @foreach ($responsibles as $responsible)
-                                    <option value="{{ $responsible->id }}" @selected(($filters['responsible_user_id'] ?? null) === $responsible->id)>{{ $responsible->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="sj-weapons-filter-field">
-                            <label for="filter-destination" class="sj-weapons-filter-field__label">{{ __('Destino') }}</label>
-                            <select id="filter-destination" name="destination" class="sj-weapons-filter-field__control">
-                                <option value="">{{ __('Todos') }}</option>
-                                @foreach ($destinationOptions as $value => $label)
-                                    <option value="{{ $value }}" @selected(($filters['destination'] ?? null) === $value)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="sj-weapons-filter-field sj-weapons-filter-field--date">
-                            <span class="sj-weapons-filter-field__label" id="filter-permit-range-label">{{ __('Fecha') }}</span>
-                            <input type="hidden" id="filter-permit-from" name="permit_expires_from" value="{{ $permitFrom }}">
-                            <input type="hidden" id="filter-permit-to" name="permit_expires_to" value="{{ $permitTo }}">
-                            <div class="sj-weapons-filter-date-anchor">
-                                <button
-                                    type="button"
-                                    id="filter-permit-range-trigger"
-                                    class="sj-weapons-filter-field__control sj-weapons-filter-range-trigger {{ ($permitFrom !== '' || $permitTo !== '') ? 'is-active' : '' }}"
-                                    aria-labelledby="filter-permit-range-label"
-                                    aria-haspopup="dialog"
-                                    aria-controls="weapons-filter-date-popover"
-                                    aria-expanded="false"
-                                    data-placeholder="{{ __('Seleccione rango') }}"
-                                >
-                                    <span id="filter-permit-range-trigger-text" class="sj-weapons-filter-range-trigger__text">{{ $permitRangeLabel }}</span>
-                                    <svg class="sj-weapons-filter-range-trigger__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                        <path fill-rule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.75A2.75 2.75 0 0118 6.75v10.5A2.75 2.75 0 0115.25 20H4.75A2.75 2.75 0 012 17.25V6.75A2.75 2.75 0 014.75 4h.75V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clip-rule="evenodd"/>
-                                    </svg>
-                                </button>
-
-                                <div
-                                    id="weapons-filter-date-popover"
-                                    class="sj-weapons-filter-date-popover hidden"
-                                    role="dialog"
-                                    aria-hidden="true"
-                                    aria-labelledby="weapons-filter-date-popover-title"
-                                >
-                                    <p id="weapons-filter-date-popover-title" class="sj-weapons-filter-date-popover__title">{{ __('Vencimiento del permiso') }}</p>
-                                    <p
-                                        id="weapons-filter-date-hint"
-                                        class="sj-weapons-filter-date-popover__hint"
-                                        data-default-hint="{{ __('Seleccione la fecha de inicio (calendario izquierdo) y la de fin (derecho).') }}"
-                                        data-start-only-hint="{{ __('Inicio elegido. Elija la fecha final (igual o posterior; puede ser otro mes o año).') }}"
-                                        data-complete-hint="{{ __('Rango listo. Pulse Listo para confirmar.') }}"
-                                    >{{ __('Seleccione la fecha de inicio (calendario izquierdo) y la de fin (derecho).') }}</p>
-                                    <input type="text" id="filter-permit-picker-anchor" class="sj-weapons-filter-date-popover__anchor" tabindex="-1" aria-hidden="true" readonly>
-                                    <div id="filter-permit-picker-mount" class="sj-weapons-filter-date-popover__mount"></div>
-                                    <p id="weapons-filter-date-error" class="sj-weapons-filter-date-popover__error hidden" role="alert"></p>
-                                    <div class="sj-weapons-filter-date-popover__footer">
-                                        <button type="button" id="weapons-filter-date-clear" class="sj-weapons-filter-date-popover__btn sj-weapons-filter-date-popover__btn--ghost">
-                                            {{ __('Limpiar') }}
-                                        </button>
-                                        <button type="button" id="weapons-filter-date-done" class="sj-weapons-filter-date-popover__btn sj-weapons-filter-date-popover__btn--primary">
-                                            {{ __('Listo') }}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="sj-weapons-filter-bar__actions">
-                        <button type="button" id="weapons-filters-reset" class="sj-weapons-filter-bar__button sj-weapons-filter-bar__button--ghost">
-                            {{ __('Limpiar filtro') }}
-                        </button>
-                        <button type="submit" class="sj-weapons-filter-bar__button sj-weapons-filter-bar__button--primary">
-                            {{ __('Aplicar filtro') }}
-                        </button>
-                    </div>
-                </form>
-            </div>
-
             <div class="bg-white shadow-sm sm:rounded-2xl w-full border border-slate-200">
                 <div class="p-6 text-gray-900">
+                    @php
+                        $weaponTableColumns = [
+                            ['key' => 'cliente', 'label' => __('Cliente'), 'class' => 'min-w-[200px]'],
+                            ['key' => 'tipo', 'label' => __('Tipo')],
+                            ['key' => 'marca', 'label' => __('Marca')],
+                            ['key' => 'serie', 'label' => __('Serie')],
+                            ['key' => 'calibre', 'label' => __('Calibre')],
+                            ['key' => 'capacidad', 'label' => __('Capacidad')],
+                            ['key' => 'tipo_permiso', 'label' => __('Tipo de permiso')],
+                            ['key' => 'numero_permiso', 'label' => __('N° de permiso')],
+                            ['key' => 'vence', 'label' => __('Vence')],
+                            ['key' => 'estado', 'label' => __('Estado')],
+                            ['key' => 'municion', 'label' => __('Cant. Munición')],
+                            ['key' => 'proveedor', 'label' => __('Cant. Proveedor')],
+                            ['key' => 'responsable', 'label' => __('Responsable'), 'class' => 'min-w-[200px]'],
+                            ['key' => 'destino', 'label' => __('Puesto o trabajador'), 'class' => 'min-w-[220px]'],
+                            ['key' => 'cedula', 'label' => __('Cédula')],
+                        ];
+                    @endphp
                     <div id="weapons-table-scroll" class="sj-table-wrap w-full overflow-auto weapons-table-scroll relative" style="max-height: calc(100vh - 340px);">
                         <table class="sj-table sj-table--sticky-head min-w-full text-sm min-w-[2200px]">
                             <thead>
@@ -263,27 +126,27 @@
                                     <th class="whitespace-nowrap">
                                         <span class="sr-only">{{ __('Seleccionar') }}</span>
                                     </th>
-                                    <th class="min-w-[200px] whitespace-nowrap">{{ __('Cliente') }}</th>
-                                    <th class="whitespace-nowrap">{{ __('Tipo') }}</th>
-                                    <th class="whitespace-nowrap">{{ __('Marca') }}</th>
-                                    <th class="whitespace-nowrap">{{ __('Serie') }}</th>
-                                    <th class="whitespace-nowrap">{{ __('Calibre') }}</th>
-                                    <th class="whitespace-nowrap">{{ __('Capacidad') }}</th>
-                                    <th class="whitespace-nowrap">{{ __('Tipo de permiso') }}</th>
-                                    <th class="whitespace-nowrap">{{ __('N° de permiso') }}</th>
-                                    <th class="whitespace-nowrap">{{ __('Vence') }}</th>
-                                    <th class="whitespace-nowrap">{{ __('Estado') }}</th>
-                                    <th class="whitespace-nowrap">
-                                        <span class="block leading-tight">{{ __('Cant.') }}</span>
-                                        <span class="block leading-tight">{{ __('Munición') }}</span>
-                                    </th>
-                                    <th class="whitespace-nowrap">
-                                        <span class="block leading-tight">{{ __('Cant.') }}</span>
-                                        <span class="block leading-tight">{{ __('Proveedor') }}</span>
-                                    </th>
-                                    <th class="min-w-[200px] whitespace-nowrap">{{ __('Responsable') }}</th>
-                                    <th class="min-w-[220px] whitespace-nowrap">{{ __('Puesto o trabajador') }}</th>
-                                    <th class="whitespace-nowrap">{{ __('Cédula') }}</th>
+                                    @foreach ($weaponTableColumns as $column)
+                                        <th class="whitespace-nowrap {{ $column['class'] ?? '' }}">
+                                            <div class="weapon-col-filter">
+                                                <span class="weapon-col-filter__label">{{ $column['label'] }}</span>
+                                                <button
+                                                    type="button"
+                                                    class="weapon-col-filter__trigger"
+                                                    data-weapon-col-filter-trigger
+                                                    data-weapon-col-filter="{{ $column['key'] }}"
+                                                    aria-expanded="false"
+                                                    aria-haspopup="dialog"
+                                                    aria-controls="weapons-column-filter-popover"
+                                                    aria-label="{{ __('Filtrar columna :column', ['column' => $column['label']]) }}"
+                                                >
+                                                    <svg class="weapon-col-filter__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </th>
+                                    @endforeach
                                     <th class="whitespace-nowrap">{{ __('Impronta') }}</th>
                                 </tr>
                             </thead>
@@ -296,6 +159,27 @@
                     <div id="weapons-pagination">
                         @include('weapons.partials.index_pagination', ['weapons' => $weapons])
                     </div>
+
+                    <button type="button" id="weapons-clear-column-filters" class="hidden mt-4 weapon-header__utility">
+                        {{ __('Limpiar filtros de columna') }}
+                    </button>
+                </div>
+            </div>
+
+            <div
+                id="weapons-column-filter-popover"
+                class="weapon-col-filter-popover hidden"
+                hidden
+                role="dialog"
+                aria-hidden="true"
+                aria-label="{{ __('Filtrar valores de columna') }}"
+            >
+                <input type="search" class="weapon-col-filter-popover__search" data-weapon-col-filter-search placeholder="{{ __('Buscar en la lista…') }}">
+                <div class="weapon-col-filter-popover__list" data-weapon-col-filter-list></div>
+                <div class="weapon-col-filter-popover__actions">
+                    <button type="button" class="weapon-col-filter-popover__btn weapon-col-filter-popover__btn--ghost" data-weapon-col-filter-select-all>{{ __('Seleccionar todo') }}</button>
+                    <button type="button" class="weapon-col-filter-popover__btn weapon-col-filter-popover__btn--ghost" data-weapon-col-filter-clear>{{ __('Limpiar') }}</button>
+                    <button type="button" class="weapon-col-filter-popover__btn weapon-col-filter-popover__btn--primary" data-weapon-col-filter-apply>{{ __('Aplicar') }}</button>
                 </div>
             </div>
 
@@ -537,6 +421,111 @@
         outline: 2px solid rgb(37 99 235);
         outline-offset: -2px;
         box-shadow: inset 0 0 0 9999px rgba(219, 234, 254, 0.62);
+    }
+
+    .weapon-col-filter {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .weapon-col-filter__label {
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .weapon-col-filter__trigger {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.15rem;
+        height: 1.15rem;
+        border-radius: 0.35rem;
+        color: rgb(148 163 184);
+        transition: all 120ms ease;
+    }
+
+    .weapon-col-filter__trigger:hover {
+        color: rgb(71 85 105);
+        background: rgb(226 232 240);
+    }
+
+    .weapon-col-filter__trigger.is-active {
+        color: rgb(30 64 175);
+        background: rgb(219 234 254);
+    }
+
+    .weapon-col-filter__icon {
+        width: 0.9rem;
+        height: 0.9rem;
+    }
+
+    .weapon-col-filter-popover {
+        position: fixed;
+        z-index: 250;
+        width: 300px;
+        border: 1px solid rgb(203 213 225);
+        border-radius: 0.75rem;
+        background: #fff;
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+        padding: 0.65rem;
+    }
+
+    .weapon-col-filter-popover__search {
+        width: 100%;
+        border: 1px solid rgb(203 213 225);
+        border-radius: 0.6rem;
+        padding: 0.4rem 0.55rem;
+        font-size: 0.85rem;
+        margin-bottom: 0.55rem;
+    }
+
+    .weapon-col-filter-popover__list {
+        max-height: 260px;
+        overflow: auto;
+        display: grid;
+        gap: 0.35rem;
+        padding-right: 0.1rem;
+    }
+
+    .weapon-col-filter-option {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.85rem;
+        color: rgb(51 65 85);
+    }
+
+    .weapon-col-filter-popover__empty {
+        color: rgb(100 116 139);
+        font-size: 0.82rem;
+        margin: 0.25rem 0;
+    }
+
+    .weapon-col-filter-popover__actions {
+        margin-top: 0.6rem;
+        display: flex;
+        gap: 0.4rem;
+        justify-content: flex-end;
+    }
+
+    .weapon-col-filter-popover__btn {
+        border-radius: 0.55rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 0.35rem 0.55rem;
+        border: 1px solid transparent;
+    }
+
+    .weapon-col-filter-popover__btn--ghost {
+        border-color: rgb(203 213 225);
+        color: rgb(51 65 85);
+        background: #fff;
+    }
+
+    .weapon-col-filter-popover__btn--primary {
+        background: rgb(15 23 42);
+        color: #fff;
     }
 
     .weapon-export-modal {
@@ -806,10 +795,13 @@
         const input = document.getElementById('weapons-search');
         const tbody = document.getElementById('weapons-tbody');
         const pagination = document.getElementById('weapons-pagination');
-        const filtersForm = document.getElementById('weapons-filters-form');
-        const filtersPanel = document.getElementById('weapons-filters-panel');
-        const filtersToggle = document.getElementById('weapons-filters-toggle');
-        const filtersReset = document.getElementById('weapons-filters-reset');
+        const clearColumnFiltersBtn = document.getElementById('weapons-clear-column-filters');
+        const columnFilterPopover = document.getElementById('weapons-column-filter-popover');
+        const columnFilterSearch = columnFilterPopover?.querySelector('[data-weapon-col-filter-search]');
+        const columnFilterList = columnFilterPopover?.querySelector('[data-weapon-col-filter-list]');
+        const columnFilterSelectAllBtn = columnFilterPopover?.querySelector('[data-weapon-col-filter-select-all]');
+        const columnFilterClearBtn = columnFilterPopover?.querySelector('[data-weapon-col-filter-clear]');
+        const columnFilterApplyBtn = columnFilterPopover?.querySelector('[data-weapon-col-filter-apply]');
         const viewAction = document.getElementById('weapon-view-action');
         const editAction = document.getElementById('weapon-edit-action');
         const selectedCount = document.getElementById('weapons-selected-count');
@@ -833,15 +825,18 @@
         const exportModalBackdrop = exportModal?.querySelector('.weapon-export-modal__backdrop');
         const exportFormatInputs = Array.from(document.querySelectorAll('input[name="weapon_export_format"]'));
 
-        if (!input || !tbody || !pagination || !filtersForm || !filtersPanel || !filtersToggle || !filtersReset || !viewAction || !selectedCount || !exportFilteredForm || !exportFilteredInputs || !exportSelectedForm || !exportSelectedInputs || !exportSelectedButton || !exportMenu || !exportModal || !exportModalTitle || !exportModalDescription || !exportModalWarning || !exportModalTableShell || !exportModalTbody || !exportModalConfirm || !exportModalCancel || !exportModalEdit || !exportModalClose || !exportModalBackdrop || exportFormatInputs.length === 0) {
+        if (!input || !tbody || !pagination || !viewAction || !selectedCount || !exportFilteredForm || !exportFilteredInputs || !exportSelectedForm || !exportSelectedInputs || !exportSelectedButton || !exportMenu || !exportModal || !exportModalTitle || !exportModalDescription || !exportModalWarning || !exportModalTableShell || !exportModalTbody || !exportModalConfirm || !exportModalCancel || !exportModalEdit || !exportModalClose || !exportModalBackdrop || exportFormatInputs.length === 0) {
             return;
         }
 
-        const filterFieldNames = ['inventory_scope', 'client_id', 'responsible_user_id', 'weapon_type', 'destination', 'permit_expires_from', 'permit_expires_to'];
+        const COLUMN_KEYS = ['cliente', 'tipo', 'marca', 'serie', 'calibre', 'capacidad', 'tipo_permiso', 'numero_permiso', 'vence', 'estado', 'municion', 'proveedor', 'responsable', 'destino', 'cedula'];
+        const columnFilters = Object.fromEntries(COLUMN_KEYS.map((key) => [key, new Set()]));
         const exportSelection = new Set();
         const exportSelectionData = new Map();
         let selectedWeaponId = null;
         let pendingExportForm = null;
+        let openFilterContext = null;
+        let draftSelection = new Set();
 
         const setDisabledState = (element, disabled) => {
             if (!element) {
@@ -903,15 +898,144 @@
             expires_at: row.dataset.exportExpiresAt || '-',
         });
 
-        const currentState = () => {
-            const data = { q: input.value.trim() };
+        const currentState = () => ({ q: input.value.trim() });
 
-            filterFieldNames.forEach((name) => {
-                const field = filtersForm.elements.namedItem(name);
-                data[name] = field ? field.value.trim() : '';
+        const getRowColumnValue = (row, columnKey) => row.getAttribute(`data-col-${columnKey}`) ?? '';
+
+        const rowMatchesColumnFilters = (row, exceptColumn = null) => COLUMN_KEYS.every((key) => {
+            if (key === exceptColumn) {
+                return true;
+            }
+            const selectedValues = columnFilters[key];
+            if (!selectedValues || selectedValues.size === 0) {
+                return true;
+            }
+            return selectedValues.has(getRowColumnValue(row, key));
+        });
+
+        const getVisibleRowsBySearchAndColumns = (exceptColumn = null) => {
+            const term = input.value.trim().toLowerCase();
+            return Array.from(tbody.querySelectorAll('.weapon-row')).filter((row) => {
+                const searchable = (row.textContent || '').toLowerCase();
+                const matchesSearch = term === '' || searchable.includes(term);
+                return matchesSearch && rowMatchesColumnFilters(row, exceptColumn);
+            });
+        };
+
+        const getUniqueColumnValues = (columnKey) => {
+            const values = new Set();
+            getVisibleRowsBySearchAndColumns(columnKey).forEach((row) => {
+                const value = getRowColumnValue(row, columnKey);
+                if (value !== '') {
+                    values.add(value);
+                }
+            });
+            return [...values].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        };
+
+        const countActiveColumnFilters = () => COLUMN_KEYS.reduce((count, key) => count + (columnFilters[key].size > 0 ? 1 : 0), 0);
+
+        const updateColumnFilterTriggerStates = () => {
+            document.querySelectorAll('[data-weapon-col-filter-trigger]').forEach((trigger) => {
+                const key = trigger.getAttribute('data-weapon-col-filter');
+                const active = key && columnFilters[key]?.size > 0;
+                trigger.classList.toggle('is-active', Boolean(active));
+                trigger.setAttribute('aria-pressed', active ? 'true' : 'false');
             });
 
-            return data;
+            if (clearColumnFiltersBtn) {
+                clearColumnFiltersBtn.classList.toggle('hidden', countActiveColumnFilters() === 0);
+            }
+        };
+
+        const positionColumnFilterPopover = (trigger) => {
+            if (!columnFilterPopover) {
+                return;
+            }
+            const rect = trigger.getBoundingClientRect();
+            let left = rect.left;
+            const maxLeft = window.innerWidth - 312;
+            if (left > maxLeft) left = maxLeft;
+            if (left < 12) left = 12;
+            columnFilterPopover.style.left = `${left}px`;
+            columnFilterPopover.style.top = `${rect.bottom + 6}px`;
+        };
+
+        const renderColumnFilterList = () => {
+            if (!columnFilterList || !openFilterContext) {
+                return;
+            }
+
+            const term = (columnFilterSearch?.value || '').trim().toLowerCase();
+            const values = getUniqueColumnValues(openFilterContext.columnKey);
+            const filteredValues = term === '' ? values : values.filter((value) => value.toLowerCase().includes(term));
+            columnFilterList.innerHTML = '';
+
+            if (filteredValues.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'weapon-col-filter-popover__empty';
+                empty.textContent = '{{ __('Sin valores para mostrar.') }}';
+                columnFilterList.appendChild(empty);
+                return;
+            }
+
+            filteredValues.forEach((value) => {
+                const label = document.createElement('label');
+                label.className = 'weapon-col-filter-option';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = value;
+                checkbox.checked = draftSelection.has(value);
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) {
+                        draftSelection.add(value);
+                    } else {
+                        draftSelection.delete(value);
+                    }
+                });
+                const text = document.createElement('span');
+                text.textContent = value;
+                label.append(checkbox, text);
+                columnFilterList.appendChild(label);
+            });
+        };
+
+        const closeColumnFilterPopover = () => {
+            if (!columnFilterPopover) {
+                return;
+            }
+            columnFilterPopover.classList.add('hidden');
+            columnFilterPopover.hidden = true;
+            document.querySelectorAll('[data-weapon-col-filter-trigger][aria-expanded="true"]').forEach((trigger) => {
+                trigger.setAttribute('aria-expanded', 'false');
+            });
+            openFilterContext = null;
+            draftSelection = new Set();
+            if (columnFilterSearch) {
+                columnFilterSearch.value = '';
+            }
+        };
+
+        const openColumnFilterPopover = (trigger) => {
+            const columnKey = trigger.getAttribute('data-weapon-col-filter');
+            if (!columnKey || !columnFilterPopover) {
+                return;
+            }
+            if (openFilterContext?.columnKey === columnKey && trigger.getAttribute('aria-expanded') === 'true') {
+                closeColumnFilterPopover();
+                return;
+            }
+            closeColumnFilterPopover();
+            openFilterContext = { columnKey, trigger };
+            draftSelection = new Set(columnFilters[columnKey]);
+            document.querySelectorAll('[data-weapon-col-filter-trigger]').forEach((btn) => {
+                btn.setAttribute('aria-expanded', btn === trigger ? 'true' : 'false');
+            });
+            columnFilterPopover.classList.remove('hidden');
+            columnFilterPopover.hidden = false;
+            positionColumnFilterPopover(trigger);
+            renderColumnFilterList();
+            columnFilterSearch?.focus();
         };
 
         const selectedExportFormat = () => exportFormatInputs.find((input) => input.checked)?.value || 'xlsx';
@@ -1070,6 +1194,26 @@
             });
         };
 
+        const applyColumnFiltersToRows = () => {
+            const rows = Array.from(tbody.querySelectorAll('.weapon-row'));
+            rows.forEach((row) => {
+                const visible = rowMatchesColumnFilters(row);
+                row.classList.toggle('hidden', !visible);
+                const checkbox = row.querySelector('.weapon-export-checkbox');
+                if (checkbox) {
+                    if (!visible) {
+                        checkbox.checked = false;
+                        checkbox.disabled = true;
+                        exportSelection.delete(checkbox.value);
+                    } else {
+                        checkbox.disabled = false;
+                        checkbox.checked = exportSelection.has(checkbox.value);
+                    }
+                }
+            });
+            updateColumnFilterTriggerStates();
+        };
+
         const exportPreviewDescription = (count, type, truncated = false) => {
             const base = type === 'selected'
                 ? (count === 1
@@ -1100,8 +1244,9 @@
             clearSelectedRow();
             syncExportCheckboxes();
             syncSelectionDetailsFromVisibleRows();
-            syncExportForms();
             highlight(input.value.trim());
+            applyColumnFiltersToRows();
+            syncExportForms();
             window.syncWeaponsHorizontalScrollbar?.();
         };
 
@@ -1120,29 +1265,55 @@
             }, 300);
         });
 
-        filtersToggle.addEventListener('click', () => {
-            filtersPanel.classList.toggle('hidden');
-        });
-
-        filtersForm.addEventListener('submit', (event) => {
-            event.preventDefault();
-            const url = new URL(window.location.href);
-            applyStateToUrl(url, { resetPage: true });
-            window.history.replaceState({}, '', url.toString());
-            updateList(url.toString());
-        });
-
-        filtersReset.addEventListener('click', () => {
-            filtersForm.reset();
-            const inventoryScope = filtersForm.elements.namedItem('inventory_scope');
-            if (inventoryScope) {
-                inventoryScope.value = 'operational';
+        document.addEventListener('click', (event) => {
+            const target = event.target;
+            if (!(target instanceof Element)) {
+                return;
             }
-            window.sjWeaponsPermitDatePicker?.clear();
-            const url = new URL(window.location.href);
-            applyStateToUrl(url, { resetPage: true });
-            window.history.replaceState({}, '', url.toString());
-            updateList(url.toString());
+
+            const trigger = target.closest('[data-weapon-col-filter-trigger]');
+            if (trigger) {
+                event.preventDefault();
+                event.stopPropagation();
+                openColumnFilterPopover(trigger);
+                return;
+            }
+
+            if (columnFilterPopover && !columnFilterPopover.contains(target)) {
+                closeColumnFilterPopover();
+            }
+        });
+
+        columnFilterSearch?.addEventListener('input', renderColumnFilterList);
+        columnFilterSelectAllBtn?.addEventListener('click', () => {
+            if (!openFilterContext) {
+                return;
+            }
+            const term = (columnFilterSearch?.value || '').trim().toLowerCase();
+            const values = getUniqueColumnValues(openFilterContext.columnKey);
+            const filteredValues = term === '' ? values : values.filter((value) => value.toLowerCase().includes(term));
+            filteredValues.forEach((value) => draftSelection.add(value));
+            renderColumnFilterList();
+        });
+        columnFilterClearBtn?.addEventListener('click', () => {
+            draftSelection.clear();
+            renderColumnFilterList();
+        });
+        columnFilterApplyBtn?.addEventListener('click', () => {
+            if (!openFilterContext) {
+                return;
+            }
+            const { columnKey } = openFilterContext;
+            columnFilters[columnKey] = new Set(draftSelection);
+            closeColumnFilterPopover();
+            applyColumnFiltersToRows();
+            syncExportForms();
+        });
+        clearColumnFiltersBtn?.addEventListener('click', () => {
+            COLUMN_KEYS.forEach((key) => columnFilters[key].clear());
+            closeColumnFilterPopover();
+            applyColumnFiltersToRows();
+            syncExportForms();
         });
 
         pagination.addEventListener('click', (event) => {
@@ -1289,7 +1460,16 @@
         exportModalBackdrop.addEventListener('click', closeExportModal);
 
         document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && !exportModal.classList.contains('hidden')) {
+            if (event.key !== 'Escape') {
+                return;
+            }
+
+            if (openFilterContext) {
+                closeColumnFilterPopover();
+                return;
+            }
+
+            if (!exportModal.classList.contains('hidden')) {
                 closeExportModal();
             }
         });
@@ -1302,6 +1482,19 @@
         syncExportForms();
         clearSelectedRow();
         syncExportCheckboxes();
+        applyColumnFiltersToRows();
+
+        window.addEventListener('resize', () => {
+            if (openFilterContext?.trigger) {
+                positionColumnFilterPopover(openFilterContext.trigger);
+            }
+        });
+
+        window.addEventListener('scroll', () => {
+            if (openFilterContext?.trigger) {
+                positionColumnFilterPopover(openFilterContext.trigger);
+            }
+        }, { passive: true });
     })();
 </script>
 

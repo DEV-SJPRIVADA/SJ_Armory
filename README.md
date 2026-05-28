@@ -539,7 +539,7 @@ Listado de armas (`resources/views/weapons/partials/index_rows.blade.php`):
 - Columna **Estado**: resuelta por `App\Support\WeaponListStatusResolver` — prioridad: novedad bloqueante → custodia activa (`custody_role` del puesto) → novedad legada abierta → documentos/alertas → Asignada/Sin destino. Así **Estado** y **Puesto o trabajador** quedan alineados cuando el arma está en armerillo, para mantenimiento o armero.
 - Columna **Puesto o trabajador**: si hay trabajador activo, muestra el **nombre** del trabajador (tambien cuando hay puesto combinado); si solo hay puesto, el nombre del puesto.
 - Columna **Cedula**: documento del trabajador activo, o `-` si no hay trabajador.
-- **Filtros del listado** (`weapons/index`): panel sin título; fila 1 con **Inventario, Tipo, Cliente, Responsable, Destino, Fecha** (rango de vencimiento del permiso con **Litepicker**: popover anclado, dos calendarios independientes `splitView`, desplegables de mes/año, `selectForward` para que el fin sea ≥ inicio; confirmación solo con **Listo** del popover); fila 2 con **Limpiar filtro** / **Aplicar filtro**. JS: `resources/js/weapons-filter-date.js`. Grid proporcional en escritorio (sin scroll horizontal).
+- **Filtros del listado** (`weapons/index`): filtros por columna en el encabezado, estilo Excel (multi-selección, cascada de valores y botón global **Limpiar filtros de columna**). El bloque superior legado de filtros (`Inventario`, `Tipo`, `Cliente`, `Responsable`, `Destino`, `Fecha`) se retiró para evitar doble lógica.
 - **Exportación** (misma página `resources/views/weapons/index.blade.php`): modales **Exportar filtrado** y **Exportar selección** con preview y formatos xlsx/csv; ver **§5.3.0**.
 
 ### 5.3.0 Exportación del listado (XLSX / CSV)
@@ -571,16 +571,7 @@ La hoja **Criterios de color** repite los mismos tonos con columnas *Muestra* / 
 - La exportación carga `photos` y `permitFile` (`exportRelationships()`) para evaluar el color sin N+1.
 - Clase: `app/Support/WeaponPhotoExportHighlight.php`. Tests: `tests/Unit/WeaponPhotoExportHighlightTest.php`.
 
-**Filtro Fecha (vencimiento del permiso)** — dependencia npm `litepicker` (`resources/js/weapons-filter-date.js`):
-
-| Paso | Acción |
-|------|--------|
-| 1 | Clic en **Fecha** → popover con dos calendarios (`splitView`, mes/año en desplegables). |
-| 2 | Primer día = inicio; segundo día = fin (≥ inicio; puede ser otro mes o año). |
-| 3 | **Listo** en el popover guarda el rango en el botón (aún no filtra la tabla). |
-| 4 | **Aplicar filtro** en la fila 2 ejecuta el listado. |
-
-Sin pie duplicado de Litepicker (solo **Limpiar** / **Listo** del popover). Tras cambios en JS/CSS: `npm run build` o `npm run build:deploy`.
+Los filtros del encabezado operan sobre las filas cargadas en tabla y se combinan con el buscador superior.
 
 ### 5.3.1 Custodia y taller (puestos especiales)
 
@@ -1156,9 +1147,8 @@ Grupos funcionales:
 
 Entradas Vite:
 
-- **`vite.config.js`** (local): `resources/css/app.css`, `resources/js/app.js` (incluye `weapons-filter-date.js` → Litepicker en listado de armas), `resources/js/map.js`, `resources/js/location-picker.js`.
+- **`vite.config.js`** (local): `resources/css/app.css`, `resources/js/app.js`, `resources/js/map.js`, `resources/js/location-picker.js`.
 - **`vite.hosting.config.js`** (deploy): mismas entradas; `envDir` = `build_hosting/`, salida bajo `build_hosting/build/` (no modifica `public/build` local).
-- **Litepicker** (`litepicker` en `package.json`): selector de rango en filtros del armamento; CSS del paquete importado desde `weapons-filter-date.js`.
 
 Caracteristicas:
 
