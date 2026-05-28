@@ -812,6 +812,7 @@
         const exportSelectedButton = document.getElementById('weapons-export-selected-button');
         const exportMenu = document.getElementById('weapons-export-menu');
         const exportPreviewUrl = @json(route('weapons.export.preview'));
+        const filterOptionsUrl = @json(route('weapons.filter_options'));
         const exportModal = document.getElementById('weapons-export-modal');
         const exportModalTitle = document.getElementById('weapons-export-modal-title');
         const exportModalDescription = document.getElementById('weapons-export-modal-description');
@@ -830,7 +831,8 @@
         }
 
         const COLUMN_KEYS = ['cliente', 'tipo', 'marca', 'serie', 'calibre', 'capacidad', 'tipo_permiso', 'numero_permiso', 'vence', 'estado', 'municion', 'proveedor', 'responsable', 'destino', 'cedula'];
-        const columnFilters = Object.fromEntries(COLUMN_KEYS.map((key) => [key, new Set()]));
+        const initialColumnFilters = @json($columnFilters ?? []);
+        const columnFilters = Object.fromEntries(COLUMN_KEYS.map((key) => [key, new Set(initialColumnFilters[key] ?? [])]));
         const exportSelection = new Set();
         const exportSelectionData = new Map();
         let selectedWeaponId = null;
@@ -839,10 +841,7 @@
         let draftSelection = new Set();
 
         const setDisabledState = (element, disabled) => {
-            if (!element) {
-                return;
-            }
-
+            if (!element) return;
             element.classList.toggle('is-disabled', disabled);
             if (element.tagName === 'BUTTON') {
                 element.disabled = disabled;
@@ -864,7 +863,6 @@
 
         const highlight = (term) => {
             const cells = tbody.querySelectorAll('td:not([data-searchable="false"])');
-
             if (!term) {
                 cells.forEach((cell) => {
                     if (cell.dataset.original !== undefined) {
@@ -873,16 +871,13 @@
                 });
                 return;
             }
-
             const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(escaped, 'gi');
-
             cells.forEach((cell) => {
                 if (cell.dataset.original === undefined) {
                     cell.dataset.original = cell.innerHTML;
                 }
-                const text = cell.dataset.original;
-                cell.innerHTML = text.replace(regex, (match) => `<mark class="bg-yellow-200">${match}</mark>`);
+                cell.innerHTML = cell.dataset.original.replace(regex, (match) => `<mark class="bg-yellow-200">${match}</mark>`);
             });
         };
 
@@ -898,41 +893,7 @@
             expires_at: row.dataset.exportExpiresAt || '-',
         });
 
-        const currentState = () => ({ q: input.value.trim() });
-
-        const getRowColumnValue = (row, columnKey) => row.getAttribute(`data-col-${columnKey}`) ?? '';
-
-        const rowMatchesColumnFilters = (row, exceptColumn = null) => COLUMN_KEYS.every((key) => {
-            if (key === exceptColumn) {
-                return true;
-            }
-            const selectedValues = columnFilters[key];
-            if (!selectedValues || selectedValues.size === 0) {
-                return true;
-            }
-            return selectedValues.has(getRowColumnValue(row, key));
-        });
-
-        const getVisibleRowsBySearchAndColumns = (exceptColumn = null) => {
-            const term = input.value.trim().toLowerCase();
-            return Array.from(tbody.querySelectorAll('.weapon-row')).filter((row) => {
-                const searchable = (row.textContent || '').toLowerCase();
-                const matchesSearch = term === '' || searchable.includes(term);
-                return matchesSearch && rowMatchesColumnFilters(row, exceptColumn);
-            });
-        };
-
-        const getUniqueColumnValues = (columnKey) => {
-            const values = new Set();
-            getVisibleRowsBySearchAndColumns(columnKey).forEach((row) => {
-                const value = getRowColumnValue(row, columnKey);
-                if (value !== '') {
-                    values.add(value);
-                }
-            });
-            return [...values].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-        };
-
+        const selectedExportFormat = () => exportFormatInputs.find((input) => input.checked)?.value || 'xlsx';
         const countActiveColumnFilters = () => COLUMN_KEYS.reduce((count, key) => count + (columnFilters[key].size > 0 ? 1 : 0), 0);
 
         const updateColumnFilterTriggerStates = () => {
@@ -942,16 +903,150 @@
                 trigger.classList.toggle('is-active', Boolean(active));
                 trigger.setAttribute('aria-pressed', active ? 'true' : 'false');
             });
+            clearColumnFiltersBtn?.classList.toggle('hidden', countActiveColumnFilters() === 0);
+        };
 
-            if (clearColumnFiltersBtn) {
-                clearColumnFiltersBtn.classList.toggle('hidden', countActiveColumnFilters() === 0);
+        const appendCurrentStateToSearchParams = (params, includePage = true) => {
+            const q = input.value.trim();
+            if (q !== '') {
+                params.set('q', q);
+            }
+            COLUMN_KEYS.forEach((key) => {
+                columnFilters[key].forEach((value) => params.append(`col[${key}][]`, value));
+            });
+            if (includePage) {
+                params.set('page', params.get('page') || '1');
+            } else {
+                params.delete('page');
             }
         };
 
-        const positionColumnFilterPopover = (trigger) => {
-            if (!columnFilterPopover) {
-                return;
+        const applyStateToUrl = (url, { resetPage = false } = {}) => {
+            const next = new URL(url.toString());
+            const page = resetPage ? '1' : (next.searchParams.get('page') || '1');
+            next.search = '';
+            appendCurrentStateToSearchParams(next.searchParams, false);
+            next.searchParams.set('page', page);
+            return next;
+        };
+
+        const syncExportForms = () => {
+            exportFilteredInputs.innerHTML = '';
+            exportSelectedInputs.innerHTML = '';
+
+            const q = input.value.trim();
+            if (q !== '') {
+                const qInput = document.createElement('input');
+                qInput.type = 'hidden';
+                qInput.name = 'q';
+                qInput.value = q;
+                exportFilteredInputs.appendChild(qInput);
             }
+
+            COLUMN_KEYS.forEach((key) => {
+                columnFilters[key].forEach((value) => {
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = `col[${key}][]`;
+                    hidden.value = value;
+                    exportFilteredInputs.appendChild(hidden);
+                });
+            });
+
+            const filteredFormatInput = document.createElement('input');
+            filteredFormatInput.type = 'hidden';
+            filteredFormatInput.name = 'format';
+            filteredFormatInput.value = selectedExportFormat();
+            exportFilteredInputs.appendChild(filteredFormatInput);
+
+            Array.from(exportSelection).forEach((weaponId) => {
+                const selectedInput = document.createElement('input');
+                selectedInput.type = 'hidden';
+                selectedInput.name = 'weapon_ids[]';
+                selectedInput.value = weaponId;
+                exportSelectedInputs.appendChild(selectedInput);
+            });
+
+            const qSelectedInput = document.createElement('input');
+            qSelectedInput.type = 'hidden';
+            qSelectedInput.name = 'q';
+            qSelectedInput.value = q;
+            exportSelectedInputs.appendChild(qSelectedInput);
+
+            COLUMN_KEYS.forEach((key) => {
+                columnFilters[key].forEach((value) => {
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = `col[${key}][]`;
+                    hidden.value = value;
+                    exportSelectedInputs.appendChild(hidden);
+                });
+            });
+
+            const selectedFormatInput = document.createElement('input');
+            selectedFormatInput.type = 'hidden';
+            selectedFormatInput.name = 'format';
+            selectedFormatInput.value = selectedExportFormat();
+            exportSelectedInputs.appendChild(selectedFormatInput);
+
+            const count = exportSelection.size;
+            selectedCount.textContent = count === 1 ? '{{ __('1 seleccionada') }}' : `${count} {{ __('seleccionadas') }}`;
+            exportSelectedButton.disabled = count === 0;
+        };
+
+        const syncSelectionDetailsFromVisibleRows = () => {
+            tbody.querySelectorAll('.weapon-row').forEach((row) => {
+                if (exportSelection.has(row.dataset.weaponId)) {
+                    exportSelectionData.set(row.dataset.weaponId, extractWeaponSummary(row));
+                }
+            });
+        };
+
+        const clearSelectedRow = () => {
+            selectedWeaponId = null;
+            tbody.querySelectorAll('.weapon-row').forEach((row) => row.classList.remove('is-selected'));
+            viewAction.href = '#';
+            setDisabledState(viewAction, true);
+            if (editAction) {
+                editAction.href = '#';
+                setDisabledState(editAction, true);
+            }
+        };
+
+        const setSelectedRow = (row) => {
+            clearSelectedRow();
+            if (!row) return;
+            selectedWeaponId = row.dataset.weaponId;
+            row.classList.add('is-selected');
+            viewAction.href = row.dataset.showUrl;
+            setDisabledState(viewAction, false);
+            if (editAction) {
+                editAction.href = row.dataset.editUrl;
+                setDisabledState(editAction, row.dataset.canEdit !== '1');
+            }
+        };
+
+        const syncExportCheckboxes = () => {
+            tbody.querySelectorAll('.weapon-export-checkbox').forEach((checkbox) => {
+                checkbox.checked = exportSelection.has(checkbox.value);
+                checkbox.disabled = false;
+            });
+        };
+
+        const closeColumnFilterPopover = () => {
+            if (!columnFilterPopover) return;
+            columnFilterPopover.classList.add('hidden');
+            columnFilterPopover.hidden = true;
+            document.querySelectorAll('[data-weapon-col-filter-trigger][aria-expanded="true"]').forEach((trigger) => {
+                trigger.setAttribute('aria-expanded', 'false');
+            });
+            openFilterContext = null;
+            draftSelection = new Set();
+            if (columnFilterSearch) columnFilterSearch.value = '';
+        };
+
+        const positionColumnFilterPopover = (trigger) => {
+            if (!columnFilterPopover) return;
             const rect = trigger.getBoundingClientRect();
             let left = rect.left;
             const maxLeft = window.innerWidth - 312;
@@ -962,12 +1057,9 @@
         };
 
         const renderColumnFilterList = () => {
-            if (!columnFilterList || !openFilterContext) {
-                return;
-            }
-
+            if (!columnFilterList || !openFilterContext) return;
             const term = (columnFilterSearch?.value || '').trim().toLowerCase();
-            const values = getUniqueColumnValues(openFilterContext.columnKey);
+            const values = openFilterContext.values || [];
             const filteredValues = term === '' ? values : values.filter((value) => value.toLowerCase().includes(term));
             columnFilterList.innerHTML = '';
 
@@ -987,11 +1079,8 @@
                 checkbox.value = value;
                 checkbox.checked = draftSelection.has(value);
                 checkbox.addEventListener('change', () => {
-                    if (checkbox.checked) {
-                        draftSelection.add(value);
-                    } else {
-                        draftSelection.delete(value);
-                    }
+                    if (checkbox.checked) draftSelection.add(value);
+                    else draftSelection.delete(value);
                 });
                 const text = document.createElement('span');
                 text.textContent = value;
@@ -1000,33 +1089,26 @@
             });
         };
 
-        const closeColumnFilterPopover = () => {
-            if (!columnFilterPopover) {
-                return;
-            }
-            columnFilterPopover.classList.add('hidden');
-            columnFilterPopover.hidden = true;
-            document.querySelectorAll('[data-weapon-col-filter-trigger][aria-expanded="true"]').forEach((trigger) => {
-                trigger.setAttribute('aria-expanded', 'false');
-            });
-            openFilterContext = null;
-            draftSelection = new Set();
-            if (columnFilterSearch) {
-                columnFilterSearch.value = '';
-            }
+        const loadColumnValues = async (columnKey) => {
+            const url = new URL(filterOptionsUrl, window.location.origin);
+            appendCurrentStateToSearchParams(url.searchParams, false);
+            url.searchParams.set('target', columnKey);
+            const response = await fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!response.ok) return [];
+            const data = await response.json();
+            return Array.isArray(data.values) ? data.values : [];
         };
 
-        const openColumnFilterPopover = (trigger) => {
+        const openColumnFilterPopover = async (trigger) => {
             const columnKey = trigger.getAttribute('data-weapon-col-filter');
-            if (!columnKey || !columnFilterPopover) {
-                return;
-            }
+            if (!columnKey || !columnFilterPopover) return;
             if (openFilterContext?.columnKey === columnKey && trigger.getAttribute('aria-expanded') === 'true') {
                 closeColumnFilterPopover();
                 return;
             }
+
             closeColumnFilterPopover();
-            openFilterContext = { columnKey, trigger };
+            openFilterContext = { columnKey, trigger, values: [] };
             draftSelection = new Set(columnFilters[columnKey]);
             document.querySelectorAll('[data-weapon-col-filter-trigger]').forEach((btn) => {
                 btn.setAttribute('aria-expanded', btn === trigger ? 'true' : 'false');
@@ -1036,75 +1118,32 @@
             positionColumnFilterPopover(trigger);
             renderColumnFilterList();
             columnFilterSearch?.focus();
+
+            const values = await loadColumnValues(columnKey);
+            if (!openFilterContext || openFilterContext.columnKey !== columnKey) return;
+            openFilterContext.values = values;
+            renderColumnFilterList();
         };
 
-        const selectedExportFormat = () => exportFormatInputs.find((input) => input.checked)?.value || 'xlsx';
-
-        const applyStateToUrl = (url, { resetPage = false } = {}) => {
-            const state = currentState();
-            const page = resetPage ? '1' : (url.searchParams.get('page') || '1');
-
-            url.search = '';
-
-            Object.entries(state).forEach(([key, value]) => {
-                if (value !== '') {
-                    url.searchParams.set(key, value);
-                }
-            });
-
-            url.searchParams.set('page', page);
+        const updateList = async (url) => {
+            const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!response.ok) return;
+            const data = await response.json();
+            tbody.innerHTML = data.tbody;
+            pagination.innerHTML = data.pagination;
+            clearSelectedRow();
+            syncExportCheckboxes();
+            syncSelectionDetailsFromVisibleRows();
+            highlight(input.value.trim());
+            syncExportForms();
+            window.syncWeaponsHorizontalScrollbar?.();
         };
 
-        const syncExportForms = () => {
-            const state = currentState();
-            exportFilteredInputs.innerHTML = '';
-            exportSelectedInputs.innerHTML = '';
-
-            Object.entries(state).forEach(([key, value]) => {
-                if (value === '') {
-                    return;
-                }
-
-                const filteredInput = document.createElement('input');
-                filteredInput.type = 'hidden';
-                filteredInput.name = key;
-                filteredInput.value = value;
-                exportFilteredInputs.appendChild(filteredInput);
-            });
-
-            const filteredFormatInput = document.createElement('input');
-            filteredFormatInput.type = 'hidden';
-            filteredFormatInput.name = 'format';
-            filteredFormatInput.value = selectedExportFormat();
-            exportFilteredInputs.appendChild(filteredFormatInput);
-
-            Array.from(exportSelection).forEach((weaponId) => {
-                const selectedInput = document.createElement('input');
-                selectedInput.type = 'hidden';
-                selectedInput.name = 'weapon_ids[]';
-                selectedInput.value = weaponId;
-                exportSelectedInputs.appendChild(selectedInput);
-            });
-
-            const selectedFormatInput = document.createElement('input');
-            selectedFormatInput.type = 'hidden';
-            selectedFormatInput.name = 'format';
-            selectedFormatInput.value = selectedExportFormat();
-            exportSelectedInputs.appendChild(selectedFormatInput);
-
-            const count = exportSelection.size;
-            selectedCount.textContent = count === 1
-                ? '{{ __('1 seleccionada') }}'
-                : `${count} {{ __('seleccionadas') }}`;
-            exportSelectedButton.disabled = count === 0;
-        };
-
-        const syncSelectionDetailsFromVisibleRows = () => {
-            tbody.querySelectorAll('.weapon-row').forEach((row) => {
-                if (exportSelection.has(row.dataset.weaponId)) {
-                    exportSelectionData.set(row.dataset.weaponId, extractWeaponSummary(row));
-                }
-            });
+        const exportPreviewDescription = (count, type, truncated = false) => {
+            const base = type === 'selected'
+                ? (count === 1 ? '{{ __('Se exportará 1 arma seleccionada.') }}' : `{{ __('Se exportarán') }} ${count} {{ __('armas seleccionadas.') }}`)
+                : (count === 1 ? '{{ __('Se exportará 1 arma filtrada.') }}' : `{{ __('Se exportarán') }} ${count} {{ __('armas filtradas.') }}`);
+            return truncated ? `${base} {{ __('Se muestra una vista previa de las primeras 50.') }}` : base;
         };
 
         const closeExportModal = () => {
@@ -1128,15 +1167,7 @@
             `).join('');
         };
 
-        const openExportModal = ({
-            description,
-            items = [],
-            warning = '',
-            editLabel = '{{ __('Editar selección') }}',
-            showEdit = true,
-            submitForm = null,
-            defaultFormat = 'xlsx',
-        }) => {
+        const openExportModal = ({ description, items = [], warning = '', editLabel = '{{ __('Editar selección') }}', showEdit = true, submitForm = null, defaultFormat = 'xlsx' }) => {
             exportModalTitle.textContent = '{{ __('Confirmar exportación') }}';
             exportModalDescription.textContent = description;
             exportModalWarning.textContent = warning;
@@ -1144,133 +1175,25 @@
             exportModalTableShell.classList.toggle('hidden', items.length === 0);
             exportModalEdit.classList.toggle('hidden', !showEdit);
             exportModalEdit.textContent = editLabel;
-            exportFormatInputs.forEach((input) => {
-                input.checked = input.value === defaultFormat;
-            });
-
-            if (items.length > 0) {
-                renderExportPreviewRows(items);
-            } else {
-                exportModalTbody.innerHTML = '';
-            }
-
+            exportFormatInputs.forEach((radio) => { radio.checked = radio.value === defaultFormat; });
+            exportModalTbody.innerHTML = '';
+            if (items.length > 0) renderExportPreviewRows(items);
             pendingExportForm = submitForm;
             exportModal.classList.remove('hidden');
             exportModal.setAttribute('aria-hidden', 'false');
         };
 
-        const clearSelectedRow = () => {
-            selectedWeaponId = null;
-            tbody.querySelectorAll('.weapon-row').forEach((row) => row.classList.remove('is-selected'));
-            viewAction.href = '#';
-            setDisabledState(viewAction, true);
-
-            if (editAction) {
-                editAction.href = '#';
-                setDisabledState(editAction, true);
-            }
-        };
-
-        const setSelectedRow = (row) => {
-            clearSelectedRow();
-            if (!row) {
-                return;
-            }
-
-            selectedWeaponId = row.dataset.weaponId;
-            row.classList.add('is-selected');
-            viewAction.href = row.dataset.showUrl;
-            setDisabledState(viewAction, false);
-
-            if (editAction) {
-                editAction.href = row.dataset.editUrl;
-                setDisabledState(editAction, row.dataset.canEdit !== '1');
-            }
-        };
-
-        const syncExportCheckboxes = () => {
-            tbody.querySelectorAll('.weapon-export-checkbox').forEach((checkbox) => {
-                checkbox.checked = exportSelection.has(checkbox.value);
-            });
-        };
-
-        const applyColumnFiltersToRows = () => {
-            const rows = Array.from(tbody.querySelectorAll('.weapon-row'));
-            rows.forEach((row) => {
-                const visible = rowMatchesColumnFilters(row);
-                row.classList.toggle('hidden', !visible);
-                const checkbox = row.querySelector('.weapon-export-checkbox');
-                if (checkbox) {
-                    if (!visible) {
-                        checkbox.checked = false;
-                        checkbox.disabled = true;
-                        exportSelection.delete(checkbox.value);
-                    } else {
-                        checkbox.disabled = false;
-                        checkbox.checked = exportSelection.has(checkbox.value);
-                    }
-                }
-            });
-            updateColumnFilterTriggerStates();
-        };
-
-        const exportPreviewDescription = (count, type, truncated = false) => {
-            const base = type === 'selected'
-                ? (count === 1
-                    ? '{{ __('Se exportará 1 arma seleccionada.') }}'
-                    : `{{ __('Se exportarán') }} ${count} {{ __('armas seleccionadas.') }}`)
-                : (count === 1
-                    ? '{{ __('Se exportará 1 arma filtrada.') }}'
-                    : `{{ __('Se exportarán') }} ${count} {{ __('armas filtradas.') }}`);
-
-            if (!truncated) {
-                return base;
-            }
-
-            return `${base} {{ __('Se muestra una vista previa de las primeras 50.') }}`;
-        };
-
-        const updateList = async (url) => {
-            const response = await fetch(url, {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            });
-            if (!response.ok) {
-                return;
-            }
-
-            const data = await response.json();
-            tbody.innerHTML = data.tbody;
-            pagination.innerHTML = data.pagination;
-            clearSelectedRow();
-            syncExportCheckboxes();
-            syncSelectionDetailsFromVisibleRows();
-            highlight(input.value.trim());
-            applyColumnFiltersToRows();
-            syncExportForms();
-            window.syncWeaponsHorizontalScrollbar?.();
-        };
-
         let timer = null;
         input.addEventListener('input', () => {
-            const url = new URL(window.location.href);
-            applyStateToUrl(url, { resetPage: true });
+            const url = applyStateToUrl(new URL(window.location.href), { resetPage: true });
             window.history.replaceState({}, '', url.toString());
-
-            if (timer) {
-                clearTimeout(timer);
-            }
-
-            timer = setTimeout(() => {
-                updateList(url.toString());
-            }, 300);
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(() => updateList(url.toString()), 300);
         });
 
         document.addEventListener('click', (event) => {
             const target = event.target;
-            if (!(target instanceof Element)) {
-                return;
-            }
-
+            if (!(target instanceof Element)) return;
             const trigger = target.closest('[data-weapon-col-filter-trigger]');
             if (trigger) {
                 event.preventDefault();
@@ -1278,7 +1201,6 @@
                 openColumnFilterPopover(trigger);
                 return;
             }
-
             if (columnFilterPopover && !columnFilterPopover.contains(target)) {
                 closeColumnFilterPopover();
             }
@@ -1286,11 +1208,9 @@
 
         columnFilterSearch?.addEventListener('input', renderColumnFilterList);
         columnFilterSelectAllBtn?.addEventListener('click', () => {
-            if (!openFilterContext) {
-                return;
-            }
+            if (!openFilterContext) return;
             const term = (columnFilterSearch?.value || '').trim().toLowerCase();
-            const values = getUniqueColumnValues(openFilterContext.columnKey);
+            const values = openFilterContext.values || [];
             const filteredValues = term === '' ? values : values.filter((value) => value.toLowerCase().includes(term));
             filteredValues.forEach((value) => draftSelection.add(value));
             renderColumnFilterList();
@@ -1299,51 +1219,43 @@
             draftSelection.clear();
             renderColumnFilterList();
         });
-        columnFilterApplyBtn?.addEventListener('click', () => {
-            if (!openFilterContext) {
-                return;
-            }
-            const { columnKey } = openFilterContext;
-            columnFilters[columnKey] = new Set(draftSelection);
+        columnFilterApplyBtn?.addEventListener('click', async () => {
+            if (!openFilterContext) return;
+            columnFilters[openFilterContext.columnKey] = new Set(draftSelection);
             closeColumnFilterPopover();
-            applyColumnFiltersToRows();
+            updateColumnFilterTriggerStates();
             syncExportForms();
+            const url = applyStateToUrl(new URL(window.location.href), { resetPage: true });
+            window.history.replaceState({}, '', url.toString());
+            await updateList(url.toString());
         });
-        clearColumnFiltersBtn?.addEventListener('click', () => {
+        clearColumnFiltersBtn?.addEventListener('click', async () => {
             COLUMN_KEYS.forEach((key) => columnFilters[key].clear());
             closeColumnFilterPopover();
-            applyColumnFiltersToRows();
+            updateColumnFilterTriggerStates();
             syncExportForms();
+            const url = applyStateToUrl(new URL(window.location.href), { resetPage: true });
+            window.history.replaceState({}, '', url.toString());
+            await updateList(url.toString());
         });
 
         pagination.addEventListener('click', (event) => {
             const link = event.target.closest('a');
-            if (!link) {
-                return;
-            }
-
+            if (!link) return;
             event.preventDefault();
-            const url = new URL(link.href);
-            applyStateToUrl(url, { resetPage: false });
+            const url = applyStateToUrl(new URL(link.href), { resetPage: false });
             window.history.replaceState({}, '', url.toString());
             updateList(url.toString());
         });
 
         tbody.addEventListener('click', (event) => {
             const row = event.target.closest('.weapon-row');
-            if (!row) {
-                return;
-            }
-
-            if (event.target.closest('.weapon-export-checkbox, .imprint-checkbox, button, a, label')) {
-                return;
-            }
-
+            if (!row) return;
+            if (event.target.closest('.weapon-export-checkbox, .imprint-checkbox, button, a, label')) return;
             if (selectedWeaponId === row.dataset.weaponId) {
                 clearSelectedRow();
                 return;
             }
-
             setSelectedRow(row);
         });
 
@@ -1353,23 +1265,17 @@
                 const row = exportCheckbox.closest('.weapon-row');
                 if (exportCheckbox.checked) {
                     exportSelection.add(exportCheckbox.value);
-                    if (row) {
-                        exportSelectionData.set(exportCheckbox.value, extractWeaponSummary(row));
-                    }
+                    if (row) exportSelectionData.set(exportCheckbox.value, extractWeaponSummary(row));
                 } else {
                     exportSelection.delete(exportCheckbox.value);
                     exportSelectionData.delete(exportCheckbox.value);
                 }
-
                 syncExportForms();
                 return;
             }
 
             const imprintCheckbox = event.target.closest('.imprint-checkbox');
-            if (!imprintCheckbox) {
-                return;
-            }
-
+            if (!imprintCheckbox) return;
             const form = imprintCheckbox.closest('form');
             if (form) {
                 const tableScroll = document.getElementById('weapons-table-scroll');
@@ -1383,71 +1289,44 @@
             event.preventDefault();
             syncExportForms();
             exportMenu.removeAttribute('open');
-
             const previewUrl = new URL(exportPreviewUrl, window.location.origin);
-            const state = currentState();
-            Object.entries(state).forEach(([key, value]) => {
-                if (value !== '') {
-                    previewUrl.searchParams.set(key, value);
-                }
-            });
-
-            const response = await fetch(previewUrl.toString(), {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            });
-
-            if (!response.ok) {
-                return;
-            }
-
+            appendCurrentStateToSearchParams(previewUrl.searchParams, false);
+            const response = await fetch(previewUrl.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!response.ok) return;
             const data = await response.json();
-
             if (data.has_filters) {
                 openExportModal({
                     description: exportPreviewDescription(data.count, 'filtered', data.truncated),
                     items: Array.isArray(data.items) ? data.items : [],
                     editLabel: '{{ __('Editar filtros') }}',
                     submitForm: exportFilteredForm,
-                    defaultFormat: 'xlsx',
                 });
                 return;
             }
-
             openExportModal({
                 description: `{{ __('Se descargarán') }} ${data.count} ${data.count === 1 ? '{{ __('arma') }}' : '{{ __('armas') }}'}.`,
-                warning: `{{ __('Vas a exportar todas las armas.') }}`,
+                warning: '{{ __('Vas a exportar todas las armas.') }}',
                 showEdit: false,
                 submitForm: exportFilteredForm,
-                defaultFormat: 'xlsx',
             });
         });
 
         exportSelectedForm.addEventListener('submit', (event) => {
             event.preventDefault();
             syncExportForms();
-            if (exportSelection.size === 0) {
-                return;
-            }
-
-            const items = Array.from(exportSelection)
-                .map((weaponId) => exportSelectionData.get(weaponId))
-                .filter(Boolean);
-
+            if (exportSelection.size === 0) return;
+            const items = Array.from(exportSelection).map((id) => exportSelectionData.get(id)).filter(Boolean);
             exportMenu.removeAttribute('open');
             openExportModal({
                 description: exportPreviewDescription(exportSelection.size, 'selected'),
                 items,
                 editLabel: '{{ __('Editar selección') }}',
                 submitForm: exportSelectedForm,
-                defaultFormat: 'xlsx',
             });
         });
 
         exportModalConfirm.addEventListener('click', () => {
-            if (!pendingExportForm) {
-                return;
-            }
-
+            if (!pendingExportForm) return;
             const formToSubmit = pendingExportForm;
             syncExportForms();
             closeExportModal();
@@ -1460,40 +1339,28 @@
         exportModalBackdrop.addEventListener('click', closeExportModal);
 
         document.addEventListener('keydown', (event) => {
-            if (event.key !== 'Escape') {
-                return;
-            }
-
+            if (event.key !== 'Escape') return;
             if (openFilterContext) {
                 closeColumnFilterPopover();
                 return;
             }
-
             if (!exportModal.classList.contains('hidden')) {
                 closeExportModal();
             }
         });
 
-        if (input.value.trim() !== '') {
-            highlight(input.value.trim());
-        }
-
+        if (input.value.trim() !== '') highlight(input.value.trim());
         syncSelectionDetailsFromVisibleRows();
         syncExportForms();
         clearSelectedRow();
         syncExportCheckboxes();
-        applyColumnFiltersToRows();
+        updateColumnFilterTriggerStates();
 
         window.addEventListener('resize', () => {
-            if (openFilterContext?.trigger) {
-                positionColumnFilterPopover(openFilterContext.trigger);
-            }
+            if (openFilterContext?.trigger) positionColumnFilterPopover(openFilterContext.trigger);
         });
-
         window.addEventListener('scroll', () => {
-            if (openFilterContext?.trigger) {
-                positionColumnFilterPopover(openFilterContext.trigger);
-            }
+            if (openFilterContext?.trigger) positionColumnFilterPopover(openFilterContext.trigger);
         }, { passive: true });
     })();
 </script>

@@ -8,7 +8,7 @@ Sistema web para **gestión de armamento**, **asignaciones operativas**, **trans
 
 ## 📌 Alcance funcional
 
-- ✅ **Armas**: alta/edición; **ficha de detalle** en dos columnas (datos readonly, notas, documentos, destino, asignación interna; fotos en franja inferior); fotos (técnicas y permiso; en móvil **Tomar foto** o **Elegir de galería**; reverso autenticado según plantillas globales **porte** / **tenencia**), documentos (descarga del **permiso** como PDF frente + reverso), **listado con filtros en barra** (rango de vencimiento con Litepicker) y **exportación XLSX** con filas coloreadas por completitud de fotos + hoja leyenda; inventario; **historial cronológico de notas** en la ficha (asignaciones, novedades, documentos, transferencias, actualización de datos y fotos desde Revista armas).
+- ✅ **Armas**: alta/edición; **ficha de detalle** en dos columnas (datos readonly, notas, documentos, destino, asignación interna; fotos en franja inferior); fotos (técnicas y permiso; en móvil **Tomar foto** o **Elegir de galería**; reverso autenticado según plantillas globales **porte** / **tenencia**), documentos (descarga del **permiso** como PDF frente + reverso), **listado con filtros por encabezado** (tipo Excel, globales sobre todas las operativas) y **exportación XLSX** con filas coloreadas por completitud de fotos + hoja leyenda; inventario; **historial cronológico de notas** en la ficha (asignaciones, novedades, documentos, transferencias, actualización de datos y fotos desde Revista armas).
 - ✅ **Asignaciones**:
   - **Operativa** (arma ↔ cliente/responsable)
   - **Interna** (arma ↔ puesto y/o trabajador; ubicación en mapa prioriza puesto si existe; la columna de destino en el listado refleja principalmente al trabajador cuando hay trabajador activo)
@@ -571,7 +571,7 @@ La hoja **Criterios de color** repite los mismos tonos con columnas *Muestra* / 
 - La exportación carga `photos` y `permitFile` (`exportRelationships()`) para evaluar el color sin N+1.
 - Clase: `app/Support/WeaponPhotoExportHighlight.php`. Tests: `tests/Unit/WeaponPhotoExportHighlightTest.php`.
 
-Los filtros del encabezado operan sobre las filas cargadas en tabla y se combinan con el buscador superior.
+Los filtros del encabezado se aplican en backend sobre todo el universo del filtro de inventario (por defecto, operativas), se combinan con el buscador superior y conservan cascada de valores vía `weapons.filter_options`.
 
 ### 5.3.1 Custodia y taller (puestos especiales)
 

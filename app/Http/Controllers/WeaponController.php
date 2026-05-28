@@ -20,6 +20,7 @@ use App\Support\WeaponPhotoExportHighlight;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -38,8 +39,10 @@ class WeaponController extends Controller
     {
         $search = trim((string) $request->input('q', ''));
         $filters = $this->filtersFromRequest($request);
+        $columnFilters = $this->columnFiltersFromRequest($request);
         $query = $this->buildIndexQuery($request)
             ->with($this->indexRelationships());
+        $this->applyHeaderColumnFilters($query, $columnFilters);
 
         $this->applyInventoryOrdering($query);
 
@@ -69,6 +72,7 @@ class WeaponController extends Controller
             'weapons',
             'search',
             'filters',
+            'columnFilters',
             'clients',
             'responsibles',
             'weaponTypes',
@@ -76,6 +80,30 @@ class WeaponController extends Controller
             'incidentTypes',
             'incidentStatusOptions',
         ));
+    }
+
+    public function filterOptions(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Weapon::class);
+
+        $target = trim((string) $request->input('target', ''));
+        if (! in_array($target, $this->headerColumnKeys(), true)) {
+            return response()->json(['values' => []]);
+        }
+
+        $columnFilters = $this->columnFiltersFromRequest($request);
+        $columnFilters[$target] = [];
+
+        $query = $this->buildIndexQuery($request)
+            ->with($this->indexRelationships());
+        $this->applyHeaderColumnFilters($query, $columnFilters);
+
+        $weapons = $query->get();
+        $values = $this->extractHeaderColumnValues($weapons, $target);
+
+        return response()->json([
+            'values' => $values,
+        ]);
     }
 
     public function create()
@@ -749,6 +777,7 @@ class WeaponController extends Controller
     {
         $query = Weapon::query();
         $filters = $this->filtersFromRequest($request);
+        $columnFilters = $this->columnFiltersFromRequest($request);
 
         if (! $this->hasExplicitExportFilters($request)) {
             $filters['inventory_scope'] = 'all';
@@ -758,6 +787,7 @@ class WeaponController extends Controller
         $this->applyRoleScope($query, $request->user());
         $this->applySearch($query, trim((string) $request->input('q', '')));
         $this->applyFilters($query, $filters);
+        $this->applyHeaderColumnFilters($query, $columnFilters);
 
         return $query;
     }
@@ -765,6 +795,7 @@ class WeaponController extends Controller
     private function hasExplicitExportFilters(Request $request): bool
     {
         $filters = $this->filtersFromRequest($request);
+        $columnFilters = $this->columnFiltersFromRequest($request);
 
         if (trim((string) $request->input('q', '')) !== '') {
             return true;
@@ -785,6 +816,12 @@ class WeaponController extends Controller
             'destination',
         ] as $key) {
             if (! empty($filters[$key])) {
+                return true;
+            }
+        }
+
+        foreach ($columnFilters as $values) {
+            if ($values !== []) {
                 return true;
             }
         }
@@ -990,6 +1027,142 @@ class WeaponController extends Controller
             'permit_expires_to' => trim((string) $request->input('permit_expires_to', '')) ?: null,
             'destination' => trim((string) $request->input('destination', '')) ?: null,
         ];
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    private function columnFiltersFromRequest(Request $request): array
+    {
+        $raw = $request->input('col', []);
+        if (! is_array($raw)) {
+            $raw = [];
+        }
+
+        $normalized = [];
+        foreach ($this->headerColumnKeys() as $key) {
+            $values = $raw[$key] ?? [];
+            if (! is_array($values)) {
+                $values = [$values];
+            }
+
+            $normalized[$key] = collect($values)
+                ->map(fn ($value) => trim((string) $value))
+                ->filter(fn (string $value) => $value !== '')
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function headerColumnKeys(): array
+    {
+        return [
+            'cliente',
+            'tipo',
+            'marca',
+            'serie',
+            'calibre',
+            'capacidad',
+            'tipo_permiso',
+            'numero_permiso',
+            'vence',
+            'estado',
+            'municion',
+            'proveedor',
+            'responsable',
+            'destino',
+            'cedula',
+        ];
+    }
+
+    /**
+     * @param array<string, list<string>> $columnFilters
+     */
+    private function applyHeaderColumnFilters(Builder $query, array $columnFilters): void
+    {
+        $activeFilters = array_filter($columnFilters, fn (array $values) => $values !== []);
+        if ($activeFilters === []) {
+            return;
+        }
+
+        $candidates = (clone $query)
+            ->with($this->indexRelationships())
+            ->get();
+
+        $matchingIds = $candidates
+            ->filter(function (Weapon $weapon) use ($activeFilters) {
+                $values = $this->weaponHeaderColumnValues($weapon);
+                foreach ($activeFilters as $key => $selected) {
+                    if (! in_array((string) ($values[$key] ?? ''), $selected, true)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            })
+            ->pluck('id')
+            ->all();
+
+        if ($matchingIds === []) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->whereIn('weapons.id', $matchingIds);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function weaponHeaderColumnValues(Weapon $weapon): array
+    {
+        $status = WeaponListStatusResolver::for($weapon)['text'] ?? '';
+        $internalAssignment = $weapon->activeWorkerAssignment ?? $weapon->activePostAssignment;
+        $destinationLabel = '-';
+        if ($weapon->activeWorkerAssignment) {
+            $destinationLabel = (string) ($weapon->activeWorkerAssignment->worker?->name ?? '-');
+        } elseif ($weapon->activePostAssignment) {
+            $destinationLabel = (string) ($weapon->activePostAssignment->post?->name ?? '-');
+        }
+
+        return [
+            'cliente' => (string) ($weapon->operationalDisplayClient()?->name ?? __('Sin destino')),
+            'tipo' => (string) $weapon->weapon_type,
+            'marca' => (string) $weapon->brand,
+            'serie' => (string) $weapon->serial_number,
+            'calibre' => (string) $weapon->caliber,
+            'capacidad' => (string) ($weapon->capacity ?? '-'),
+            'tipo_permiso' => (string) ($weapon->permit_type ? Str::ucfirst($weapon->permit_type) : '-'),
+            'numero_permiso' => (string) ($weapon->permit_number ?? '-'),
+            'vence' => (string) ($weapon->permit_expires_at?->format('Y-m-d') ?? '-'),
+            'estado' => (string) $status,
+            'municion' => (string) ($internalAssignment?->ammo_count ?? '-'),
+            'proveedor' => (string) ($internalAssignment?->provider_count ?? '-'),
+            'responsable' => (string) ($weapon->operationalDisplayResponsible()?->name ?? '-'),
+            'destino' => $destinationLabel,
+            'cedula' => (string) ($weapon->activeWorkerAssignment?->worker?->document ?? '-'),
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function extractHeaderColumnValues(Collection $weapons, string $target): array
+    {
+        return $weapons
+            ->map(fn (Weapon $weapon) => $this->weaponHeaderColumnValues($weapon)[$target] ?? '')
+            ->filter(fn ($value) => $value !== '')
+            ->unique()
+            ->sort(fn (string $a, string $b) => strcasecmp($a, $b))
+            ->values()
+            ->all();
     }
 
     private function indexRelationships(): array

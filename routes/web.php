@@ -112,6 +112,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/weapons/export-preview', [WeaponController::class, 'exportPreview'])->name('weapons.export.preview');
     Route::get('/weapons/export', [WeaponController::class, 'export'])->name('weapons.export');
     Route::post('/weapons/export-selected', [WeaponController::class, 'exportSelected'])->name('weapons.export.selected');
+    Route::get('/weapons/filter-options', [WeaponController::class, 'filterOptions'])->name('weapons.filter_options');
     Route::resource('weapons', WeaponController::class);
     Route::get('/subir-armas', [WeaponImportController::class, 'index'])->name('weapon-imports.index');
     Route::post('/subir-armas/preview', [WeaponImportController::class, 'preview'])->name('weapon-imports.preview');
