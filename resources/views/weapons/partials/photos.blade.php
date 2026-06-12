@@ -17,6 +17,7 @@
         'txtPendingPhoto' => __('Foto pendiente'),
         'txtPending' => __('Pendiente'),
         'txtDelete' => __('Eliminar'),
+        'txtDeleteConfirmTitle' => __('Eliminar foto'),
         'txtDeleteConfirm' => __('¿Eliminar foto?'),
         'txtUploadInProgress' => __('Espere a que termine la subida en curso.'),
         'txtUnsavedEditor' => __('Tiene una imagen con cambios sin guardar en el editor. ¿Desea guardarla antes de continuar?'),
@@ -123,20 +124,22 @@
                     @endcan
                     title="{{ __('Haz clic para tomar foto o elegir de galería; también arrastra o pega') }}"
                 >
-                    @can('updatePhotos', $weapon)
-                        <div class="sj-paste-proxy" data-paste-proxy contenteditable="true" spellcheck="false"></div>
-                    @endcan
-                    <div data-photo-surface-host>
-                        @if ($photoUrl)
-                            <img src="{{ $photoUrl }}" alt="{{ $label }}" class="{{ $photoSurfaceClass }} w-full rounded object-contain bg-gray-50" data-drop-surface>
-                        @else
-                            <div class="flex {{ $photoSurfaceClass }} w-full items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400 transition" data-drop-surface>
-                                <div>
-                                    <div class="font-medium">{{ __('Foto pendiente') }}</div>
-                                    <div class="mt-1 text-xs text-gray-400">{{ $label }}</div>
+                    <div class="weapon-photo-surface-wrap relative">
+                        @can('updatePhotos', $weapon)
+                            <div class="sj-paste-proxy" data-paste-proxy contenteditable="true" spellcheck="false"></div>
+                        @endcan
+                        <div data-photo-surface-host>
+                            @if ($photoUrl)
+                                <img src="{{ $photoUrl }}" alt="{{ $label }}" class="{{ $photoSurfaceClass }} w-full rounded object-contain bg-gray-50" data-drop-surface>
+                            @else
+                                <div class="flex {{ $photoSurfaceClass }} w-full items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400 transition" data-drop-surface>
+                                    <div>
+                                        <div class="font-medium">{{ __('Foto pendiente') }}</div>
+                                        <div class="mt-1 text-xs text-gray-400">{{ $label }}</div>
+                                    </div>
                                 </div>
-                            </div>
-                        @endif
+                            @endif
+                        </div>
                     </div>
 
                     <div class="mt-2 flex items-center justify-between {{ $photoMetaClass }}">
@@ -148,11 +151,11 @@
                         </div>
 
                         @can('updatePhotos', $weapon)
-                            <div data-photo-actions @class(['hidden' => ! $photo])>
+                            <div data-photo-actions class="hidden shrink-0">
                                 @if ($photo)
                                     <button
                                         type="button"
-                                        class="text-red-600 hover:text-red-900"
+                                        class="cursor-pointer px-1 py-0.5 text-red-600 hover:text-red-900 hover:underline"
                                         data-photo-delete
                                         data-destroy-url="{{ route('weapons.photos.destroy', [$weapon, $photo]) }}"
                                     >
@@ -178,20 +181,22 @@
                 @endcan
                 title="{{ __('Haz clic para tomar foto o elegir de galería; también arrastra o pega') }}"
             >
-                @can('updatePhotos', $weapon)
-                    <div class="sj-paste-proxy" data-paste-proxy contenteditable="true" spellcheck="false"></div>
-                @endcan
-                <div data-photo-surface-host>
-                    @if ($weapon->permitFile)
-                        <img src="{{ route('weapons.permit', $weapon) }}" alt="Permiso" class="{{ $photoSurfaceClass }} w-full rounded object-contain bg-gray-50" data-drop-surface>
-                    @else
-                        <div class="flex {{ $photoSurfaceClass }} w-full items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400 transition" data-drop-surface>
-                            <div>
-                                <div class="font-medium">{{ __('Foto pendiente') }}</div>
-                                <div class="mt-1 text-xs text-gray-400">{{ __('Permiso (frente)') }}</div>
+                <div class="weapon-photo-surface-wrap relative">
+                    @can('updatePhotos', $weapon)
+                        <div class="sj-paste-proxy" data-paste-proxy contenteditable="true" spellcheck="false"></div>
+                    @endcan
+                    <div data-photo-surface-host>
+                        @if ($weapon->permitFile)
+                            <img src="{{ route('weapons.permit', $weapon) }}" alt="Permiso" class="{{ $photoSurfaceClass }} w-full rounded object-contain bg-gray-50" data-drop-surface>
+                        @else
+                            <div class="flex {{ $photoSurfaceClass }} w-full items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-center text-sm text-gray-400 transition" data-drop-surface>
+                                <div>
+                                    <div class="font-medium">{{ __('Foto pendiente') }}</div>
+                                    <div class="mt-1 text-xs text-gray-400">{{ __('Permiso (frente)') }}</div>
+                                </div>
                             </div>
-                        </div>
-                    @endif
+                        @endif
+                    </div>
                 </div>
                 <div class="mt-2 {{ $photoMetaClass }} text-gray-600">
                     <div class="flex flex-col gap-0.5 xl:flex-row xl:items-center xl:gap-2 min-w-0">
@@ -340,7 +345,7 @@
             @push('styles')
                 <link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css">
                 <style>
-                    .sj-paste-proxy {
+                    .weapon-photo-surface-wrap > .sj-paste-proxy {
                         position: absolute;
                         inset: 0;
                         z-index: 20;
@@ -360,7 +365,7 @@
                         word-break: break-word;
                     }
 
-                    .sj-paste-proxy::selection {
+                    .weapon-photo-surface-wrap > .sj-paste-proxy::selection {
                         background: transparent;
                     }
 

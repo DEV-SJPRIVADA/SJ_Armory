@@ -76,10 +76,17 @@ export function initWeaponPhotoEditor(root) {
     const photoAlertOk = document.getElementById('weapon-photo-alert-ok');
 
     const confirmModal = document.getElementById('weapon-photo-confirm-modal');
+    const confirmTitle = document.getElementById('weapon-photo-confirm-title');
     const confirmMessage = document.getElementById('weapon-photo-confirm-message');
     const confirmSave = document.getElementById('weapon-photo-confirm-save');
     const confirmDiscard = document.getElementById('weapon-photo-confirm-discard');
     const confirmCancel = document.getElementById('weapon-photo-confirm-cancel');
+
+    const confirmDefaults = {
+        title: confirmTitle?.textContent?.trim() || '',
+        discard: confirmDiscard?.textContent?.trim() || '',
+        save: confirmSave?.textContent?.trim() || '',
+    };
 
     let isEditing = false;
     let editorOpen = false;
@@ -112,6 +119,18 @@ export function initWeaponPhotoEditor(root) {
         );
     };
 
+    const syncDeleteControlsVisibility = () => {
+        photoCards.forEach((card) => {
+            const wrap = card.querySelector('[data-photo-actions]');
+            if (!wrap) {
+                return;
+            }
+
+            const hasDelete = wrap.querySelector('[data-photo-delete]');
+            wrap.classList.toggle('hidden', !isEditing || !hasDelete);
+        });
+    };
+
     const setEditing = (enabled) => {
         isEditing = enabled;
         syncToggleUi();
@@ -121,6 +140,7 @@ export function initWeaponPhotoEditor(root) {
             card.classList.toggle('ring-2', enabled);
             card.classList.toggle('ring-indigo-300', enabled);
         });
+        syncDeleteControlsVisibility();
     };
 
     const isEditorBlocking = () => editorOpen && editorDirty;
@@ -194,15 +214,15 @@ export function initWeaponPhotoEditor(root) {
             return;
         }
 
-        wrap.classList.remove('hidden');
         wrap.innerHTML = `
             <button
                 type="button"
-                class="text-red-600 hover:text-red-900"
+                class="cursor-pointer px-1 py-0.5 text-red-600 hover:text-red-900 hover:underline"
                 data-photo-delete
                 data-destroy-url="${escapeHtml(slot.destroy_url)}"
             >${escapeHtml(config.txtDelete)}</button>
         `;
+        wrap.classList.toggle('hidden', !isEditing);
     };
 
     const applySlotToCard = (card, slot) => {
@@ -259,7 +279,26 @@ export function initWeaponPhotoEditor(root) {
         photoAlertModal.classList.add('flex');
     });
 
-    const showConfirm = (message, { showSave = true } = {}) => new Promise((resolve) => {
+    const resetConfirmModalUi = () => {
+        if (confirmTitle) {
+            confirmTitle.textContent = confirmDefaults.title;
+        }
+
+        if (confirmDiscard) {
+            confirmDiscard.textContent = confirmDefaults.discard;
+        }
+
+        if (confirmSave) {
+            confirmSave.textContent = confirmDefaults.save;
+        }
+    };
+
+    const showConfirm = (message, {
+        showSave = true,
+        showDiscard = true,
+        title = null,
+        discardLabel = null,
+    } = {}) => new Promise((resolve) => {
         if (!confirmModal) {
             resolve('cancel');
             return;
@@ -270,7 +309,16 @@ export function initWeaponPhotoEditor(root) {
             confirmMessage.textContent = message;
         }
 
+        if (confirmTitle) {
+            confirmTitle.textContent = title || confirmDefaults.title;
+        }
+
+        if (confirmDiscard) {
+            confirmDiscard.textContent = discardLabel || confirmDefaults.discard;
+        }
+
         confirmSave?.classList.toggle('hidden', !showSave);
+        confirmDiscard?.classList.toggle('hidden', !showDiscard);
         confirmModal.classList.remove('hidden');
         confirmModal.classList.add('flex');
     });
@@ -278,6 +326,7 @@ export function initWeaponPhotoEditor(root) {
     const closeConfirm = () => {
         confirmModal?.classList.add('hidden');
         confirmModal?.classList.remove('flex');
+        resetConfirmModalUi();
         confirmResolver = null;
     };
 
@@ -628,8 +677,13 @@ export function initWeaponPhotoEditor(root) {
             return;
         }
 
-        const confirmed = window.confirm(config.txtDeleteConfirm);
-        if (!confirmed) {
+        const action = await showConfirm(config.txtDeleteConfirm, {
+            showSave: false,
+            title: config.txtDeleteConfirmTitle || config.txtDelete,
+            discardLabel: config.txtDelete,
+        });
+
+        if (action !== 'discard') {
             return;
         }
 
@@ -725,6 +779,8 @@ export function initWeaponPhotoEditor(root) {
 
         return true;
     };
+
+    syncDeleteControlsVisibility();
 
     if (photoEditToggle) {
         photoEditToggle.setAttribute('role', 'switch');

@@ -76,7 +76,7 @@ composer install
 
 1. Copia `.env.example` a `.env`.
 2. Ajusta, como mínimo:
-   - `APP_URL` (si se accede por IP en red: `http://<IP_DEL_SERVIDOR>`)
+   - `APP_URL=http://127.0.0.1` en local (Laravel toma el host real de cada petición en `APP_ENV=local`; no fije la IP de la red)
    - `DB_*`
    - `SANCTUM_STATEFUL_DOMAINS` (debe incluir el host/IP por el que acceden los navegadores)
    - Reverb: `REVERB_*` y `VITE_REVERB_*`
@@ -254,7 +254,7 @@ composer reverb
 | `APP_ENV` | `local` | Entorno |
 | `APP_KEY` | `base64:...` | Clave app |
 | `APP_DEBUG` | `true` | Debug |
-| `APP_URL` | `http://localhost` | URL base (si se accede por IP, usar la IP) |
+| `APP_URL` | `http://127.0.0.1` | Fallback en local; con `APP_ENV=local` la app usa el host de la petición (IP o hostname LAN) |
 
 ### 🗄️ Base de datos
 
@@ -276,7 +276,7 @@ composer reverb
 | `REVERB_APP_ID` | `armory` | App ID (Reverb) |
 | `REVERB_APP_KEY` | `armory-key` | App Key |
 | `REVERB_APP_SECRET` | `armory-secret` | App Secret |
-| `REVERB_HOST` | `172.16.x.x` | Host/IP que el **navegador** usa para el WS (alinear con `APP_URL` si entras por IP) |
+| `REVERB_HOST` | `127.0.0.1` | En LAN el frontend usa `window.location.hostname` si es `127.0.0.1`/`localhost` (ver `bootstrap.js`) |
 | `REVERB_PORT` | `6001` | Puerto cliente (WS); en Windows a veces `8080` no es usable |
 | `REVERB_SCHEME` | `http` | `http` / `https` |
 | `REVERB_SERVER_HOST` | `0.0.0.0` | Bind del proceso `reverb:start` |
@@ -771,6 +771,7 @@ Controlador: `app/Http/Controllers/WeaponPhotoController.php`
 - **Recortar o mover** (ficha, modo edición): modal de acciones → Cropper → **Guardar** vía `PATCH weapons.photos.update`. Mismo orden seguro en servidor; en cliente: JPEG redimensionado (máx. 1920 px), toast verde **«Imagen guardada»**, botón **Guardando…**, errores en modal propio (no `alert` del navegador).
 - La actualización de la **foto del permiso** (`WeaponController::updatePermitPhoto`) usa la misma policy `updatePhotos` y el mismo payload JSON de slot.
 - **Toggle modo edición** (ficha): interruptor compacto `.sj-toggle--photo-mode` en `resources/views/weapons/partials/photos.blade.php` — **desmarcado** = solo lectura (pista rosa suave, borde/halo rojo tipo neón, texto **Editar**); **marcado** = edición activa (pista verde suave, borde/halo verde neón, texto **Guardar**). Semántica estándar: `checked` ↔ edición activa. Al desmarcar se valida cropper pendiente o subida en curso; al salir de la página con edición activa o cambios sin guardar, modal **Guardar cambios** / **Salir sin guardar** / **Cancelar** (`#weapon-photo-confirm-modal`). Estilos embebidos en el partial; lógica en Vite (`resources/js/weapon-photo-editor.js`, entrada en `vite.config.js` y `vite.hosting.config.js`).
+- **Eliminar foto** (solo en modo edición): el enlace **Eliminar** se oculta fuera de edición; el proxy de pegado (`sj-paste-proxy`) queda dentro de `.weapon-photo-surface-wrap` (solo la miniatura) para no tapar el pie de la tarjeta. La confirmación usa el mismo `#weapon-photo-confirm-modal` del sistema (**Eliminar foto** / **¿Eliminar foto?** / **Cancelar** + **Eliminar**), no el diálogo nativo del navegador.
 - **Móvil (cámara + galería):** al subir o cambiar una imagen (ficha del arma `resources/views/weapons/partials/photos.blade.php` y formulario crear/editar `form.blade.php`), se muestra un modal **Agregar imagen** con **Tomar foto** (`input` con `capture="environment"`) y **Elegir de galería** (`accept="image/*"` sin `capture`). Tras elegir, el flujo sigue con el editor Cropper y la subida por AJAX o formulario. En escritorio se mantienen arrastrar y pegar. Requiere **HTTPS** en producción para usar la cámara desde el navegador.
 - **Editor de imagen en móvil:** el modal **Editar imagen** (`#image_editor_modal`) limita la altura al viewport (`max-h` con `100dvh`), reduce la zona de recorte en pantallas pequeñas (clase `.sj-image-editor-canvas`, ~42dvh) y apila el pie: controles de giro/arriba y fila fija **Cancelar** / **Guardar** (`min-h-11`) con margen para `safe-area-inset-bottom`, para que el botón **Guardar** no quede fuera de pantalla.
 
@@ -1248,7 +1249,6 @@ Ejemplo de `VirtualHost`:
     ServerName NOMBRE-EQUIPO
     ServerAlias sj_armory.test
     ServerAlias *.sj_armory.test
-    ServerAlias 172.16.23.36
 
     DocumentRoot "C:/laragon/www/SJ_Armory/public"
 
@@ -1261,7 +1261,9 @@ Ejemplo de `VirtualHost`:
 
 Notas:
 
-- Si se accede por IP, por ejemplo `http://172.16.23.36`, no hace falta un dominio.
+- Con `Listen 80` en `*:80`, **cualquier IP local** del equipo sirve el primer `VirtualHost` (no hace falta `ServerAlias` por IP).
+- Abra `http://<IP-actual-del-PC>` o `http://SJPCANAOPE1` desde otro equipo en la misma red.
+- En `.env` local use `APP_URL=http://127.0.0.1` y **no** fije la IP de la Wi‑Fi: `AppServiceProvider` ajusta URL y Sanctum al host de cada petición.
 - Si se accede por un dominio local como `sj_armory.test`, cada equipo cliente debe resolver ese nombre via `hosts` o DNS interno.
 - Para abrir el puerto `80` solo a la red local en Windows:
 
@@ -1269,32 +1271,23 @@ Notas:
 netsh advfirewall firewall add rule name="Laragon Apache HTTP 80 (LocalSubnet)" dir=in action=allow protocol=TCP localport=80 program="C:\laragon\bin\apache\httpd-2.4.54-win64-VS16\bin\httpd.exe" remoteip=LocalSubnet profile=any
 ```
 
-### 12.2 Configuracion detectada actualmente en este entorno
+### 12.2 Configuracion recomendada en local (LAN)
 
-`.env` detectado:
+`.env` local (sin IP fija de red):
 
-- `APP_NAME="SJ_ARMORY"`
 - `APP_ENV=local`
-- `APP_URL=http://SJPCANAOPE1`
-- `DB_CONNECTION=mysql`
-- `DB_HOST=127.0.0.1`
-- `DB_PORT=3306`
-- `DB_DATABASE=sj_armory`
-- `DB_USERNAME=root`
-- `FILESYSTEM_DISK=local`
-- `SESSION_DRIVER=file`
-- `SESSION_LIFETIME=30` (o el valor vigente en `.env`; inactividad en minutos)
-- `SESSION_DOMAIN=` vacio
-- `SANCTUM_STATEFUL_DOMAINS=sj_armory.test,sj_armory.test:80,SJPCANAOPE1,SJPCANAOPE1:80,172.16.23.36,172.16.23.36:80`
+- `APP_URL=http://127.0.0.1`
+- `SANCTUM_STATEFUL_DOMAINS=localhost,127.0.0.1,sj_armory.test,sj_armory.test:80,SJPCANAOPE1,SJPCANAOPE1:80`
+- `REVERB_HOST=127.0.0.1` (WebSocket usa el mismo host que el navegador en LAN)
+- `SESSION_DOMAIN=` vacío
 
-VirtualHost detectado para este proyecto en Laragon:
+VirtualHost Laragon (`00-aaa-sj_armory.conf`):
 
 ```apache
 <VirtualHost *:80>
     ServerName SJPCANAOPE1
     ServerAlias sj_armory.test
     ServerAlias *.sj_armory.test
-    ServerAlias 172.16.23.36
 
     DocumentRoot "C:/laragon/www/SJ_Armory/public"
 
@@ -1305,13 +1298,13 @@ VirtualHost detectado para este proyecto en Laragon:
 </VirtualHost>
 ```
 
-Observacion operativa:
+Acceso desde otros equipos en la misma red:
 
-- La configuracion detectada para `SJ_Armory` expone el proyecto por:
-  - `http://SJPCANAOPE1`
-  - `http://sj_armory.test`
-  - `http://172.16.23.36`
-- Si tambien quieres servirlo por otra IP o hostname, debes agregar ese valor tanto en el `VirtualHost` como en `SANCTUM_STATEFUL_DOMAINS`.
+- `http://<IP-actual-del-servidor>` (p. ej. `http://192.168.18.47`)
+- `http://SJPCANAOPE1` (si el cliente resuelve ese nombre)
+- `http://sj_armory.test` (requiere entrada en `hosts` del cliente)
+
+No hace falta editar `.env` ni Apache al cambiar de red Wi‑Fi; solo usar la IP nueva del PC.
 
 ### 12.3 Broadcasting en tiempo real (Laravel Reverb)
 
