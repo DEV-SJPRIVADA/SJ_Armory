@@ -301,6 +301,52 @@ class WeaponImportTest extends TestCase
             'email' => null,
         ]);
     }
+
+    public function test_admin_can_download_weapon_and_client_import_templates(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'ADMIN',
+        ]);
+
+        $weaponResponse = $this
+            ->actingAs($admin)
+            ->get(route('weapon-imports.templates.weapon'));
+
+        $weaponResponse
+            ->assertOk()
+            ->assertHeader(
+                'content-type',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            );
+
+        $clientResponse = $this
+            ->actingAs($admin)
+            ->get(route('weapon-imports.templates.client'));
+
+        $clientResponse
+            ->assertOk()
+            ->assertHeader(
+                'content-type',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            );
+    }
+
+    public function test_non_admin_cannot_download_import_templates(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'RESPONSABLE',
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->get(route('weapon-imports.templates.weapon'))
+            ->assertForbidden();
+
+        $this
+            ->actingAs($user)
+            ->get(route('weapon-imports.templates.client'))
+            ->assertForbidden();
+    }
 }
 
 

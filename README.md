@@ -14,7 +14,7 @@ Sistema web para **gestión de armamento**, **asignaciones operativas**, **trans
   - **Interna** (arma ↔ puesto y/o trabajador; ubicación en mapa prioriza puesto si existe; la columna de destino en el listado refleja principalmente al trabajador cuando hay trabajador activo)
 - ✅ **Transferencias**: listado **unificado** (pendientes y enviadas en una tabla; serie en columna arma; munición/proveedores opcionales en el envío; aceptación; **cancelación** con restauración cuando aplica); con transferencia **pendiente**, la ficha del arma muestra un **aviso** (usuario normal: mensaje genérico; **ADMIN**: quién **envió** y quién **debe aceptar**); botón **Historial** (modal, últimas participaciones).
 - ✅ **Clientes / Puestos / Trabajadores / Usuarios** (puestos y trabajadores: archivo, historial de cambios, políticas por rol)
-- ✅ **Cargas masivas**: validación previa, preview, ejecución por chunks, trazabilidad por lote; en la vista **Subir armas**, el **ADMIN** gestiona las plantillas globales de reverso autenticado (porte y tenencia) usadas en el PDF y en la ficha.
+- ✅ **Cargas masivas**: validación previa, preview, ejecución por chunks y trazabilidad por lote para **armas** y **clientes**; solo **ADMIN**; descarga de plantillas Excel (hojas `Datos` + `Instructivo`); en **Cargas masivas**, el ADMIN también gestiona las plantillas globales de reverso autenticado (porte y tenencia) usadas en el PDF y en la ficha.
 - ✅ **Dashboard**: fila de **6 KPIs** (Total, No operativas, En inventario, Incautadas en trámite, Vencidos, Por vencer), gráficos y estado “as of”.
 - ✅ **Alertas documentales** (`/alerts/documents`): tarjetas vencidos / por vencer / sin alertas; filtro **multi-mes** con panel de checkboxes (varios meses y años); modales con **filtros por columna** tipo Excel (multi-selección en encabezado); exportación `.docx` y vista previa PDF con nombre `Revalidacion_{mes}_{año}`.
 - ✅ **Revista armas** (`/revista-armas`): acceso temporal (12 h) para colaboradores de campo; usuarios temporales reutilizables; subida de **4 fotos técnicas** a staging; el invitado solo entra con código vigente; staff al filtrar ve armas del **último acceso** (aunque haya vencido) para revisar fotos en staging (✓/✕, **Ver**, **Actualizar**); confirmaciones en **modales**; historial de notas en la ficha del arma; **ADMIN** con gestión global.
@@ -381,16 +381,22 @@ Tipos de propiedad:
 Controlador: `app/Http/Controllers/WeaponImportController.php`  
 Servicios: `app/Services/WeaponImportService.php`, `app/Services/WeaponImportSpreadsheetReader.php`
 
-El modulo se expone hoy como **Subir armas**, pero conceptualmente funciona como un centro de cargas masivas con dos vistas principales:
+El modulo se expone como **Cargas masivas** (`/subir-armas`) con dos vistas principales:
 
 - indice de lotes ejecutados;
 - detalle del lote con previsualizacion, ejecucion y cancelacion.
 
-El flujo operativo implementado actualmente corresponde a armas. El esquema de datos ya reserva soporte para otros tipos de lote mediante `weapon_import_batches.type` y relaciona filas con `client_id` cuando aplique.
+Flujos operativos implementados:
+
+- **Armas** (`WeaponImportBatch::TYPE_WEAPON`): crea o actualiza registros en `weapons` por `serial_number`.
+- **Clientes** (`WeaponImportBatch::TYPE_CLIENT`): crea o actualiza registros base en `clients` por `nit`; no modifica `contact_name`, `email` ni `department` en actualizaciones.
+
+Acceso:
+
+- Modulo exclusivo para **ADMIN** (middleware en `WeaponImportController` y enlace de menu **Cargas masivas**).
+- **RESPONSABLE** y demas roles no acceden al centro ni a las descargas de plantilla.
 
 Flujo actual de armas:
-
-- Modulo exclusivo para `ADMIN`.
 - Permite cargar archivos `.xlsx`, `.csv` y `.txt`.
 - El usuario sube el archivo desde modal:
   - arrastrar,
@@ -420,6 +426,21 @@ Flujo actual de armas:
 - La vista principal del modulo se mantiene limpia mientras el lote siga pendiente:
   - la validacion detallada se revisa solo en el modal,
   - el resultado detallado solo aparece en el `index` despues de ejecutar.
+
+**Plantillas Excel para cargas masivas**
+
+- Solo **ADMIN**, desde el encabezado del centro de cargas (`weapon-imports.index`).
+- Botones **Descargar formato armas** y **Descargar formato clientes**.
+- Cada descarga genera un `.xlsx` con dos hojas:
+  - `Datos`: encabezados oficiales del importador y filas vacias para diligenciar.
+  - `Instructivo`: columnas, obligatoriedad, formato y notas de negocio.
+- Rutas:
+  - `weapon-imports.templates.weapon` (`GET /subir-armas/plantillas/armas`)
+  - `weapon-imports.templates.client` (`GET /subir-armas/plantillas/clientes`)
+- Servicio: `app/Services/Imports/ImportTemplateExporter.php` (usa `app/Support/SimpleSpreadsheetExporter.php`).
+- Los encabezados se derivan de `WeaponImportProcessor::templateHeaders()` / `templateInstructions()` y `ClientImportProcessor::templateHeaders()` / `templateInstructions()`.
+- Archivos generados: `formato-carga-armas.xlsx`, `formato-carga-clientes.xlsx`.
+- Pruebas: `tests/Unit/ImportTemplateExporterTest.php`.
 
 **Plantillas de reverso autenticado (permiso)**
 
@@ -489,10 +510,32 @@ Campos excluidos por ahora:
 - cantidad de municion
 - cantidad de proveedor
 
+Flujo actual de clientes:
+
+- Mismo ciclo de lote (`draft` → preview → `processing` → `executed` / `failed`) que armas.
+- Modal **Subir clientes** con `type=client` en el preview.
+- La llave principal de comparacion es `nit`.
+- Si el NIT no existe: crea el cliente.
+- Si el NIT existe y hay cambios en campos importables: actualiza.
+- Si coincide: marca `no_change`.
+- Columnas soportadas:
+  - `NIT./CC`
+  - `RAZON SOCIAL`
+  - `NOMBRE REP. LEGAL`
+  - `DIRECCION PRINCIPAL`
+  - `CIUDAD`
+- Campos que se crean o actualizan por importacion:
+  - `nit`
+  - `name`
+  - `legal_representative`
+  - `address`
+  - `city`
+- Los clientes creados por carga masiva pueden quedar sin coordenadas hasta completar ubicacion en la ficha del cliente (bloquea asignacion interna solo-trabajador en mapa; ver §5.3).
+
 Notas de ampliacion:
 
 - `WeaponImportBatch::TYPE_WEAPON` y `WeaponImportBatch::TYPE_CLIENT` definen la tipologia del lote.
-- `weapon_import_rows.client_id` queda disponible para asociar filas a clientes cuando el flujo correspondiente exista.
+- `weapon_import_rows.client_id` asocia filas de lotes de clientes al registro comparado.
 - La UI y las rutas vigentes siguen centradas en `weapon-imports.*`.
 
 ### 5.2 Asignacion a cliente (destino operativo)
@@ -1079,7 +1122,7 @@ Se registran, entre otros:
 - Cierres de asignaciones por transferencia/cambio cliente.
 - Solicitud, aceptación y **cancelación** de transferencias (registros antiguos pueden figurar como rechazados).
 - Cambios de cartera.
-- Cargas masivas de armas (`weapon_import_created`, `weapon_import_updated`).
+- Cargas masivas de armas y clientes (`weapon_import_created`, `weapon_import_updated`).
 
 ## 7. Modelo de datos (tablas)
 
@@ -1147,7 +1190,7 @@ Grupos funcionales:
   - `users.*`, `users.status`, `users.send-access-credentials` (POST: reenvío de credenciales por correo con contraseña temporal nueva, solo ADMIN desde el listado).
 - Operacion:
   - `weapons.*`
-  - `weapon-imports.index`, `weapon-imports.preview`, `weapon-imports.start`, `weapon-imports.process`, `weapon-imports.status`, `weapon-imports.execute`, `weapon-imports.discard` (centro de cargas masivas de armas)
+  - `weapon-imports.index`, `weapon-imports.templates.weapon`, `weapon-imports.templates.client`, `weapon-imports.preview`, `weapon-imports.start`, `weapon-imports.process`, `weapon-imports.status`, `weapon-imports.execute`, `weapon-imports.discard` (centro de cargas masivas: armas y clientes)
   - `weapons.client_assignments.store`
   - `weapons.internal_assignments.store/retire`
   - `weapons.custody.armerillo`, `weapons.custody.para_mantenimiento`, `weapons.custody.armero`, `weapons.custody.armero_posts.store`
@@ -1434,7 +1477,7 @@ Suite actual en `tests/`:
 
 - Unit basica.
 - Feature de autenticacion y perfil (Breeze).
-- Feature de `Subir armas`, incluyendo preview y progreso/ejecucion de lote.
+- Feature de `Subir armas` / cargas masivas, incluyendo preview, progreso/ejecucion de lote y descarga de plantillas Excel (`ImportTemplateExporterTest`).
 - Feature de inventario operativo (`WeaponOperationalInventoryTest`), incluyendo listado con transferencia pendiente y asignación de cliente legacy cerrada (`operationalDisplayClient`).
 
 Comando:

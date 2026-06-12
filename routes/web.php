@@ -115,6 +115,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/weapons/filter-options', [WeaponController::class, 'filterOptions'])->name('weapons.filter_options');
     Route::resource('weapons', WeaponController::class);
     Route::get('/subir-armas', [WeaponImportController::class, 'index'])->name('weapon-imports.index');
+    Route::get('/subir-armas/plantillas/armas', [WeaponImportController::class, 'downloadWeaponTemplate'])->name('weapon-imports.templates.weapon');
+    Route::get('/subir-armas/plantillas/clientes', [WeaponImportController::class, 'downloadClientTemplate'])->name('weapon-imports.templates.client');
     Route::post('/subir-armas/preview', [WeaponImportController::class, 'preview'])->name('weapon-imports.preview');
     Route::get('/subir-armas/{weaponImportBatch}', [WeaponImportController::class, 'show'])->name('weapon-imports.show');
     Route::post('/subir-armas/{weaponImportBatch}/execute/start', [WeaponImportController::class, 'startExecution'])->name('weapon-imports.start');

@@ -52,6 +52,34 @@ class ClientImportProcessor implements ImportBatchProcessor
         return WeaponImportBatch::TYPE_CLIENT;
     }
 
+    /**
+     * @return array<int, string>
+     */
+    public static function templateHeaders(): array
+    {
+        return [
+            'NIT./CC',
+            'RAZON SOCIAL',
+            'NOMBRE REP. LEGAL',
+            'DIRECCION PRINCIPAL',
+            'CIUDAD',
+        ];
+    }
+
+    /**
+     * @return array<int, array<int, string>>
+     */
+    public static function templateInstructions(): array
+    {
+        return [
+            ['NIT./CC', 'Sí', 'Texto', 'Clave principal del lote. Si el NIT ya existe, se actualiza; si no, se crea el cliente.'],
+            ['RAZON SOCIAL', 'Sí', 'Texto', 'Nombre o razón social del cliente.'],
+            ['NOMBRE REP. LEGAL', 'No', 'Texto', 'Columna requerida en el archivo; el valor puede quedar vacío.'],
+            ['DIRECCION PRINCIPAL', 'No', 'Texto', 'Columna requerida en el archivo; el valor puede quedar vacío.'],
+            ['CIUDAD', 'No', 'Texto', 'Columna requerida en el archivo; el valor puede quedar vacío.'],
+        ];
+    }
+
     public function prepareRows(array $headers, array $rows): array
     {
         $columnMap = $this->resolveColumnMap($headers);

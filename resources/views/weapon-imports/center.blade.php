@@ -540,6 +540,12 @@
                 <p class="mt-1 text-sm text-gray-500">Carga y procesa informacion en lote</p>
             </div>
             <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:justify-end">
+                <a href="{{ route('weapon-imports.templates.weapon') }}" class="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
+                    {{ __('Descargar formato armas') }}
+                </a>
+                <a href="{{ route('weapon-imports.templates.client') }}" class="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
+                    {{ __('Descargar formato clientes') }}
+                </a>
                 <button type="button" data-import-trigger data-import-type="weapon" x-data="" x-on:click.prevent="$dispatch('open-modal', 'mass-import-upload')" class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
                     {{ __('Subir armas') }}
                 </button>

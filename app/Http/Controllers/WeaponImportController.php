@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\File;
 use App\Models\PermitAuthenticatedTemplate;
 use App\Models\WeaponImportBatch;
+use App\Services\Imports\ImportTemplateExporter;
 use App\Services\WeaponImportService;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -23,6 +25,16 @@ class WeaponImportController extends Controller
 
             return $next($request);
         });
+    }
+
+    public function downloadWeaponTemplate(ImportTemplateExporter $templateExporter): StreamedResponse
+    {
+        return $templateExporter->streamWeaponTemplate();
+    }
+
+    public function downloadClientTemplate(ImportTemplateExporter $templateExporter): StreamedResponse
+    {
+        return $templateExporter->streamClientTemplate();
     }
 
     public function index()

@@ -106,6 +106,40 @@ class WeaponImportProcessor implements ImportBatchProcessor
         return WeaponImportBatch::TYPE_WEAPON;
     }
 
+    /**
+     * @return array<int, string>
+     */
+    public static function templateHeaders(): array
+    {
+        return [
+            'TIPO DE ARMA',
+            'MARCA ARMA',
+            'No. SERIE',
+            'CALIBRE',
+            'CAPACIDAD',
+            'TIPO PERMISO',
+            'No. PERMISO',
+            'FECHA VENCIMIENTO SALVOCONDUCTO',
+        ];
+    }
+
+    /**
+     * @return array<int, array<int, string>>
+     */
+    public static function templateInstructions(): array
+    {
+        return [
+            ['TIPO DE ARMA', 'Sí', 'Texto', 'Escopeta, Pistola, Revólver o Subametralladora.'],
+            ['MARCA ARMA', 'Sí', 'Texto', 'Marca del fabricante.'],
+            ['No. SERIE', 'Sí', 'Texto', 'Clave principal del lote. Si la serie ya existe, se actualiza; si no, se crea el arma.'],
+            ['CALIBRE', 'Sí', 'Texto', 'Ejemplo: 9MM, 38L.'],
+            ['CAPACIDAD', 'Sí', 'Texto o número', 'Capacidad del cargador o tambor.'],
+            ['TIPO PERMISO', 'Sí', 'porte o tenencia', 'Valores aceptados: porte, tenencia.'],
+            ['No. PERMISO', 'Sí', 'Texto', 'Número del permiso o salvoconducto.'],
+            ['FECHA VENCIMIENTO SALVOCONDUCTO', 'Sí', 'Fecha dd/mm/aaaa', 'La columna es obligatoria; el valor puede quedar vacío si no aplica.'],
+        ];
+    }
+
     public function prepareRows(array $headers, array $rows): array
     {
         $columnMap = $this->resolveColumnMap($headers);
