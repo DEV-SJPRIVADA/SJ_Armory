@@ -39,10 +39,13 @@ class TemporaryPhotoAccessController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'message' => __('Acceso temporal creado.'),
+                'message' => $result['appended']
+                    ? __('Armas agregadas al acceso vigente.')
+                    : __('Acceso temporal creado.'),
                 'login_url' => route('revista-armas.guest.login'),
                 'email' => $temporaryUser->email,
                 'code' => $result['plain_code'],
+                'appended' => $result['appended'],
                 'expires_at' => $result['grant']->expires_at->timezone(config('app.timezone'))->format('d/m/Y H:i'),
             ]);
         }
@@ -53,6 +56,7 @@ class TemporaryPhotoAccessController extends Controller
                 'login_url' => route('revista-armas.guest.login'),
                 'email' => $temporaryUser->email,
                 'code' => $result['plain_code'],
+                'appended' => $result['appended'],
                 'expires_at' => $result['grant']->expires_at->timezone(config('app.timezone'))->format('d/m/Y H:i'),
                 'name' => $temporaryUser->name,
             ]);

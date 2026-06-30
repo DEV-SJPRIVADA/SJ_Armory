@@ -35,7 +35,9 @@
                         <select name="temporary_photo_user_id" id="temporary_photo_user_id" class="mt-1 h-10 w-full rounded-lg border-slate-300 text-sm">
                             <option value="">{{ __('Seleccione...') }}</option>
                             @foreach ($temporaryUsers as $tu)
-                                <option value="{{ $tu->id }}" @selected($selectedTemporaryUserId === $tu->id)>{{ $tu->name }} ({{ $tu->email }})</option>
+                                <option value="{{ $tu->id }}" @selected($selectedTemporaryUserId === $tu->id)>
+                                    {{ $tu->name }} ({{ $tu->email }})@if ($tu->is_shared) — {{ __('Compartido') }}@endif
+                                </option>
                             @endforeach
                         </select>
                     </div>
@@ -46,7 +48,7 @@
                             type="search"
                             autocomplete="off"
                             class="mt-1 h-10 w-full rounded-lg border-slate-300 text-sm shadow-sm"
-                            placeholder="{{ __('Serie, código, marca, calibre, permiso...') }}"
+                            placeholder="{{ __('Serie, código, marca, calibre, cliente, permiso...') }}"
                         >
                     </div>
                     <button type="submit" class="h-10 shrink-0 self-end rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
@@ -61,6 +63,7 @@
                     <table class="sj-table min-w-full text-sm">
                         <thead>
                             <tr>
+                                <th>{{ __('Cliente') }}</th>
                                 <th>{{ __('Tipo') }}</th>
                                 <th>{{ __('Marca') }}</th>
                                 <th>{{ __('Serie') }}</th>
@@ -86,13 +89,16 @@
                                         $weapon->permit_type,
                                         $weapon->permit_number,
                                         $weapon->permit_expires_at?->format('Y-m-d'),
-                                        $weapon->activeClientAssignment?->client?->name,
-                                        $weapon->activeClientAssignment?->responsible?->name,
+                                        $weapon->operationalDisplayClient()?->name,
+                                        $weapon->operationalDisplayResponsible()?->name,
                                         $weapon->activePostAssignment?->post?->name,
                                         $weapon->activeWorkerAssignment?->worker?->name,
                                     ], fn ($v) => filled($v))), 'UTF-8')
                                 )
                                 <tr class="revista-table-row" data-search="{{ $tableSearchHaystack }}">
+                                    <td class="max-w-[14rem] truncate px-3 py-2" title="{{ $weapon->operationalDisplayClient()?->name ?? __('Sin destino') }}">
+                                        {{ $weapon->operationalDisplayClient()?->name ?? __('Sin destino') }}
+                                    </td>
                                     <td class="px-3 py-2">{{ $weapon->weapon_type ?? '—' }}</td>
                                     <td class="px-3 py-2">{{ $weapon->brand ?? '—' }}</td>
                                     <td class="px-3 py-2 font-medium">{{ $weapon->serial_number ?? '—' }}</td>
@@ -126,7 +132,7 @@
                                 </tr>
                             @empty
                                 <tr class="revista-table-empty-server">
-                                    <td colspan="9" class="px-3 py-8 text-center text-slate-500">
+                                    <td colspan="10" class="px-3 py-8 text-center text-slate-500">
                                         @if ($noGrantHistory)
                                             {{ __('Este colaborador no tiene accesos asignados.') }}
                                         @else
@@ -205,8 +211,8 @@
                                         $w->brand,
                                         $w->permit_type,
                                         $w->permit_number,
-                                        $w->activeClientAssignment?->client?->name,
-                                        $w->activeClientAssignment?->responsible?->name,
+                                        $w->operationalDisplayClient()?->name,
+                                        $w->operationalDisplayResponsible()?->name,
                                         $w->activePostAssignment?->post?->name,
                                         $w->activeWorkerAssignment?->worker?->name,
                                         $w->activeWorkerAssignment?->worker?->document,
@@ -239,14 +245,22 @@
         @php($ok = session('revista_access_success'))
         <div id="revista-success-modal" class="fixed inset-0 z-[1060] flex items-center justify-center bg-black/40 p-4">
             <div class="w-full max-w-lg rounded-xl bg-white p-5 shadow-xl">
-                <h3 class="text-lg font-bold text-slate-900">{{ __('Acceso creado') }}</h3>
-                <p class="mt-2 text-sm text-slate-600">{{ __('Copie y envíe estos datos al colaborador. También se envió un correo si el servidor de correo está configurado.') }}</p>
-                <textarea id="revista-success-copy" readonly rows="6" class="mt-3 w-full rounded-lg border-slate-300 text-sm">@foreach ([
+                <h3 class="text-lg font-bold text-slate-900">
+                    {{ ! empty($ok['appended']) ? __('Armas agregadas al acceso vigente') : __('Acceso creado') }}
+                </h3>
+                <p class="mt-2 text-sm text-slate-600">
+                    @if (! empty($ok['appended']))
+                        {{ __('Las armas seleccionadas se sumaron al acceso activo. El colaborador debe usar el mismo código enviado anteriormente.') }}
+                    @else
+                        {{ __('Copie y envíe estos datos al colaborador. También se envió un correo si el servidor de correo está configurado.') }}
+                    @endif
+                </p>
+                <textarea id="revista-success-copy" readonly rows="6" class="mt-3 w-full rounded-lg border-slate-300 text-sm">@foreach (array_filter([
                     __('Enlace') . ': ' . $ok['login_url'],
                     __('Correo') . ': ' . $ok['email'],
-                    __('Código') . ': ' . $ok['code'],
+                    ! empty($ok['code']) ? __('Código') . ': ' . $ok['code'] : null,
                     __('Válido hasta') . ': ' . $ok['expires_at'],
-                ] as $line){{ $line }}
+                ]) as $line){{ $line }}
 @endforeach</textarea>
                 <div class="mt-4 flex justify-end gap-2">
                     <button type="button" id="revista-copy-success" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">{{ __('Copiar') }}</button>

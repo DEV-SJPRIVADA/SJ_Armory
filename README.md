@@ -17,7 +17,7 @@ Sistema web para **gestión de armamento**, **asignaciones operativas**, **trans
 - ✅ **Cargas masivas**: validación previa, preview, ejecución por chunks y trazabilidad por lote para **armas** y **clientes**; solo **ADMIN**; descarga de plantillas Excel (hojas `Datos` + `Instructivo`); en **Cargas masivas**, el ADMIN también gestiona las plantillas globales de reverso autenticado (porte y tenencia) usadas en el PDF y en la ficha.
 - ✅ **Dashboard**: fila de **6 KPIs** (Total, No operativas, En inventario, Incautadas en trámite, Vencidos, Por vencer), gráficos y estado “as of”.
 - ✅ **Alertas documentales** (`/alerts/documents`): tarjetas vencidos / por vencer / sin alertas; filtro **multi-mes** con panel de checkboxes (varios meses y años); modales con **filtros por columna** tipo Excel (multi-selección en encabezado); exportación `.docx` y vista previa PDF con nombre `Revalidacion_{mes}_{año}`.
-- ✅ **Revista armas** (`/revista-armas`): acceso temporal (12 h) para colaboradores de campo; usuarios temporales reutilizables; subida de **4 fotos técnicas** a staging; el invitado solo entra con código vigente; staff al filtrar ve armas del **último acceso** (aunque haya vencido) para revisar fotos en staging (✓/✕, **Ver**, **Actualizar**); confirmaciones en **modales**; historial de notas en la ficha del arma; **ADMIN** con gestión global.
+- ✅ **Revista armas** (`/revista-armas`): acceso temporal (12 h) para colaboradores de campo; usuarios temporales reutilizables; **usuarios compartidos** (solo **ADMIN** autoriza supervisores multi-zona con acceso unificado y mismo código); tabla staff con columna **Cliente**; subida de **4 fotos técnicas** a staging; el invitado solo entra con código vigente; staff al filtrar ve armas del **último acceso** (aunque haya vencido) para revisar fotos en staging (✓/✕, **Ver**, **Actualizar**); confirmaciones en **modales**; historial de notas en la ficha del arma; **ADMIN** con gestión global.
 - ✅ **Mapa**: geocodificación y visualización operativa; solo inventario operativo (sin novedad bloqueante ni custodia en taller / para mantenimiento).
 - ✅ **Auditoría**: registro de cambios y acciones críticas; etiquetas legibles en español vía `resources/lang/es/audit.php`.
 - ✅ **Realtime (Broadcasting)**: Laravel Reverb + Echo (WebSockets) para sincronización en tiempo real.
@@ -25,6 +25,7 @@ Sistema web para **gestión de armamento**, **asignaciones operativas**, **trans
 - ✅ **Reportes — Novedades operativas** (`/reports/weapon-incidents`): solo tipos reportables (**hurtada**, **perdida**, **incautada**, **dar de baja**); mantenimiento/armerillo históricos quedan en notas de la ficha pero no suman en gráficos ni KPIs.
 - ✅ **Reportes — Custodia y taller** (`/reports/weapon-custody`): armas en puestos de armerillo, armerillo para mantenimiento o armero por responsable.
 - ✅ **Custodia en ficha del arma**: acciones **Enviar a mi armerillo** (operativa), **Para mantenimiento** y **Enviar a armero** (no operativas, sin novedad); un armerillo y armeros por responsable, ubicación inicial del cliente. Al mover custodia se cierran novedades legadas abiertas (`en_mantenimiento`, `para_mantenimiento`, `en_armerillo`) y el listado muestra **Estado** alineado con el puesto de custodia (`WeaponListStatusResolver`).
+- ✅ **Formatos** (`/formatos`): descarga de plantillas operativas listas para imprimir; **Revista mensual de armamento** (FO-OP-03) con descarga vacía o con relación de armas (tabla con filtros por columna, selección por checkbox y exportación solo de las marcadas); archivo **`FO-OP-03 Revista mensual de armamento.xlsx`**; 20 filas por hoja carta horizontal y paginación automática (`phpoffice/phpspreadsheet`).
 
 ---
 
@@ -39,7 +40,7 @@ Sistema web para **gestión de armamento**, **asignaciones operativas**, **trans
 | **Auth** | Laravel Breeze + sesiones web |
 | **API tokens** | Laravel Sanctum |
 | **Realtime** | Laravel Reverb `^1.10` (servidor WebSocket) |
-| **Docs** | `phpoffice/phpword` para `.docx` + `dompdf/dompdf` |
+| **Docs** | `phpoffice/phpword` para `.docx`, `phpoffice/phpspreadsheet` para `.xlsx`, `dompdf/dompdf` |
 | **HTTP** | `guzzlehttp/guzzle` |
 
 ### ✅ Frontend
@@ -1012,8 +1013,11 @@ Nombres de ruta staff relevantes: prefijo `revista-armas.*`; CRUD de temporales 
 
 - CRUD reutilizable en `/revista-armas/usuarios-temporales`.
 - Campo **Responsable dueño** (`owner_responsible_user_id`): solo usuarios del sistema con rol `RESPONSABLE` (el **ADMIN** elige en el formulario; el responsable nivel 1 queda asignado a sí mismo).
+- **Uso compartido** (`is_shared`, solo **ADMIN**): el administrador marca **Permitir uso por varios responsables** y elige **responsables autorizados** en `temporary_photo_user_responsibles`. El dueño siempre conserva acceso; los autorizados pueden asignar armas de su cartera al mismo supervisor.
+- Con acceso compartido vigente, un segundo responsable **agrega armas al mismo grant** (mismo código 12 h, sin revocar el acceso del otro). Modal de éxito distingue acceso nuevo vs. armas agregadas.
+- Al desactivar compartido: se limpia la pivot; **solo el responsable dueño** vuelve a ver y gestionar ese temporal.
 - Desactivar usuario temporal o revocar acceso **no borra** filas en `weapon_photo_staging`.
-- **ADMIN**: ve y gestiona todos los temporales activos. **RESPONSABLE nivel 1**: solo los que tiene como dueño; al crear/editar el `owner_responsible_user_id` se asigna automáticamente a su usuario (formulario con campo oculto + merge en `TemporaryPhotoUserController::validated`).
+- **ADMIN**: ve y gestiona todos los temporales activos. **RESPONSABLE nivel 1**: los propios como dueño y los compartidos donde esté autorizado; al crear/editar el `owner_responsible_user_id` se asigna automáticamente a su usuario (formulario con campo oculto + merge en `TemporaryPhotoUserController::validated`).
 
 #### Asignación de acceso
 
@@ -1025,7 +1029,8 @@ Nombres de ruta staff relevantes: prefijo `revista-armas.*`; CRUD de temporales 
 #### Vista staff (`/revista-armas`)
 
 - Lista armas según alcance (`RevistaArmasScopeService`: global para **ADMIN**, cartera/responsable activo para **RESPONSABLE** nivel 1).
-- Barra de filtro en **una fila horizontal**: **Usuario temporal** | **Buscar armas** (filtro local en la tabla, sin recargar) | **Filtrar** (`?temporary_photo_user_id=`).
+- Columnas: **Cliente** (operativo vía `operationalDisplayClient()`), Tipo, Marca, Serie, Calibre, Tipo permiso, Nº permiso, Vencimiento, Realizado, Acciones.
+- Barra de filtro en **una fila horizontal**: **Usuario temporal** | **Buscar armas** (filtro local en la tabla, sin recargar; incluye cliente) | **Filtrar** (`?temporary_photo_user_id=`).
   - Sin usuario temporal seleccionado: todas las armas del alcance del responsable; columna **Realizado** muestra `—` y **Acciones** vacía.
   - Con usuario temporal seleccionado: armas del **último acceso asignado** (`latestGrantFor` + `grantWeaponIds`), aunque el código haya vencido; aviso ámbar si no hay acceso vigente (`activeGrantFor`); el invitado solo entra con acceso vigente.
   - Con filtro aplicado: **Realizado** = ✓ si 4/4 fotos en staging de **ese** colaborador; ✕ si falta alguna; botón **Ver** abre modal de revisión.
@@ -1101,6 +1106,32 @@ Comportamiento relevante:
 - El alcance de los datos respeta el rol del usuario:
   - `ADMIN` y `AUDITOR` ven alcance global.
   - `RESPONSABLE` ve solo su operacion.
+
+### 5.16 Formatos operativos
+
+Controlador: `app/Http/Controllers/FormatController.php`  
+Servicios: `app/Services/Formats/MonthlyWeaponReviewQueryService.php`, `MonthlyWeaponReviewRowMapper.php`, `MonthlyWeaponReviewSpreadsheetExporter.php`
+
+Plantilla oficial: `resources/templates/Revista_mensual_armamento.xlsx` (FO-OP-03). El exportador **copia la plantilla** y solo rellena mes (`Q2`), paginación (`Q4`) y filas de datos (`A7:Q26`, 20 por hoja). Dependencia: `phpoffice/phpspreadsheet`.
+
+Acceso: **ADMIN**, **RESPONSABLE** y **AUDITOR** (`WeaponPolicy::viewAny`).
+
+Formato inicial: **Revista mensual de armamento** (FO-OP-03):
+
+- **Descargar vacío**: plantilla con encabezado oficial, 20 filas numeradas y pie de diligenciamiento.
+- **Con relación de armas**: modal con tabla paginada (Cliente, Puesto, Responsable, Serie), filtros tipo Excel en encabezados (`col[cliente][]`, etc.), búsqueda general, inventario, destino y vencimiento. Checkbox por fila; **Seleccionar visibles** / **Limpiar selección**. Solo se exportan las armas marcadas (`weapon_ids[]`). Pie fijo con paginación y **Generar Excel**; solo el cuerpo de la tabla hace scroll (`x-modal` con `:bodyScroll="false"`).
+- Descarga con nombre **`FO-OP-03 Revista mensual de armamento.xlsx`** (vacío o con armas).
+- Cada hoja Excel = **1 formulario carta horizontal** con **20 filas fijas**; si hay más armas seleccionadas, se agregan hojas adicionales (`Página X de Y`).
+- Vista previa JSON (`POST`): `formatos.revista-mensual.vista-previa` (`count`, `pages`, `rows_per_page`).
+
+Rutas:
+
+- `formatos.index` (`GET /formatos`)
+- `formatos.revista-mensual.vacio`
+- `formatos.revista-mensual.armas` (`GET`, tabla paginada JSON)
+- `formatos.revista-mensual.column-options` (`GET`, opciones cascada por columna)
+- `formatos.revista-mensual.vista-previa` (`POST`)
+- `formatos.revista-mensual.descargar` (`POST`, requiere `weapon_ids[]`)
 
 ## 6. Auditoria
 
@@ -1206,6 +1237,8 @@ Grupos funcionales:
   - `portfolios.index/edit/update/transfer`.
 - Reportes y alertas:
   - `reports.*`, `reports.weapon-incidents.*`, `reports.weapon-custody.index`, `alerts.documents`, `alerts.documents.preview`, `alerts.documents.download`.
+- Formatos:
+  - `formatos.index`, `formatos.revista-mensual.vacio`, `formatos.revista-mensual.armas`, `formatos.revista-mensual.column-options`, `formatos.revista-mensual.vista-previa`, `formatos.revista-mensual.descargar`.
 - Dashboard:
   - `dashboard`, `dashboard.metrics`.
 - Mapa:

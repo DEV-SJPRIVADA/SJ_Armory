@@ -26,6 +26,8 @@
                             <th>{{ __('Correo') }}</th>
                             @if ($isAdmin)
                                 <th>{{ __('Responsable') }}</th>
+                                <th>{{ __('Compartido') }}</th>
+                                <th>{{ __('Autorizados') }}</th>
                             @endif
                             <th>{{ __('Accesos activos') }}</th>
                             <th>{{ __('Acciones') }}</th>
@@ -38,6 +40,14 @@
                                 <td class="px-3 py-2">{{ $user->email }}</td>
                                 @if ($isAdmin)
                                     <td class="px-3 py-2">{{ $user->ownerResponsible?->name ?? '—' }}</td>
+                                    <td class="px-3 py-2">{{ $user->is_shared ? __('Sí') : __('No') }}</td>
+                                    <td class="px-3 py-2">
+                                        @if ($user->is_shared)
+                                            {{ $user->authorized_responsibles_count }}
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
                                 @endif
                                 <td class="px-3 py-2 text-center">{{ $user->active_grants_count }}</td>
                                 <td class="px-3 py-2 text-right space-x-2">
@@ -50,7 +60,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="{{ $isAdmin ? 5 : 4 }}" class="px-3 py-8 text-center text-slate-500">{{ __('No hay usuarios temporales.') }}</td></tr>
+                            <tr><td colspan="{{ $isAdmin ? 7 : 4 }}" class="px-3 py-8 text-center text-slate-500">{{ __('No hay usuarios temporales.') }}</td></tr>
                         @endforelse
                     </tbody>
                 </table>

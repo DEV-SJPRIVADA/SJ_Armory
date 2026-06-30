@@ -14,12 +14,7 @@ class TemporaryPhotoUserPolicy
 
     public function view(User $user, TemporaryPhotoUser $temporaryPhotoUser): bool
     {
-        if ($user->isAdmin()) {
-            return true;
-        }
-
-        return $user->isResponsibleLevelOne()
-            && (int) $temporaryPhotoUser->owner_responsible_user_id === (int) $user->id;
+        return $temporaryPhotoUser->canBeManagedBy($user);
     }
 
     public function create(User $user): bool
@@ -29,11 +24,11 @@ class TemporaryPhotoUserPolicy
 
     public function update(User $user, TemporaryPhotoUser $temporaryPhotoUser): bool
     {
-        return $this->view($user, $temporaryPhotoUser);
+        return $temporaryPhotoUser->canBeEditedBy($user);
     }
 
     public function delete(User $user, TemporaryPhotoUser $temporaryPhotoUser): bool
     {
-        return $this->view($user, $temporaryPhotoUser);
+        return $temporaryPhotoUser->canBeEditedBy($user);
     }
 }

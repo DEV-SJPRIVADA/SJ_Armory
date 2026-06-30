@@ -24,7 +24,7 @@ class TemporaryPhotoAccessService
 
     /**
      * @param  array<int, int>  $weaponIds
-     * @return array{grant: TemporaryPhotoAccessGrant, plain_code: string}
+     * @return array{grant: TemporaryPhotoAccessGrant, plain_code: ?string, appended: bool}
      */
     public function createGrant(User $actor, TemporaryPhotoUser $temporaryUser, array $weaponIds): array
     {
@@ -47,6 +47,13 @@ class TemporaryPhotoAccessService
         foreach ($weapons as $weapon) {
             if (! $this->scopeService->canStaffManageWeapon($actor, $weapon)) {
                 throw new RuntimeException(__('No tiene permiso sobre todas las armas seleccionadas.'));
+            }
+        }
+
+        if ($temporaryUser->is_shared) {
+            $activeGrant = $this->activeGrantFor($temporaryUser);
+            if ($activeGrant) {
+                return $this->appendWeaponsToGrant($actor, $temporaryUser, $activeGrant, $weaponIds);
             }
         }
 
@@ -77,6 +84,7 @@ class TemporaryPhotoAccessService
         return [
             'grant' => $grant->load('weapons.weapon'),
             'plain_code' => $plainCode,
+            'appended' => false,
         ];
     }
 
@@ -140,6 +148,42 @@ class TemporaryPhotoAccessService
             ->first();
     }
 
+    /**
+     * @param  Collection<int, int>  $weaponIds
+     * @return array{grant: TemporaryPhotoAccessGrant, plain_code: ?string, appended: bool}
+     */
+    private function appendWeaponsToGrant(
+        User $actor,
+        TemporaryPhotoUser $temporaryUser,
+        TemporaryPhotoAccessGrant $grant,
+        Collection $weaponIds,
+    ): array {
+        $existingWeaponIds = $grant->weapons()->pluck('weapon_id')->map(fn ($id) => (int) $id);
+
+        DB::transaction(function () use ($grant, $weaponIds, $existingWeaponIds) {
+            foreach ($weaponIds as $weaponId) {
+                if ($existingWeaponIds->contains($weaponId)) {
+                    continue;
+                }
+
+                TemporaryPhotoAccessWeapon::create([
+                    'temporary_photo_access_grant_id' => $grant->id,
+                    'weapon_id' => $weaponId,
+                ]);
+            }
+
+            $grant->update([
+                'expires_at' => now()->addHours(12),
+            ]);
+        });
+
+        return [
+            'grant' => $grant->fresh()->load('weapons.weapon'),
+            'plain_code' => null,
+            'appended' => true,
+        ];
+    }
+
     private function revokeActiveGrants(TemporaryPhotoUser $temporaryUser): void
     {
         TemporaryPhotoAccessGrant::query()
@@ -172,11 +216,7 @@ class TemporaryPhotoAccessService
 
     public function ensureCanManageTemporaryUser(User $actor, TemporaryPhotoUser $temporaryUser): void
     {
-        if ($actor->isAdmin()) {
-            return;
-        }
-
-        if ($actor->isResponsibleLevelOne() && (int) $temporaryUser->owner_responsible_user_id === (int) $actor->id) {
+        if ($temporaryUser->canBeManagedBy($actor)) {
             return;
         }
 

@@ -14,6 +14,8 @@ class RevistaArmasScopeService
             ->with([
                 'activeClientAssignment.client',
                 'activeClientAssignment.responsible',
+                'activePendingTransfer.fromClient',
+                'activePendingTransfer.fromUser',
                 'activePostAssignment.post',
                 'activeWorkerAssignment.worker',
             ])
@@ -50,13 +52,27 @@ class RevistaArmasScopeService
     public function temporaryUsersQueryForStaff(User $user): Builder
     {
         $query = \App\Models\TemporaryPhotoUser::query()
-            ->with(['ownerResponsible:id,name,email'])
+            ->with(['ownerResponsible:id,name,email', 'authorizedResponsibles:id,name'])
             ->orderBy('name');
 
         if ($user->isAdmin()) {
             return $query;
         }
 
-        return $query->where('owner_responsible_user_id', $user->id);
+        if (! $user->isResponsibleLevelOne()) {
+            abort(403);
+        }
+
+        return $query->where(function (Builder $outer) use ($user) {
+            $outer
+                ->where('owner_responsible_user_id', $user->id)
+                ->orWhere(function (Builder $inner) use ($user) {
+                    $inner
+                        ->where('is_shared', true)
+                        ->whereHas('authorizedResponsibles', function (Builder $responsibleQuery) use ($user) {
+                            $responsibleQuery->where('users.id', $user->id);
+                        });
+                });
+        });
     }
 }

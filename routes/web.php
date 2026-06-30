@@ -12,6 +12,7 @@ use App\Http\Controllers\AuthenticatedPermitImageController;
 use App\Http\Controllers\Auth\ForcedPasswordChangeController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FormatController;
 use App\Http\Controllers\GeocodingController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\WeaponCustodyController;
@@ -195,6 +196,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/portfolios/{user}/transfer', [ResponsiblePortfolioController::class, 'transfer'])->name('portfolios.transfer');
 
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/formatos', [FormatController::class, 'index'])->name('formatos.index');
+    Route::get('/formatos/revista-mensual/vacio', [FormatController::class, 'downloadEmptyMonthlyReview'])->name('formatos.revista-mensual.vacio');
+    Route::get('/formatos/revista-mensual/armas', [FormatController::class, 'monthlyReviewWeapons'])->name('formatos.revista-mensual.armas');
+    Route::get('/formatos/revista-mensual/opciones-columna', [FormatController::class, 'monthlyReviewColumnOptions'])->name('formatos.revista-mensual.column-options');
+    Route::post('/formatos/revista-mensual/vista-previa', [FormatController::class, 'previewMonthlyReview'])->name('formatos.revista-mensual.vista-previa');
+    Route::post('/formatos/revista-mensual/descargar', [FormatController::class, 'downloadMonthlyReview'])->name('formatos.revista-mensual.descargar');
     Route::get('/reports/assignments', [ReportController::class, 'weaponsByClient'])->name('reports.assignments');
     Route::get('/reports/no-destination', [ReportController::class, 'weaponsWithoutDestination'])->name('reports.no_destination');
     Route::get('/reports/history', [ReportController::class, 'history'])->name('reports.history');

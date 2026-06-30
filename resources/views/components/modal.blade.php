@@ -1,7 +1,8 @@
 @props([
     'name',
     'show' => false,
-    'maxWidth' => '2xl'
+    'maxWidth' => '2xl',
+    'bodyScroll' => true,
 ])
 
 @php
@@ -17,6 +18,10 @@ $maxWidth = [
     '6xl' => 'sm:max-w-6xl',
     '7xl' => 'sm:max-w-7xl',
 ][$maxWidth];
+
+$panelHeightClass = $bodyScroll
+    ? 'max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3rem)]'
+    : 'h-[calc(100vh-2rem)] max-h-[calc(100vh-2rem)] sm:h-[calc(100vh-3rem)] sm:max-h-[calc(100vh-3rem)]';
 @endphp
 
 <div
@@ -69,7 +74,7 @@ $maxWidth = [
 
     <div
         x-show="show"
-        class="flex max-h-[calc(100vh-2rem)] w-full flex-col overflow-hidden rounded-lg bg-white shadow-xl transform transition-all sm:max-h-[calc(100vh-3rem)] sm:w-full {{ $maxWidth }}"
+        class="flex w-full flex-col overflow-hidden rounded-lg bg-white shadow-xl transform transition-all sm:w-full {{ $maxWidth }} {{ $panelHeightClass }}"
         x-transition:enter="ease-out duration-300"
         x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
         x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
@@ -77,7 +82,11 @@ $maxWidth = [
         x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
         x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
     >
-        <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div @class([
+            'min-h-0 flex-1 overscroll-contain',
+            'overflow-y-auto' => $bodyScroll,
+            'flex flex-col overflow-hidden' => ! $bodyScroll,
+        ])>
             {{ $slot }}
         </div>
     </div>

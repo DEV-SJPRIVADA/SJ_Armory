@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TemporaryPhotoUser extends Model
@@ -13,11 +14,13 @@ class TemporaryPhotoUser extends Model
         'created_by_user_id',
         'name',
         'email',
+        'is_shared',
         'is_active',
         'deactivated_at',
     ];
 
     protected $casts = [
+        'is_shared' => 'boolean',
         'is_active' => 'boolean',
         'deactivated_at' => 'datetime',
     ];
@@ -35,6 +38,51 @@ class TemporaryPhotoUser extends Model
     public function grants(): HasMany
     {
         return $this->hasMany(TemporaryPhotoAccessGrant::class);
+    }
+
+    public function authorizedResponsibles(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class,
+            'temporary_photo_user_responsibles',
+            'temporary_photo_user_id',
+            'responsible_user_id',
+        )->withPivot('assigned_by_user_id')->withTimestamps();
+    }
+
+    public function canBeManagedBy(User $user): bool
+    {
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        if (! $user->isResponsibleLevelOne()) {
+            return false;
+        }
+
+        if ((int) $this->owner_responsible_user_id === (int) $user->id) {
+            return true;
+        }
+
+        if (! $this->is_shared) {
+            return false;
+        }
+
+        if ($this->relationLoaded('authorizedResponsibles')) {
+            return $this->authorizedResponsibles->contains('id', $user->id);
+        }
+
+        return $this->authorizedResponsibles()->where('users.id', $user->id)->exists();
+    }
+
+    public function canBeEditedBy(User $user): bool
+    {
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        return $user->isResponsibleLevelOne()
+            && (int) $this->owner_responsible_user_id === (int) $user->id;
     }
 
     public function stagingPhotos(): HasMany
