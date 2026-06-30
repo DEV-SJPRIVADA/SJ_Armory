@@ -17,7 +17,7 @@ Sistema web para **gestión de armamento**, **asignaciones operativas**, **trans
 - ✅ **Cargas masivas**: validación previa, preview, ejecución por chunks y trazabilidad por lote para **armas** y **clientes**; solo **ADMIN**; descarga de plantillas Excel (hojas `Datos` + `Instructivo`); en **Cargas masivas**, el ADMIN también gestiona las plantillas globales de reverso autenticado (porte y tenencia) usadas en el PDF y en la ficha.
 - ✅ **Dashboard**: fila de **6 KPIs** (Total, No operativas, En inventario, Incautadas en trámite, Vencidos, Por vencer), gráficos y estado “as of”.
 - ✅ **Alertas documentales** (`/alerts/documents`): tarjetas vencidos / por vencer / sin alertas; filtro **multi-mes** con panel de checkboxes (varios meses y años); modales con **filtros por columna** tipo Excel (multi-selección en encabezado); exportación `.docx` y vista previa PDF con nombre `Revalidacion_{mes}_{año}`.
-- ✅ **Revista armas** (`/revista-armas`): acceso temporal (12 h) para colaboradores de campo; usuarios temporales reutilizables; **usuarios compartidos** (solo **ADMIN** autoriza supervisores multi-zona con acceso unificado y mismo código); tabla staff con columna **Cliente**; subida de **4 fotos técnicas** a staging; el invitado solo entra con código vigente; staff al filtrar ve armas del **último acceso** (aunque haya vencido) para revisar fotos en staging (✓/✕, **Ver**, **Actualizar**); confirmaciones en **modales**; historial de notas en la ficha del arma; **ADMIN** con gestión global.
+- ✅ **Revista armas** (`/revista-armas`): acceso temporal (12 h) para colaboradores de campo; usuarios temporales reutilizables; **usuarios compartidos** (solo **ADMIN** autoriza supervisores multi-zona con acceso unificado y mismo código); tabla staff con columna **Cliente**; modal **Asignar acceso temporal** con tabla scrollable (**Cliente**, **Serie**, **Tipo**); subida de **4 fotos técnicas** a staging; el invitado solo entra con código vigente; staff al filtrar ve armas del **último acceso** (aunque haya vencido) para revisar fotos en staging (✓/✕, **Ver**, **Actualizar**); confirmaciones en **modales**; historial de notas en la ficha del arma; **ADMIN** con gestión global.
 - ✅ **Mapa**: geocodificación y visualización operativa; solo inventario operativo (sin novedad bloqueante ni custodia en taller / para mantenimiento).
 - ✅ **Auditoría**: registro de cambios y acciones críticas; etiquetas legibles en español vía `resources/lang/es/audit.php`.
 - ✅ **Realtime (Broadcasting)**: Laravel Reverb + Echo (WebSockets) para sincronización en tiempo real.
@@ -1022,7 +1022,9 @@ Nombres de ruta staff relevantes: prefijo `revista-armas.*`; CRUD de temporales 
 #### Asignación de acceso
 
 - Tablas: `temporary_photo_access_grants` + `temporary_photo_access_weapons`.
-- Modal **Asignar acceso temporal** en el listado staff: fila **Usuario temporal** | **Buscar armas** (filtro local en checkboxes) | asignación; contador **Seleccionadas** y **Seleccionar todas visibles**.
+- Modal **Asignar acceso temporal** en el listado staff: fila **Usuario temporal** | **Buscar armas** (filtro local) | tabla con scroll (**Cliente**, **Serie**, **Tipo** + checkbox; encabezado fijo, cuerpo `max-h-52`); contador **Seleccionadas** y **Seleccionar todas visibles**. Columna **Tipo** = `weapon_type` (sin marca).
+
+> 🧩 **Despliegue:** solo Blade — **no** requiere `npm run build` ni subir `public/build/`.
 - Código válido **12 h**, correo `RevistaTemporaryAccessMail`; modal de éxito con enlace, correo y código copiable.
 - Revocar acceso no elimina staging ya subido.
 

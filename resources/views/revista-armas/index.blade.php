@@ -199,7 +199,34 @@
                                 {{ __('Seleccionar todas visibles') }}
                             </label>
                         </div>
-                        <div id="revista-weapons-list" class="max-h-52 overflow-y-auto rounded-lg border border-slate-200 p-2 space-y-1">
+                        <div id="revista-weapons-table-wrap" class="overflow-hidden rounded-lg border border-slate-200">
+                            <div class="overflow-x-auto border-b border-slate-200 bg-slate-50">
+                                <table class="min-w-full table-fixed text-sm">
+                                    <colgroup>
+                                        <col style="width: 2.5rem">
+                                        <col style="width: 38%">
+                                        <col style="width: 32%">
+                                        <col style="width: 30%">
+                                    </colgroup>
+                                    <thead>
+                                        <tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                                            <th class="px-2 py-2" scope="col"><span class="sr-only">{{ __('Seleccionar') }}</span></th>
+                                            <th class="px-3 py-2" scope="col">{{ __('Cliente') }}</th>
+                                            <th class="px-3 py-2" scope="col">{{ __('Serie') }}</th>
+                                            <th class="px-3 py-2" scope="col">{{ __('Tipo') }}</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                            <div id="revista-weapons-list" class="max-h-52 overflow-y-auto overflow-x-auto overscroll-contain bg-white">
+                                <table class="min-w-full table-fixed divide-y divide-slate-100 text-sm">
+                                    <colgroup>
+                                        <col style="width: 2.5rem">
+                                        <col style="width: 38%">
+                                        <col style="width: 32%">
+                                        <col style="width: 30%">
+                                    </colgroup>
+                                    <tbody id="revista-weapons-tbody">
                             @foreach ($rows as $row)
                                 @php($w = $row['weapon'])
                                 @php(
@@ -218,14 +245,21 @@
                                         $w->activeWorkerAssignment?->worker?->document,
                                     ], fn ($v) => filled($v))), 'UTF-8')
                                 )
-                                <label
-                                    class="revista-weapon-row flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-slate-50"
+                                <tr
+                                    class="revista-weapon-row cursor-pointer hover:bg-slate-50"
                                     data-search="{{ $weaponSearchHaystack }}"
                                 >
-                                    <input type="checkbox" name="weapon_ids[]" value="{{ $w->id }}" class="revista-weapon-cb rounded border-slate-300">
-                                    <span class="min-w-0">{{ $w->serial_number }} — {{ $w->weapon_type }} {{ $w->brand }}</span>
-                                </label>
+                                    <td class="px-3 py-2 align-middle">
+                                        <input type="checkbox" name="weapon_ids[]" value="{{ $w->id }}" class="revista-weapon-cb rounded border-slate-300">
+                                    </td>
+                                    <td class="px-3 py-2 align-middle text-slate-700">{{ $w->operationalDisplayClient()?->name ?? '—' }}</td>
+                                    <td class="px-3 py-2 align-middle font-medium text-slate-900">{{ $w->serial_number }}</td>
+                                    <td class="px-3 py-2 align-middle text-slate-700">{{ $w->weapon_type }}</td>
+                                </tr>
                             @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                         <p id="revista-weapons-filter-empty" class="mt-2 hidden text-center text-sm text-slate-500">
                             {{ __('Ningún arma coincide con la búsqueda.') }}
@@ -357,7 +391,8 @@
 
             const assignModal = document.getElementById('revista-assign-modal');
             const weaponsFilter = document.getElementById('revista-weapons-filter');
-            const weaponsList = document.getElementById('revista-weapons-list');
+            const weaponsTableWrap = document.getElementById('revista-weapons-table-wrap');
+            const weaponsList = document.getElementById('revista-weapons-tbody');
             const weaponsFilterCount = document.getElementById('revista-weapons-filter-count');
             const weaponsSelectedCount = document.getElementById('revista-weapons-selected-count');
             const weaponsFilterEmpty = document.getElementById('revista-weapons-filter-empty');
@@ -414,8 +449,8 @@
                     weaponsFilterEmpty.classList.toggle('hidden', visible > 0 || total === 0);
                 }
 
-                if (weaponsList) {
-                    weaponsList.classList.toggle('hidden', visible === 0 && term !== '');
+                if (weaponsTableWrap) {
+                    weaponsTableWrap.classList.toggle('hidden', visible === 0 && term !== '');
                 }
 
                 if (selectAllWeapons) {
@@ -464,6 +499,16 @@
 
             weaponRows().forEach((row) => {
                 row.querySelector('.revista-weapon-cb')?.addEventListener('change', () => applyWeaponsFilter());
+                row.addEventListener('click', (event) => {
+                    if (event.target.closest('input')) {
+                        return;
+                    }
+                    const cb = row.querySelector('.revista-weapon-cb');
+                    if (cb) {
+                        cb.checked = !cb.checked;
+                        applyWeaponsFilter();
+                    }
+                });
             });
 
             applyWeaponsFilter();
